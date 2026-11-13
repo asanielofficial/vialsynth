@@ -1,0 +1,196 @@
+/* Copyright 2013-2019 Matt Tytel
+ *
+ * vital is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * vital is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with vital.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#pragma once
+
+#include "circular_queue.h"
+#include "synth_module.h"
+#include "keytrack_voices.h"
+#include "note_handler.h"
+#include "tuning.h"
+#include "synth_constants.h"
+#include "wavetable.h"
+
+class LineGenerator;
+
+namespace vital {
+  class PeakMeter;
+  class FxEffectChain;
+  class AudioFilterRouter;
+  class AudioUpsampler;
+  class EffectsModulationHandler;
+  class FiltersModule;
+  class Sample;
+  class SpectralMorphProcessor;
+  class StereoMemory;
+  class SynthLfo;
+  class Upsampler;
+  class Value;
+  class ValueSwitch;
+  class Wavetable;
+
+  class SoundEngine : public SynthModule, public NoteHandler {
+    public:
+      static constexpr int kDefaultOversamplingAmount = 1;
+      static constexpr int kDefaultSampleRate = 44100;
+
+      SoundEngine();
+      virtual ~SoundEngine();
+
+      void init() override;
+      void processWithInput(const poly_float* audio_in, int num_samples) override;
+      // Sidechain audio for the next processWithInput call (nullptr = silence). Must stay valid until then.
+      void setSidechainInput(const poly_float* audio);
+      // Recent audio of each input lane after its level, pan and warp (for the spectrum displays).
+      // Latency of the spectral stage in samples: the FFT size while a spectral mode is chosen on either lane, else 0. Safe to call from any thread.
+      int getLatencySamples() const;
+      bool spectralEngaged() const;
+
+      // Drawn spectral curves and Random Amplitudes seed of each lane (0 = main, 1 = sidechain). Saved with the
+      // preset; the curves are not parameters. The seed is scrambled by flipping the lane's dice switch parameter.
+      // Lanes 2 .. 9 are the copies of the Morph effect (copy n is lane 2 + n).
+      static constexpr int kNumSpectralCurves = 3;
+      // Lanes 10 and 11 hold the three drawn curves of the Custom model of Filter 1 and 2, lanes 12 .. 19 the ones
+      // of the copies of the Filter effect.
+      static constexpr int kFirstFilterLane = 2 + kMaxEffectInstances;
+      static constexpr int kNumFilterCurveSets = 2 + kMaxEffectInstances;
+      static constexpr int kNumDrawingLanes = kFirstFilterLane + kNumFilterCurveSets;
+      static int morphLane(int instance) { return 2 + instance; }
+      static int filterLane(int filter) { return kFirstFilterLane + filter; }
+      static int filterFxLane(int instance) { return kFirstFilterLane + 2 + instance; }
+      static bool isMorphLane(int lane) { return lane >= 2 && lane < kFirstFilterLane; }
+      // Whether copy n of the Morph effect is in the effect chain (its tables are only saved with the preset then).
+      bool isMorphInUse(int instance) const;
+      LineGenerator* getSpectralCurve(int lane, int index);
+
+      // Modulation of the points of drawn lines. Every spectral curve and every LFO shape has an id; a point's x or
+      // y is bound to one of the kNumPointMods slots (a control named pointmod_<slot + 1> of the modulation matrix).
+      static constexpr int kNumPointMods = 32;  // = LineGenerator::kMaxPointSlots
+      static constexpr int kNumPointModCurves = kNumDrawingLanes * kNumSpectralCurves + kNumLfos;
+      LineGenerator* getPointModCurve(int curve_id);
+      // Binds a point's axis to a free slot (or returns the slot it already has); -1 when none is left.
+      int bindPointMod(int curve_id, int point, int axis);
+      // Binds to a given slot (loading a preset); false if the slot is taken or the point does not exist.
+      bool bindPointModToSlot(int slot, int curve_id, int point, int axis);
+      void unbindPointMod(int slot);
+      void unbindAllPointMods();
+      int pointModCurve(int slot) const { return point_mod_curve_[slot]; }
+      static std::string pointModName(int slot) { return "pointmod_" + std::to_string(slot + 1); }
+      void resetSpectralCurve(int lane, int index);
+      void resetSpectralDrawings(int lane);
+      void setRandomSeed(int lane, uint32_t seed);
+      // The current Random Amplitudes seed (it changes whenever the dice switch flips).
+      uint32_t getRandomSeed(int lane) const;
+      const StereoMemory* getInputMemory();
+      const StereoMemory* getSidechainMemory();
+      void correctToTime(double seconds) override;
+
+      int getNumPressedNotes();
+      void connectModulation(const modulation_change& change);
+      void disconnectModulation(const modulation_change& change);
+      int getNumActiveVoices();
+      ModulationConnectionBank& getModulationBank();
+      mono_float getLastActiveNote() const;
+
+      void setTuning(const Tuning* tuning);
+      void setOversamplingAmount(int oversampling_amount, int sample_rate);
+
+      void allSoundsOff() override;
+      void allNotesOff(int sample) override;
+      void allNotesOff(int sample, int channel) override;
+      void allNotesOffRange(int sample, int from_channel, int to_channel);
+
+      void noteOn(int note, mono_float velocity, int sample, int channel) override;
+      void noteOff(int note, mono_float lift, int sample, int channel) override;
+      void setModWheel(mono_float value, int channel);
+      void setModWheelAllChannels(mono_float value);
+      void setPitchWheel(mono_float value, int channel);
+      void setZonedPitchWheel(mono_float value, int from_channel, int to_channel);
+      void disableUnnecessaryModSources();
+      void enableModSource(const std::string& source);
+      void disableModSource(const std::string& source);
+      bool isModSourceEnabled(const std::string& source);
+      const StereoMemory* getEqualizerMemory(int instance = 0);
+
+      // The effect chain: slots hold 0 or 1 + effectId (see FxEffectChain). Safe to call while audio runs.
+      void setEffectChain(const int* slots, int num_slots);
+      int getEffectChain(int* slots) const;
+
+      void setBpm(mono_float bpm);
+      void setAftertouch(mono_float note, mono_float value, int sample, int channel);
+      void setChannelAftertouch(int channel, mono_float value, int sample);
+      void setChannelRangeAftertouch(int from_channel, int to_channel, mono_float value, int sample);
+      void setChannelSlide(int channel, mono_float value, int sample);
+      void setChannelRangeSlide(int from_channel, int to_channel, mono_float value, int sample);
+      Wavetable* getWavetable(int index);
+      Sample* getSample();
+      LineGenerator* getLfoSource(int index);
+
+      void sustainOn(int channel);
+      void sustainOff(int sample, int channel);
+      void sostenutoOn(int channel);
+      void sostenutoOff(int sample, int channel);
+
+      void sustainOnRange(int from_channel, int to_channel);
+      void sustainOffRange(int sample, int from_channel, int to_channel);
+      void sostenutoOnRange(int from_channel, int to_channel);
+      void sostenutoOffRange(int sample, int from_channel, int to_channel);
+      force_inline int getOversamplingAmount() const { return last_oversampling_amount_; }
+
+      void checkOversampling();
+
+    private:
+      void applyPointModulation();
+      int point_mod_curve_[kNumPointMods];
+      bool point_mod_dirty_[kNumPointModCurves] = {};
+      bool had_point_modulation_ = false;
+
+      EffectsModulationHandler* modulation_handler_;
+      Upsampler* audio_input_;
+      Upsampler* sidechain_input_;
+      std::unique_ptr<Wavetable> fx_tables_[kNumFxTables];
+      Value* fft_size_ = nullptr;
+      Value* input_spectral_mode_ = nullptr;
+      Value* sidechain_spectral_mode_ = nullptr;
+      Value* spectral_engaged_ = nullptr;
+      SpectralMorphProcessor* spectral_[2] = { nullptr, nullptr };      // spectral-first chain of each lane
+      SpectralMorphProcessor* spectral_alt_[2] = { nullptr, nullptr };  // warp-first chain (same settings)
+      std::unique_ptr<LineGenerator> spectral_curves_[kNumDrawingLanes][kNumSpectralCurves];
+      std::shared_ptr<StereoMemory> input_memory_;
+      std::shared_ptr<StereoMemory> sidechain_memory_;
+      const poly_float* sidechain_in_;
+      poly_float silence_[kMaxBufferSize];
+      AudioFilterRouter* filter_router_;
+      FiltersModule* filters_module_;
+      AudioUpsampler* upsampler_;
+      FxEffectChain* effect_chain_;
+      static constexpr int kEngineKeytrackVoices = 8;
+      KeytrackNotes keytrack_notes_;
+      KeytrackBank* filters_bank_;
+
+      int last_oversampling_amount_;
+      int last_sample_rate_;
+      Value* oversampling_;
+      Value* bps_;
+      Value* legato_;
+      PeakMeter* peak_meter_;
+
+      CircularQueue<Processor*> modulation_processors_;
+
+      JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SoundEngine)
+  };
+} // namespace vital
+

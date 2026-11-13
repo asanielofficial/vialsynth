@@ -1,0 +1,341 @@
+/* Copyright 2013-2019 Matt Tytel
+ *
+ * vital is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * vital is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with vital.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#pragma once
+
+#include "JuceHeader.h"
+
+#include "json/json.h"
+
+using json = nlohmann::json;
+
+class FullInterface;
+class SynthSection;
+
+class Skin {
+  public:
+    enum SectionOverride {
+      kNone,
+      kLogo,
+      kHeader,
+      kOverlay,
+      kOscillator,
+      kSample,
+      kSub,
+      kFilter,
+      kEnvelope,
+      kLfo,
+      kRandomLfo,
+      kVoice,
+      kMacro,
+      kKeyboard,
+      kAllEffects,
+      kChorus,
+      kCompressor,
+      kDelay,
+      kDistortion,
+      kEqualizer,
+      kFxFilter,
+      kFlanger,
+      kPhaser,
+      kReverb,
+      kMorph,
+      kPitchShifter,
+      kUtility,
+      kFreqShifter,
+      kVibrato,
+      kTremolo,
+      kModulationDragDrop,
+      kModulationMatrix,
+      kPresetBrowser,
+      kPopupBrowser,
+      kAdvanced,
+      kWavetableEditor,
+      kNumSectionOverrides
+    };
+
+    enum ValueId {
+      kBodyRounding,
+      kLabelHeight,
+      kLabelBackgroundHeight,
+      kLabelBackgroundRounding,
+      kLabelOffset,
+      kTextComponentLabelOffset,
+      kRotaryOptionXOffset,
+      kRotaryOptionYOffset,
+      kRotaryOptionWidth,
+      kTitleWidth,
+      kPadding,
+      kLargePadding,
+      kSliderWidth,
+      kTextComponentHeight,
+      kTextComponentOffset,
+      kTextComponentFontSize,
+      kTextButtonHeight,
+      kButtonFontSize,
+      kKnobArcSize,
+      kKnobArcThickness,
+      kKnobBodySize,
+      kKnobHandleLength,
+      kKnobModAmountArcSize,
+      kKnobModAmountArcThickness,
+      kKnobModMeterArcSize,
+      kKnobModMeterArcThickness,
+      kKnobOffset,
+      kKnobSectionHeight,
+      kKnobShadowWidth,
+      kKnobShadowOffset,
+      kModulationButtonWidth,
+      kModulationFontSize,
+      kWidgetMargin,
+      kWidgetRoundedCorner,
+      kWidgetLineWidth,
+      kWidgetLineBoost,
+      kWidgetFillCenter,
+      kWidgetFillFade,
+      kWidgetFillBoost,
+      kWavetableHorizontalAngle,
+      kWavetableVerticalAngle,
+      kWavetableDrawWidth,
+      kWavetableWaveHeight,
+      kWavetableYOffset,
+      kNumSkinValueIds,
+      kFrequencyDisplay = kNumSkinValueIds,
+      kNumAllValueIds,
+    };
+
+    enum ColorId {
+      kInitialColor = 0x42345678,
+      kBackground = kInitialColor,
+      kBody,
+      kBodyHeading,
+      kHeadingText,
+      kPresetText,
+      kBodyText,
+      kBorder,
+      kLabelBackground,
+      kLabelConnection,
+      kPowerButtonOn,
+      kPowerButtonOff,
+
+      kOverlayScreen,
+      kLightenScreen,
+      kShadow,
+      kPopupSelectorBackground,
+      kPopupBackground,
+      kPopupBorder,
+
+      kTextComponentBackground,
+      kTextComponentText,
+
+      kRotaryArc,
+      kRotaryArcDisabled,
+      kRotaryArcUnselected,
+      kRotaryArcUnselectedDisabled,
+      kRotaryHand,
+      kRotaryBody,
+      kRotaryBodyBorder,
+
+      kLinearSlider,
+      kLinearSliderDisabled,
+      kLinearSliderUnselected,
+      kLinearSliderThumb,
+      kLinearSliderThumbDisabled,
+
+      kWidgetCenterLine,
+      kWidgetPrimary1,
+      kWidgetPrimary2,
+      kWidgetPrimaryDisabled,
+      kWidgetSecondary1,
+      kWidgetSecondary2,
+      kWidgetSecondaryDisabled,
+      kWidgetAccent1,
+      kWidgetAccent2,
+      kWidgetBackground,
+
+      kModulationMeter,
+      kModulationMeterLeft,
+      kModulationMeterRight,
+      kModulationMeterControl,
+      kModulationButtonSelected,
+      kModulationButtonDragging,
+      kModulationButtonUnselected,
+
+      kIconSelectorIcon,
+
+      kIconButtonOff,
+      kIconButtonOffHover,
+      kIconButtonOffPressed,
+      kIconButtonOn,
+      kIconButtonOnHover,
+      kIconButtonOnPressed,
+
+      kUiButton,
+      kUiButtonText,
+      kUiButtonHover,
+      kUiButtonPressed,
+      kUiActionButton,
+      kUiActionButtonHover,
+      kUiActionButtonPressed,
+
+      kTextEditorBackground,
+      kTextEditorBorder,
+      kTextEditorCaret,
+      kTextEditorSelection,
+
+      kFinalColor
+    };
+
+    static constexpr int kNumColors = kFinalColor - kInitialColor;
+    static bool shouldScaleValue(ValueId value_id);
+
+    Skin();
+
+    void setComponentColors(Component* component) const;
+    void setComponentColors(Component* component, SectionOverride section_override, bool top_level = false) const;
+    void setComponentValues(SynthSection* component) const;
+    void setComponentValues(SynthSection* component, SectionOverride section_override, bool top_level = false) const;
+    void setColor(ColorId color_id, const Colour& color) { colors_[color_id - kInitialColor] = color; }
+    Colour getColor(ColorId color_id) const { return colors_[color_id - kInitialColor]; }
+    // Glow amount (0..1) of a colour: how far a soft halo of that colour spreads around widgets that use it.
+    void setGlow(ColorId color_id, float glow) { glow_[color_id - kInitialColor] = jlimit(0.0f, 1.0f, glow); }
+    float getGlow(ColorId color_id) const { return glow_[color_id - kInitialColor]; }
+    // Glow size (0..1) of a colour: how far the halo reaches.
+    void setGlowSize(ColorId color_id, float size) { glow_size_[color_id - kInitialColor] = jlimit(0.0f, 1.0f, size); }
+    float getGlowSize(ColorId color_id) const { return glow_size_[color_id - kInitialColor]; }
+    // Per-section glow overrides (strength, size) for a colour.
+    void addOverrideGlow(int section, ColorId color_id, float glow, float size);
+    void removeOverrideGlow(int section, ColorId color_id) { if (section != kNone) glow_overrides_[section].erase(color_id); }
+    bool overridesGlow(int section, ColorId color_id) const { return section != kNone && glow_overrides_[section].count(color_id) > 0; }
+    float getGlow(int section, ColorId color_id) const;
+    float getGlowSize(int section, ColorId color_id) const;
+    // A colour can be a gradient: the colour itself is the first stop, `stops` holds the one or two further
+    // stops, `angle` (degrees, 0 = left to right, 90 = top to bottom) is its direction.
+    struct Gradient {
+      std::vector<Colour> stops;
+      float angle = 90.0f;
+      bool active() const { return !stops.empty(); }
+      String toString() const;
+      static Gradient fromString(const String& text);
+    };
+    void setGradient(ColorId color_id, const Gradient& gradient) { gradients_[color_id - kInitialColor] = gradient; }
+    const Gradient& getGradient(ColorId color_id) const { return gradients_[color_id - kInitialColor]; }
+    void addOverrideGradient(int section, ColorId color_id, const Gradient& gradient);
+    void removeOverrideGradient(int section, ColorId color_id) { if (section != kNone) gradient_overrides_[section].erase(color_id); }
+    bool overridesGradient(int section, ColorId color_id) const { return section != kNone && gradient_overrides_[section].count(color_id) > 0; }
+    Gradient getGradient(int section, ColorId color_id) const;
+    // A colour can also be bevelled: widgets drawn in it are lit like raised (or, with a negative depth, pressed
+    // in) glass. `size` (0..1) is how wide the bevelled rim is, `depth` (-1..1) how strongly it is lit, `gloss`
+    // (0..1) adds a curved glassy sheen across the top, `angle` (degrees, 90 = from above) is where the light is.
+    struct Bevel {
+      bool on = false;
+      float size = 0.4f;
+      float depth = 0.6f;
+      float gloss = 0.0f;
+      float angle = 135.0f;
+      bool active() const { return on; }
+      String toString() const;
+      static Bevel fromString(const String& text);
+    };
+    void setBevel(ColorId color_id, const Bevel& bevel) { bevels_[color_id - kInitialColor] = bevel; }
+    const Bevel& getBevel(ColorId color_id) const { return bevels_[color_id - kInitialColor]; }
+    void addOverrideBevel(int section, ColorId color_id, const Bevel& bevel);
+    void removeOverrideBevel(int section, ColorId color_id) { if (section != kNone) bevel_overrides_[section].erase(color_id); }
+    bool overridesBevel(int section, ColorId color_id) const { return section != kNone && bevel_overrides_[section].count(color_id) > 0; }
+    Bevel getBevel(int section, ColorId color_id) const;
+    // One entry per colour that is a gradient and / or bevelled.
+    struct GradientEntry {
+      Colour color;
+      Gradient gradient;
+      Bevel bevel;
+      int section;  // kNone for the global colour
+    };
+    void collectGradients(std::vector<GradientEntry>& gradients) const;
+    struct GlowEntry {
+      Colour color;
+      float glow;
+      float size;
+    };
+    // Every colour with glow, including its section-override variants, for the full-screen glow pass.
+    void collectGlows(std::vector<GlowEntry>& glows) const;
+    static Identifier glowPropertyName(ColorId color_id) { return Identifier("glow" + String(static_cast<int>(color_id))); }
+    Colour getColor(int section, ColorId color_id) const;
+    bool overridesColor(int section, ColorId color_id) const;
+    bool overridesValue(int section, ValueId value_id) const;
+    void copyValuesToLookAndFeel(LookAndFeel* look_and_feel) const;
+
+    void setValue(ValueId value_id, float value) { values_[value_id] = value; }
+    float getValue(ValueId value_id) const { return values_[value_id]; }
+    float getValue(int section, ValueId value_id) const;
+
+    void addOverrideColor(int section, ColorId color_id, Colour color);
+    void removeOverrideColor(int section, ColorId color_id);
+
+    void addOverrideValue(int section, ValueId value_id, float value);
+    void removeOverrideValue(int section, ValueId value_id);
+
+    json stateToJson();
+    String stateToString();
+    void saveToFile(File destination);
+
+    json updateJson(json data);
+    void jsonToState(json skin_var);
+    bool stringToState(String skin_string);
+    bool loadFromFile(File source);
+    void loadDefaultSkin();
+    void clearSkin();
+
+  protected:
+    Colour colors_[kNumColors];
+    float glow_[kNumColors] = { };
+    float glow_size_[kNumColors] = { };
+    float values_[kNumSkinValueIds];
+    std::map<ColorId, Colour> color_overrides_[kNumSectionOverrides];
+    std::map<ValueId, float> value_overrides_[kNumSectionOverrides];
+    std::map<ColorId, std::pair<float, float>> glow_overrides_[kNumSectionOverrides];
+    Gradient gradients_[kNumColors];
+    Bevel bevels_[kNumColors];
+    bool applying_default_ = false;
+    std::map<ColorId, Gradient> gradient_overrides_[kNumSectionOverrides];
+    std::map<ColorId, Bevel> bevel_overrides_[kNumSectionOverrides];
+};
+
+// Skin "bins": named groups of section overrides that the skin editor edits together.
+// Bin 0 is the global skin; the rest map the parts of the interface to their section overrides.
+class SkinBins {
+  public:
+    static int numBins();
+    static String name(int bin);
+    static const std::vector<Skin::SectionOverride>& sections(int bin);
+    static int binOf(Skin::SectionOverride section);
+    // Sub-bins (the oscillator kinds under "Oscillators", one per effect module under "Effects") belong to a parent
+    // bin; -1 for top-level bins.
+    static int parent(int bin);
+};
+
+class SkinDesigner : public DocumentWindow {
+  public:
+    SkinDesigner(Skin* skin, FullInterface* full_interface);
+    ~SkinDesigner();
+
+    void closeButtonPressed() override {
+      delete this;
+    }
+
+  protected:
+    std::unique_ptr<Component> container_;
+};
+
