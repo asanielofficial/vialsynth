@@ -1,0 +1,52 @@
+name: Stable release
+
+# Run on request (Actions tab > Stable release > Run workflow).
+# Builds the current main as a stable release (no NIGHTLY marker) on all three platforms, then publishes it as the
+# latest release, using the notes in .github/release-notes/<version>.md.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, for example 1.2 (needs .github/release-notes/<version>.md)"
+        required: true
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      stable: true
+
+  release:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: art
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          notes=".github/release-notes/$VERSION.md"
+          test -f "$notes"
+          mkdir out
+          for os in linux macos windows; do
+            (cd "art/VialFX-$os-vst3" && zip -qr "../../out/VialFX-$VERSION-$os-vst3.zip" .)
+            (cd "art/VialFX-$os-clap" && zip -qr "../../out/VialFX-$VERSION-$os-clap.zip" .)
+          done
+          cp art/VialFX-windows-installer/*.exe out/
+          cp art/VialFX-macos-installer/*.pkg out/
+          ls -l out
+          gh release create "v$VERSION" out/* --repo "$REPO" --target "${{ github.sha }}" \
+            --title "VialFX $VERSION" --notes-file "$notes" --latest
