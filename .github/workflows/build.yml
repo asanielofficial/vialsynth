@@ -128,9 +128,17 @@ jobs:
       - name: Build VialSynth VST3 (x64, Release)
         shell: pwsh
         run: |
-          msbuild plugin\builds\vs17\Vial.sln /m /nologo /p:Configuration=Release /p:Platform=x64 `
-            /p:PlatformToolset=v143 "/flp:logfile=msbuild.log;verbosity=minimal"
-          $code = $LASTEXITCODE
+          # Only the shared code and the VST3 are built: the solution also holds a VST2 and a standalone project, and the
+          # VST2 one needs Steinberg's VST2 SDK, which is not public. The solution has no project dependencies, so the two
+          # projects are built one after the other, with the solution directory set the way Visual Studio would set it.
+          $sd = (Resolve-Path plugin\builds\vs17).Path + '\'
+          $code = 0
+          foreach ($proj in 'Vial_SharedCode', 'Vial_VST3') {
+            msbuild "plugin\builds\vs17\$proj.vcxproj" /m /nologo /p:Configuration=Release /p:Platform=x64 `
+              /p:PlatformToolset=v143 "/p:SolutionDir=$sd" "/flp:logfile=msbuild.log;verbosity=minimal;append"
+            $code = $LASTEXITCODE
+            if ($code -ne 0) { break }
+          }
           if ($code -ne 0) {
             # Surface the first compiler/linker errors as annotations (the full log is not downloadable here).
             Select-String -Path msbuild.log -Pattern ' error ' | Select-Object -Unique -First 40 |

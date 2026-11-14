@@ -57,6 +57,10 @@ VialSynth has no such sections.
   on Linux, Windows and macOS, but nobody has run them yet, so expect the first run to need fixes. They are manual
   (Actions tab) and publish VST3 zips only: the CLAP wrapper and the Windows and macOS installers belonged to the
   effect plugin and are not part of this project yet.
+- **No VST2 yet.** Only the VST3 is built. The VST2 target needs Steinberg's VST2 SDK, which is not public, and
+  `JUCE_VST3_CAN_REPLACE_VST2` is switched off for the same reason. [vst2sdk](https://github.com/Xaymar/vst2sdk)
+  (BSD-3-Clause, header-only) is a possible replacement, but it uses its own names, not Steinberg's, so JUCE's
+  VST2 wrapper (about 100 identifiers) would need an adapter layer first.
 - **Names.** The plugin is called VialSynth and builds as `VialSynth.vst3`, `VialSynth.so` and so on (set by
   `pluginName` and `targetName` in `plugin/vital.jucer`, and mirrored in the checked-in Linux, Windows, macOS and
   iOS build files). The project files keep the name `Vial` (`Vial.sln`, `Vial.xcodeproj`, the "Vial - VST3"
