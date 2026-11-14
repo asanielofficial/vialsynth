@@ -897,7 +897,7 @@
       </MODULEPATHS>
     </XCODE_IPHONE>
     <VS2017 targetFolder="builds/vs17" vst3Folder="../third_party/VST3_SDK"
-            extraDefs="JUCE_OPENGL3=1&#10;REQUIRE_AUTH=1&#10;NO_AUTH=1&#10;WINVER=0x0601&#10;_WIN32_WINNT=0x0601&#10;_ENABLE_EXTENDED_ALIGNED_STORAGE &#10;INTEL_IPP=1&#10;__SSE2__=1"
+            extraDefs="JUCE_OPENGL3=1&#10;REQUIRE_AUTH=1&#10;NO_AUTH=1&#10;WINVER=0x0601&#10;_WIN32_WINNT=0x0601&#10;_ENABLE_EXTENDED_ALIGNED_STORAGE &#10;__SSE2__=1"
             IPPLibrary="Sequential" externalLibraries="firebase_auth.lib&#10;firebase_app.lib&#10;firebase_rest_lib.lib&#10;flatbuffers.lib&#10;libcurl.lib&#10;Wldap32.lib&#10;crypt32.lib"
             vstLegacyFolder="../third_party/VST_SDK/VST2_SDK">
       <CONFIGURATIONS>
