@@ -34,6 +34,7 @@ class FxVoiceInterface : public SynthSection {
     FxVoiceInterface() : SynthSection("fx_voice") { }
     FilterSection* getFilterSection1() { return nullptr; }
     FilterSection* getFilterSection2() { return nullptr; }
+    void setFocus() { }
 };
 #endif
 #include "memory.h"
