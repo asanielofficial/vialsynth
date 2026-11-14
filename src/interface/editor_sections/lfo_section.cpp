@@ -17,7 +17,6 @@
 #include "lfo_section.h"
 
 #include "load_save.h"
-#include "sound_engine.h"
 #include "skin.h"
 #include "paths.h"
 #include "lfo_editor.h"
@@ -175,13 +174,6 @@ LfoSection::LfoSection(String name, std::string value_prepend, LineGenerator* lf
 
   editor_ = std::make_unique<LfoEditor>(lfo_source, value_prepend, mono_modulations, poly_modulations);
   editor_->addListener(this);
-  {
-    // Modulation of points: the id of this LFO's shape in the engine.
-    size_t found = value_prepend.find("lfo_");
-    if (found != std::string::npos)
-      editor_->setPointModCurve(vital::SoundEngine::kNumDrawingLanes * vital::SoundEngine::kNumSpectralCurves +
-                                std::atoi(value_prepend.c_str() + found + 4) - 1);
-  }
   editor_->setGridSizeX(kDefaultGridSizeX);
   editor_->setGridSizeY(kDefaultGridSizeY);
   addOpenGlComponent(editor_.get());
@@ -367,12 +359,12 @@ void LfoSection::togglePaintMode(bool enabled, bool temporary_switch) {
 }
 
 void LfoSection::importLfo() {
-  FileChooser import_box("Import LFO", LoadSave::getUserLfoDirectory(), String(vital::kLfoExtensionsList));
+  FileChooser import_box("Import LFO", LoadSave::getUserLfoDirectory(), String("*.") + vital::kLfoExtension);
   if (!import_box.browseForFileToOpen())
     return;
 
   File choice = import_box.getResult();
-  loadFile(choice);
+  loadFile(choice.withFileExtension(vital::kLfoExtension));
 }
 
 void LfoSection::exportLfo() {
@@ -396,7 +388,7 @@ void LfoSection::fileLoaded() {
 }
 
 void LfoSection::prevClicked() {
-  File lfo_file = LoadSave::getShiftedFile(LoadSave::kLfoFolderName, String(vital::kLfoExtensionsList),
+  File lfo_file = LoadSave::getShiftedFile(LoadSave::kLfoFolderName, String("*.") + vital::kLfoExtension,
                                            "", getCurrentFile(), -1);
   if (lfo_file.exists())
     loadFile(lfo_file);
@@ -405,7 +397,7 @@ void LfoSection::prevClicked() {
 }
 
 void LfoSection::nextClicked() {
-  File lfo_file = LoadSave::getShiftedFile(LoadSave::kLfoFolderName, String(vital::kLfoExtensionsList),
+  File lfo_file = LoadSave::getShiftedFile(LoadSave::kLfoFolderName, String("*.") + vital::kLfoExtension,
                                            "", getCurrentFile(), 1);
   if (lfo_file.exists())
     loadFile(lfo_file);
@@ -422,7 +414,7 @@ void LfoSection::textMouseDown(const MouseEvent& e) {
   Rectangle<int> bounds(preset_selector_->getRight() - browser_width, -browser_height,
                         browser_width, browser_height);
   bounds = getLocalArea(this, bounds);
-  showPopupBrowser(this, bounds, LoadSave::getLfoDirectories(), String(vital::kLfoExtensionsList),
+  showPopupBrowser(this, bounds, LoadSave::getLfoDirectories(), String("*.") + vital::kLfoExtension,
                    LoadSave::kLfoFolderName, "");
 }
 

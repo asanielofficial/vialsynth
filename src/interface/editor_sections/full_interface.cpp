@@ -38,8 +38,10 @@
 #include "overlay.h"
 #include "portamento_section.h"
 #include "preset_browser.h"
+#if VITAL_FX
 #include "spectral_warp_editor.h"
 #include "point_mod_targets.h"
+#endif
 #include "synthesis_interface.h"
 #include "synth_gui_interface.h"
 #include "text_look_and_feel.h"
@@ -77,6 +79,7 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
 
     addSubSection(synthesis_interface_.get());
   }
+#if VITAL_FX
   else {
     // Effect build: the VOICE tab holds the two filters.
     fx_voice_interface_ = std::make_unique<FxVoiceInterface>(synth_data->mono_modulations,
@@ -103,6 +106,7 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
           return wavetable_edits_[index]->loadAudioAsWavetable(name, stream, style);
         });
   }
+#endif
 
 #if VITAL_FX
   effects_interface_ = std::make_unique<EffectsInterface>(synth_data->mono_modulations,
@@ -164,11 +168,15 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
   addSubSection(modulation_matrix_.get());
   modulation_matrix_->setVisible(false);
   modulation_matrix_->addListener(this);
+#if VITAL_FX
   point_mod_targets_ = std::make_unique<PointModTargets>();
   addSubSection(point_mod_targets_.get());
+#endif
   createModulationSliders(synth_data->mono_modulations, synth_data->poly_modulations);
+#if VITAL_FX
   modulation_manager_->on_drag_started = [this]() { point_mod_targets_->beginDrag(); };
   modulation_manager_->on_drag_ended = [this]() { point_mod_targets_->endDrag(); };
+#endif
 
   preset_browser_ = std::make_unique<PresetBrowser>();
   addSubSection(preset_browser_.get());
@@ -691,7 +699,9 @@ void FullInterface::resized() {
   SynthSection::resized();
 
   modulation_manager_->setBounds(bounds);
+#if VITAL_FX
   point_mod_targets_->setBounds(bounds);
+#endif
   
   for (int i = 0; i < vital::kNumWavetableSlots; ++i) {
     if (wavetable_edits_[i])

@@ -17,19 +17,17 @@
 #include "load_save.h"
 #include "modulation_connection_processor.h"
 #include "sound_engine.h"
-#include "fx_tables.h"
 #include "midi_manager.h"
 #include "sample_source.h"
 #include "synth_base.h"
 #include "synth_constants.h"
 #include "synth_oscillator.h"
-#include "synth_strings.h"
 
 #define QUOTE(x) #x
 #define STRINGIFY(x) QUOTE(x)
 
 namespace {
-  const std::string kLinuxUserDataDirectory = "~/.local/share/vialfx/";
+  const std::string kLinuxUserDataDirectory = "~/.local/share/vital/";
   const std::string kAvailablePacksFile = "available_packs.json";
   const std::string kInstalledPacksFile = "packs.json";
 
@@ -122,17 +120,8 @@ json LoadSave::stateToJson(SynthBase* synth, const CriticalSection& critical_sec
 
   if (synth->getWavetableCreator(0)) {
     json wavetables;
-    for (int i = 0; i < vital::kNumWavetableSlots; ++i) {
+    for (int i = 0; i < vital::kNumOscillators; ++i) {
       WavetableCreator* wavetable_creator = synth->getWavetableCreator(i);
-      if (wavetable_creator == nullptr)
-        continue;
-#if VITAL_FX
-      // The tables of the Morph copies that are not in the chain are the defaults: a null keeps the preset small.
-      if (i >= vital::FxTables::kNumLaneTables && !synth->getEngine()->isMorphInUse((i - vital::FxTables::kNumLaneTables) / 2)) {
-        wavetables.push_back(nullptr);
-        continue;
-      }
-#endif
       wavetables.push_back(wavetable_creator->stateToJson());
     }
 
@@ -146,44 +135,6 @@ json LoadSave::stateToJson(SynthBase* synth, const CriticalSection& critical_sec
   }
 
   settings_data["lfos"] = lfos;
-
-#if VITAL_FX
-  // Drawn curves (Spectral Filter, Phaser, Flanger) and the dice seed of Random Amplitudes, per lane. Not
-  // parameters: they are saved here only, so they can be neither automated nor modulated.
-  {
-    json lanes;
-    for (int lane = 0; lane < vital::SoundEngine::kNumDrawingLanes; ++lane) {
-      json lane_data;
-      json curves;
-      for (int i = 0; i < vital::SoundEngine::kNumSpectralCurves; ++i)
-        curves.push_back(synth->getEngine()->getSpectralCurve(lane, i)->stateToJson());
-      lane_data["curves"] = curves;
-      lane_data["random_seed"] = synth->getEngine()->getRandomSeed(lane);
-      lanes.push_back(lane_data);
-    }
-    settings_data["spectral_drawings"] = lanes;
-
-    // Points of drawn lines that are bound to a modulation slot (the connections themselves are saved with the rest
-    // of the modulations).
-    json point_mods = json::array();
-    for (int slot = 0; slot < vital::SoundEngine::kNumPointMods; ++slot) {
-      int curve_id = synth->getEngine()->pointModCurve(slot);
-      LineGenerator* curve = synth->getEngine()->getPointModCurve(curve_id);
-      int point = 0, axis = 0;
-      if (curve && curve->findSlot(slot, point, axis))
-        point_mods.push_back({ { "slot", slot }, { "curve", curve_id }, { "point", point }, { "axis", axis } });
-    }
-    settings_data["point_mods"] = point_mods;
-
-    // The effect chain: effect ids in order (+ a flag for minimized effects); see FxEffectChain.
-    int chain[vital::kMaxEffectInstances * vital::constants::kNumEffects];
-    int count = synth->getEffectChain(chain);
-    json effect_chain = json::array();
-    for (int i = 0; i < count; ++i)
-      effect_chain.push_back(chain[i]);
-    settings_data["effect_chain"] = effect_chain;
-  }
-#endif
 
   json data;
   data["synth_version"] = ProjectInfo::versionString;
@@ -257,24 +208,10 @@ void LoadSave::loadWavetables(SynthBase* synth, const json& wavetables) {
   int i = 0;
   for (const json& wavetable : wavetables) {
     WavetableCreator* wavetable_creator = synth->getWavetableCreator(i);
-    if (wavetable_creator == nullptr)
-      break;
-    if (wavetable.is_null())
-      synth->initWavetableCreator(i);   // the default table (a Morph copy that was not in use)
-    else {
-      wavetable_creator->jsonToState(wavetable);
-      wavetable_creator->render();
-    }
+    wavetable_creator->jsonToState(wavetable);
+    wavetable_creator->render();
     i++;
   }
-
-#if VITAL_FX
-  // Older presets have no tables for the Morph copies.
-  for (; i < vital::kNumWavetableSlots; ++i) {
-    if (synth->getWavetableCreator(i))
-      synth->initWavetableCreator(i);
-  }
-#endif
 }
 
 void LoadSave::loadLfos(SynthBase* synth, const json& lfos) {
@@ -1109,64 +1046,6 @@ bool LoadSave::jsonToState(SynthBase* synth, std::map<std::string, String>& save
   loadSample(synth, sample);
   loadWavetables(synth, wavetables);
   loadLfos(synth, lfos);
-#if VITAL_FX
-  {
-    // Presets without drawings (older ones) get the defaults.
-    for (int lane = 0; lane < vital::SoundEngine::kNumDrawingLanes; ++lane) {
-      synth->getEngine()->resetSpectralDrawings(lane);
-      if (!settings.count("spectral_drawings") || !settings["spectral_drawings"].is_array() ||
-          static_cast<int>(settings["spectral_drawings"].size()) <= lane)
-        continue;
-
-      const json& lane_data = settings["spectral_drawings"][lane];
-      if (lane_data.count("curves") && lane_data["curves"].is_array()) {
-        for (int i = 0; i < vital::SoundEngine::kNumSpectralCurves &&
-                        i < static_cast<int>(lane_data["curves"].size()); ++i)
-          synth->getEngine()->getSpectralCurve(lane, i)->jsonToState(lane_data["curves"][i]);
-      }
-      if (lane_data.count("random_seed") && lane_data["random_seed"].is_number())
-        synth->getEngine()->setRandomSeed(lane, lane_data["random_seed"].get<uint32_t>());
-    }
-
-    // Bindings of points to modulation slots (after every line has its shape).
-    synth->getEngine()->unbindAllPointMods();
-    if (settings.count("point_mods") && settings["point_mods"].is_array()) {
-      for (const json& binding : settings["point_mods"]) {
-        if (!binding.is_object() || !binding.count("slot") || !binding.count("curve") ||
-            !binding.count("point") || !binding.count("axis"))
-          continue;
-        synth->getEngine()->bindPointModToSlot(binding["slot"].get<int>(), binding["curve"].get<int>(),
-                                               binding["point"].get<int>(), binding["axis"].get<int>());
-      }
-    }
-
-    // The chain. Presets from before the effects list had a fixed set of effects in a permuted order.
-    std::vector<int> chain;
-    if (settings.count("effect_chain") && settings["effect_chain"].is_array()) {
-      for (const json& value : settings["effect_chain"]) {
-        if (value.is_number_integer())
-          chain.push_back(value.get<int>());
-      }
-    }
-    else {
-      // Those presets only know the nine effects up to the Reverb (the order was a permutation of those).
-      constexpr int kLegacyEffects = vital::constants::kMorph;
-      int order[kLegacyEffects];
-      for (int i = 0; i < kLegacyEffects; ++i)
-        order[i] = i;
-      if (settings.count("effect_chain_order") && settings["effect_chain_order"].is_number()) {
-        float float_order = settings["effect_chain_order"];
-        vital::utils::decodeFloatToOrder(order, float_order, kLegacyEffects);
-      }
-      for (int i = 0; i < kLegacyEffects; ++i) {
-        std::string on_name = strings::kEffectOrder[order[i]] + "_on";
-        if (settings.count(on_name) && settings[on_name].is_number() && settings[on_name].get<float>() > 0.5f)
-          chain.push_back(1 + order[i] * vital::kMaxEffectInstances);
-      }
-    }
-    synth->setEffectChain(chain.data(), static_cast<int>(chain.size()));
-  }
-#endif
   loadSaveState(save_info, data);
   synth->checkOversampling();
   
@@ -1250,7 +1129,7 @@ std::string LoadSave::getLicense(json data) {
 File LoadSave::getConfigFile() {
 #if defined(JUCE_DATA_STRUCTURES_H_INCLUDED)
   PropertiesFile::Options config_options;
-  config_options.applicationName = "VialFX";
+  config_options.applicationName = "Vial";
   config_options.osxLibrarySubFolder = "Application Support";
   config_options.filenameSuffix = "config";
 
@@ -1286,7 +1165,7 @@ void LoadSave::writeErrorLog(String error_log) {
 File LoadSave::getFavoritesFile() {
 #if defined(JUCE_DATA_STRUCTURES_H_INCLUDED)
   PropertiesFile::Options config_options;
-  config_options.applicationName = "VialFX";
+  config_options.applicationName = "Vial";
   config_options.osxLibrarySubFolder = "Application Support";
   config_options.filenameSuffix = "favorites";
 
@@ -1305,7 +1184,7 @@ File LoadSave::getFavoritesFile() {
 File LoadSave::getDefaultSkin() {
 #if defined(JUCE_DATA_STRUCTURES_H_INCLUDED)
   PropertiesFile::Options config_options;
-  config_options.applicationName = "VialFX";
+  config_options.applicationName = "Vial";
   config_options.osxLibrarySubFolder = "Application Support";
   config_options.filenameSuffix = "skin";
 
@@ -1762,21 +1641,6 @@ float LoadSave::loadWindowSize() {
   return std::max<float>(kMinWindowSize, data["window_size"]);
 }
 
-float LoadSave::loadWindowAspect() {
-  json data = getConfigJson();
-
-  if (!data.count("window_aspect"))
-    return 1.0f;
-
-  return std::min(4.0f, std::max(0.25f, (float)data["window_aspect"]));
-}
-
-void LoadSave::saveWindowAspect(float aspect) {
-  json data = getConfigJson();
-  data["window_aspect"] = aspect;
-  saveJsonToConfig(data);
-}
-
 String LoadSave::loadVersion() {
   json data = getConfigJson();
 
@@ -1881,14 +1745,14 @@ File LoadSave::getDataDirectory() {
   String xdg_data_home = SystemStats::getEnvironmentVariable ("XDG_DATA_HOME", {});
 
   if (!xdg_data_home.trim().isEmpty())
-    directory = File(xdg_data_home).getChildFile("vialfx");
+    directory = File(xdg_data_home).getChildFile("vial");
 
 #elif defined(__APPLE__)
   File home_directory = File::getSpecialLocation(File::userHomeDirectory);
-  File directory = home_directory.getChildFile("Music").getChildFile("vialfx");
+  File directory = home_directory.getChildFile("Music").getChildFile("Vial");
 #else
   File documents_dir = File::getSpecialLocation(File::userDocumentsDirectory);
-  File directory = documents_dir.getChildFile("vialfx");
+  File directory = documents_dir.getChildFile("Vial");
 #endif
 
   return directory;
@@ -1985,7 +1849,7 @@ void LoadSave::getAllFilesOfTypeInDirectories(Array<File>& files, const String& 
 }
 
 void LoadSave::getAllPresets(Array<File>& presets) {
-  getAllFilesOfTypeInDirectories(presets, String(vital::kPresetExtensionsList), getPresetDirectories());
+  getAllFilesOfTypeInDirectories(presets, String("*.") + vital::kPresetExtension, getPresetDirectories());
 }
 
 void LoadSave::getAllWavetables(Array<File>& wavetables) {
@@ -1997,7 +1861,7 @@ void LoadSave::getAllSkins(Array<File>& skins) {
 }
 
 void LoadSave::getAllLfos(Array<File>& lfos) {
-  getAllFilesOfTypeInDirectories(lfos, String(vital::kLfoExtensionsList), getLfoDirectories());
+  getAllFilesOfTypeInDirectories(lfos, String("*.") + vital::kLfoExtension, getLfoDirectories());
 }
 
 void LoadSave::getAllSamples(Array<File>& samples) {
@@ -2009,7 +1873,7 @@ void LoadSave::getAllUserPresets(Array<File>& presets) {
     getDataDirectory().getChildFile(kPresetFolderName),
     getUserPresetDirectory()
   };
-  getAllFilesOfTypeInDirectories(presets, String(vital::kPresetExtensionsList), directories);
+  getAllFilesOfTypeInDirectories(presets, String("*.") + vital::kPresetExtension, directories);
 }
 
 void LoadSave::getAllUserWavetables(Array<File>& wavetables) {
@@ -2025,7 +1889,7 @@ void LoadSave::getAllUserLfos(Array<File>& lfos) {
     getDataDirectory().getChildFile(kLfoFolderName),
     getUserLfoDirectory()
   };
-  getAllFilesOfTypeInDirectories(lfos, String(vital::kLfoExtensionsList), directories);
+  getAllFilesOfTypeInDirectories(lfos, String("*.") + vital::kLfoExtension, directories);
 }
 
 void LoadSave::getAllUserSamples(Array<File>& samples) {
