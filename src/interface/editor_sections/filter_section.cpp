@@ -448,6 +448,7 @@ void FilterSection::buttonClicked(Button* clicked_button) {
 void FilterSection::setAllValues(vital::control_map& controls) {
   current_model_ = std::round(controls[model_name_]->value());
   current_style_ = std::round(controls[style_name_]->value());
+  fprintf(stderr, "DBG filter %s=%d %s=%d ptr %p %p\n", model_name_.c_str(), current_model_, style_name_.c_str(), current_style_, (void*)controls[model_name_], (void*)controls[style_name_]);
   setFilterText();
 
   vital::constants::FilterModel model = static_cast<vital::constants::FilterModel>(current_model_);
