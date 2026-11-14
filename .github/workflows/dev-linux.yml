@@ -1,0 +1,78 @@
+name: Dev build (Linux)
+
+# Development aid, used on the ci-dev branch only: every push there compiles the whole VST3 with `make -k`, so ALL
+# compile errors come out of one run, and the error list and the build log are committed to the `ci-logs` branch so
+# they can be read without downloading anything from the Actions page. Not part of main.
+on:
+  push:
+    branches: [ ci-dev ]
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    name: Linux compile check
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config \
+            libasound2-dev libfreetype6-dev libgl1-mesa-dev libcurl4-openssl-dev \
+            libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev \
+            libsecret-1-dev libglib2.0-dev
+
+      - name: Compile (keep going after errors)
+        run: |
+          set +e
+          make -k -j"$(nproc)" -C plugin/builds/linux_vst VST3 CONFIG=Debug AR=gcc-ar \
+            SIMDFLAGS="-msse2" GLFLAGS="" BUILD_DATE="$(date +'%Y %m %d %H %M')" > build.log 2>&1
+          echo "make exit: $?" | tee status.txt
+          echo "log lines: $(wc -l < build.log)" | tee -a status.txt
+          grep -E -c "error:|fatal error:" build.log | sed 's/^/compile errors: /' | tee -a status.txt
+          grep -E -c "undefined reference" build.log | sed 's/^/undefined references: /' | tee -a status.txt
+          exit 0
+
+      - name: Load the plugin under pluginval with a debugger
+        if: always()
+        run: |
+          set +e
+          VST=$(ls -d plugin/builds/linux_vst/build/VialSynth.vst3 2>/dev/null)
+          if [ -z "$VST" ]; then echo "no VST3 built" > run.txt; exit 0; fi
+          sudo apt-get install -y --no-install-recommends xvfb gdb unzip libgl1-mesa-dri libglx-mesa0 mesa-utils >/dev/null 2>&1
+          curl -sL -o pv.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Linux.zip
+          unzip -q -o pv.zip -d pv
+          chmod +x pv/pluginval
+          export LIBGL_ALWAYS_SOFTWARE=1
+          xvfb-run -a -s "-screen 0 1600x1000x24" timeout 600 gdb -batch -ex "handle SIGPIPE nostop noprint" -ex "handle SIG34 nostop noprint" \
+            -ex run -ex bt -ex "thread apply all bt 15" \
+            --args pv/pluginval --validate-in-process --strictness-level 5 --output-dir pvout --validate "$PWD/$VST" > run.txt 2>&1
+          echo "pluginval/gdb exit: $?" >> run.txt
+          tail -c 60000 run.txt > run-tail.txt
+
+      - name: Publish the log to the ci-logs branch
+        if: always()
+        run: |
+          set +e
+          mkdir ci-logs-out
+          cp status.txt ci-logs-out/ 2>/dev/null
+          cp run-tail.txt ci-logs-out/run.txt 2>/dev/null
+          echo "commit: ${GITHUB_SHA}" > ci-logs-out/commit.txt
+          # every error with some context, de-duplicated by the line that names it
+          grep -E -B2 -A6 "error:|fatal error:|undefined reference" build.log | cut -c1-400 | head -4000 > ci-logs-out/errors.txt
+          grep -E "error:|fatal error:|undefined reference" build.log | cut -c1-300 | sort | uniq -c | sort -rn | head -400 > ci-logs-out/error-summary.txt
+          tail -150 build.log | cut -c1-400 > ci-logs-out/tail.txt
+          gzip -c build.log > ci-logs-out/build.log.gz
+          cd ci-logs-out
+          git init -q -b ci-logs
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "build log for ${GITHUB_SHA}"
+          git push -f -q "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-logs
+          echo "pushed ci-logs: $?"
