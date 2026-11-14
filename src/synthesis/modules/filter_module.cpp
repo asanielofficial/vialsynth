@@ -22,7 +22,6 @@
 #include "dirty_filter.h"
 #include "formant_module.h"
 #include "ladder_filter.h"
-#include "other_filter.h"
 #include "phaser_filter.h"
 #include "sallen_key_filter.h"
 #include "synth_constants.h"
@@ -35,18 +34,12 @@ namespace vital {
       on_(nullptr), filter_model_(nullptr), mix_(0.0f), filter_mix_(nullptr),
       comb_filter_(nullptr), digital_svf_(nullptr), dirty_filter_(nullptr),
       formant_filter_(nullptr), ladder_filter_(nullptr), phaser_filter_(nullptr),
-      other_filter_(nullptr), sallen_key_filter_(nullptr) {
+      sallen_key_filter_(nullptr) {
     comb_filter_ = new CombModule();
     digital_svf_ = new DigitalSvf();
     diode_filter_ = new DiodeFilter();
     dirty_filter_ = new DirtyFilter();
     ladder_filter_ = new LadderFilter();
-    other_filter_ = new OtherFilter();
-    if (const LineGenerator* const* table = OtherFilter::CurveScope::current()) {
-      int set = OtherFilter::curveSetForPrefix(prefix_);
-      if (set >= 0)
-        other_filter_->setCurves(table[set * 3], table[set * 3 + 1], table[set * 3 + 2]);
-    }
     phaser_filter_ = new PhaserFilter(false);
     sallen_key_filter_ = new SallenKeyFilter();
     formant_filter_ = new FormantModule(prefix_);
@@ -60,7 +53,6 @@ namespace vital {
     addProcessor(dirty_filter_);
     addProcessor(formant_filter_);
     addProcessor(ladder_filter_);
-    addProcessor(other_filter_);
     addProcessor(phaser_filter_);
     addProcessor(sallen_key_filter_);
   }
@@ -135,15 +127,6 @@ namespace vital {
     ladder_filter_->plug(drive, LadderFilter::kDriveGain);
     ladder_filter_->useOutput(output());
 
-    other_filter_->useInput(input(kAudio), SynthFilter::kAudio);
-    other_filter_->useInput(input(kReset), SynthFilter::kReset);
-    other_filter_->plug(resonance, SynthFilter::kResonance);
-    other_filter_->plug(filter_style, SynthFilter::kStyle);
-    other_filter_->plug(blend, SynthFilter::kPassBlend);
-    other_filter_->plug(midi_cutoff, SynthFilter::kMidiCutoff);
-    other_filter_->plug(drive, SynthFilter::kDriveGain);
-    other_filter_->useOutput(output());
-
     phaser_filter_->useInput(input(kAudio), PhaserFilter::kAudio);
     phaser_filter_->useInput(input(kReset), PhaserFilter::kReset);
     phaser_filter_->plug(resonance, PhaserFilter::kResonance);
@@ -169,8 +152,6 @@ namespace vital {
     dirty_filter_->enable(false);
     formant_filter_->enable(false);
     ladder_filter_->enable(false);
-    other_filter_->enable(false);
-    phaser_filter_->enable(false);
     sallen_key_filter_->enable(false);
 
     addProcessor(current_keytrack);
@@ -185,7 +166,6 @@ namespace vital {
     dirty_filter_->hardReset();
     formant_filter_->hardReset();
     ladder_filter_->hardReset();
-    other_filter_->hardReset();
     phaser_filter_->hardReset();
     sallen_key_filter_->hardReset();
   }
@@ -204,7 +184,6 @@ namespace vital {
     dirty_filter_->enable(new_model == constants::kDirty);
     formant_filter_->enable(new_model == constants::kFormant);
     ladder_filter_->enable(new_model == constants::kLadder);
-    other_filter_->enable(new_model == constants::kOther);
     phaser_filter_->enable(new_model == constants::kPhase);
     sallen_key_filter_->enable(new_model == constants::kAnalog);
 
@@ -228,8 +207,6 @@ namespace vital {
       to_reset = ladder_filter_;
     else if (new_model == constants::kPhase)
       to_reset = phaser_filter_;
-    else if (new_model == constants::kOther)
-      to_reset = other_filter_;
 
     if (to_reset)
       getLocalProcessor(to_reset)->hardReset();

@@ -680,9 +680,6 @@ void ModulationManager::startModulationMap(ModulationButton* source, const Mouse
   if (!hasFreeConnection())
     return;
   
-  if (on_drag_started)
-    on_drag_started();
-
   mouse_drag_position_ = getLocalPoint(source, e.getPosition());
   current_source_ = source;
   dragging_ = true;
@@ -948,8 +945,6 @@ void ModulationManager::endModulationMap() {
   modulation_destinations_->setVisible(false);
   drag_quad_.setThickness(0.0f, true);
   hideModulationAmountOverlay();
-  if (on_drag_ended)
-    on_drag_ended();
 }
 
 void ModulationManager::modulationLostFocus(ModulationButton* source) {
@@ -1052,9 +1047,7 @@ void ModulationManager::drawCurrentModulator(OpenGlWrapper& open_gl) {
 void ModulationManager::drawDraggingModulation(OpenGlWrapper& open_gl) {
   static constexpr float kRadiusWidthRatio = 0.022f;
   static constexpr float kThicknessWidthRatio = 0.003f;
-  // Never leave the drag circle on screen once the mouse is up.
-  if (current_source_ == nullptr || temporarily_set_destination_ || temporarily_set_hover_slider_ ||
-      !Desktop::getInstance().getMainMouseSource().isDragging())
+  if (current_source_ == nullptr || temporarily_set_destination_ || temporarily_set_hover_slider_)
     return;
 
   vital::poly_float mod_percent = modulation_source_readouts_[current_source_->getName().toStdString()]->value();

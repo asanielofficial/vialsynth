@@ -26,11 +26,6 @@ namespace vital {
   class PhaserModule : public SynthModule {
     public:
       enum {
-        kMidi,
-        kNumInputs
-      };
-
-      enum {
         kAudioOutput,
         kCutoffOutput,
         kNumOutputs

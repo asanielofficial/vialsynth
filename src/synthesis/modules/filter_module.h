@@ -19,8 +19,6 @@
 #include "synth_module.h"
 #include "formant_module.h"
 
-class LineGenerator;
-
 namespace vital {
   class CombModule;
   class DigitalSvf;
@@ -28,7 +26,6 @@ namespace vital {
   class DirtyFilter;
   class Interpolate;
   class LadderFilter;
-  class OtherFilter;
   class PhaserFilter;
   class SallenKeyFilter;
 
@@ -60,7 +57,6 @@ namespace vital {
 
       const Value* getOnValue() { return on_; }
 
-
     protected:
       void setModel(int new_model);
 
@@ -82,7 +78,6 @@ namespace vital {
       DirtyFilter* dirty_filter_;
       FormantModule* formant_filter_;
       LadderFilter* ladder_filter_;
-      OtherFilter* other_filter_;
       PhaserFilter* phaser_filter_;
       SallenKeyFilter* sallen_key_filter_;
 

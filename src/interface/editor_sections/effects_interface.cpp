@@ -16,7 +16,6 @@
 
 #include "effects_interface.h"
 
-#if !VITAL_FX
 #include "chorus_section.h"
 #include "compressor_section.h"
 #include "delay_section.h"
@@ -46,28 +45,28 @@ EffectsInterface::EffectsInterface(const vital::output_map& mono_modulations) : 
   viewport_.addListener(this);
   viewport_.setScrollBarsShown(false, false, true, false);
 
-  chorus_section_ = std::make_unique<ChorusSection>("CHORUS", "chorus", mono_modulations);
+  chorus_section_ = std::make_unique<ChorusSection>("CHORUS", mono_modulations);
   container_->addSubSection(chorus_section_.get());
 
-  compressor_section_ = std::make_unique<CompressorSection>("COMPRESSOR", "compressor");
+  compressor_section_ = std::make_unique<CompressorSection>("COMPRESSOR");
   container_->addSubSection(compressor_section_.get());
 
-  delay_section_ = std::make_unique<DelaySection>("DELAY", "delay", mono_modulations);
+  delay_section_ = std::make_unique<DelaySection>("DELAY", mono_modulations);
   container_->addSubSection(delay_section_.get());
 
-  distortion_section_ = std::make_unique<DistortionSection>("DISTORTION", "distortion", mono_modulations);
+  distortion_section_ = std::make_unique<DistortionSection>("DISTORTION", mono_modulations);
   container_->addSubSection(distortion_section_.get());
 
-  equalizer_section_ = std::make_unique<EqualizerSection>("EQ", "eq", mono_modulations);
+  equalizer_section_ = std::make_unique<EqualizerSection>("EQ", mono_modulations);
   container_->addSubSection(equalizer_section_.get());
 
-  flanger_section_ = std::make_unique<FlangerSection>("FLANGER", "flanger", mono_modulations);
+  flanger_section_ = std::make_unique<FlangerSection>("FLANGER", mono_modulations);
   container_->addSubSection(flanger_section_.get());
 
-  phaser_section_ = std::make_unique<PhaserSection>("PHASER", "phaser", mono_modulations);
+  phaser_section_ = std::make_unique<PhaserSection>("PHASER", mono_modulations);
   container_->addSubSection(phaser_section_.get());
 
-  reverb_section_ = std::make_unique<ReverbSection>("REVERB", "reverb", mono_modulations);
+  reverb_section_ = std::make_unique<ReverbSection>("REVERB", mono_modulations);
   container_->addSubSection(reverb_section_.get());
 
   filter_section_ = std::make_unique<FilterSection>("fx", mono_modulations);
@@ -248,4 +247,3 @@ void EffectsInterface::setScrollBarRange() {
   scroll_bar_->setRangeLimits(0.0, container_->getHeight());
   scroll_bar_->setCurrentRange(scroll_bar_->getCurrentRangeStart(), viewport_.getHeight(), dontSendNotification);
 }
-#endif  // !VITAL_FX

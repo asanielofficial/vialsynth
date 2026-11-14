@@ -37,12 +37,7 @@ void TextSelector::mouseDown(const juce::MouseEvent &e) {
   for (int i = 0; i <= getMaximum(); ++i)
     options.addItem(i, lookup[i]);
 
-  parent_->showPopupSelector(this, Point<int>(0, getHeight()), options, [=](int value) {
-    if (value == static_cast<int>(getValue()) && on_reselected)
-      on_reselected(value);
-    else
-      setValue(value);
-  });
+  parent_->showPopupSelector(this, Point<int>(0, getHeight()), options, [=](int value) { setValue(value); });
 }
 
 void TextSelector::mouseUp(const MouseEvent& e) {

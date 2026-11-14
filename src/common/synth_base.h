@@ -75,7 +75,6 @@ class SynthBase : public MidiManager::Listener {
 
     vital::Wavetable* getWavetable(int index);
     WavetableCreator* getWavetableCreator(int index);
-    void initWavetableCreator(int index);
     vital::Sample* getSample();
     LineGenerator* getLfoSource(int index);
 
@@ -117,17 +116,7 @@ class SynthBase : public MidiManager::Listener {
     MidiKeyboardState* getKeyboardState() { return keyboard_state_.get(); }
     const vital::poly_float* getOscilloscopeMemory() { return oscilloscope_memory_; }
     const vital::StereoMemory* getAudioMemory() { return audio_memory_.get(); }
-    // Recent audio of the effect build's two inputs (for the input panels' spectrum displays).
-    const vital::StereoMemory* getInputMemory();
-    const vital::StereoMemory* getSidechainMemory();
-    // Constant latency of the spectral stage in samples (the FFT size); 0 outside the FX build.
-    int getEngineLatencySamples();
-    const vital::StereoMemory* getEqualizerMemory(int instance = 0);
-#if VITAL_FX
-    // The effect build's effect chain: slots hold 0 or 1 + effectId (+ a "minimized" flag for the interface).
-    void setEffectChain(const int* slots, int num_slots);
-    int getEffectChain(int* slots) const;
-#endif
+    const vital::StereoMemory* getEqualizerMemory();
     vital::ModulationConnectionBank& getModulationBank();
     void notifyOversamplingChanged();
     void checkOversampling();
@@ -165,10 +154,8 @@ class SynthBase : public MidiManager::Listener {
     }
 
     void processAudio(AudioSampleBuffer* buffer, int channels, int samples, int offset);
-    // sidechain_buffer is the second input of the effect build (nullptr when the host has none connected).
     void processAudioWithInput(AudioSampleBuffer* buffer, const vital::poly_float* input_buffer,
-                               int channels, int samples, int offset,
-                               const vital::poly_float* sidechain_buffer = nullptr);
+                               int channels, int samples, int offset);
     void writeAudio(AudioSampleBuffer* buffer, int channels, int samples, int offset);
     void processMidi(MidiBuffer& buffer, int start_sample = 0, int end_sample = 0);
     void processKeyboardEvents(MidiBuffer& buffer, int num_samples);
@@ -179,7 +166,7 @@ class SynthBase : public MidiManager::Listener {
     std::unique_ptr<MidiManager> midi_manager_;
     std::unique_ptr<MidiKeyboardState> keyboard_state_;
 
-    std::unique_ptr<WavetableCreator> wavetable_creators_[vital::kNumWavetableSlots];
+    std::unique_ptr<WavetableCreator> wavetable_creators_[vital::kNumOscillators];
     std::shared_ptr<SynthBase*> self_reference_;
 
     File active_file_;

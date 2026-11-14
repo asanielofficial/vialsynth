@@ -19,18 +19,7 @@
 #include "sound_engine.h"
 #include "load_save.h"
 
-#if VITAL_FX
-AudioProcessor::BusesProperties SynthPlugin::getBusesProperties() {
-  return BusesProperties()
-      .withInput("Input", AudioChannelSet::stereo(), true)
-      .withInput("Sidechain", AudioChannelSet::stereo(), false)
-      .withOutput("Output", AudioChannelSet::stereo(), true);
-}
-
-SynthPlugin::SynthPlugin() : AudioProcessor(getBusesProperties()) {
-#else
 SynthPlugin::SynthPlugin() {
-#endif
   last_seconds_time_ = 0.0;
 
   int num_params = vital::Parameters::getNumParameters();
@@ -49,7 +38,6 @@ SynthPlugin::SynthPlugin() {
 }
 
 SynthPlugin::~SynthPlugin() {
-  cancelPendingUpdate();
   midi_manager_ = nullptr;
   keyboard_state_ = nullptr;
 }
@@ -106,59 +94,6 @@ bool SynthPlugin::isOutputChannelStereoPair(int index) const {
   return true;
 }
 
-#if VITAL_FX
-bool SynthPlugin::isBusesLayoutSupported(const BusesLayout& layouts) const {
-  if (layouts.getMainInputChannelSet() != AudioChannelSet::stereo() ||
-      layouts.getMainOutputChannelSet() != AudioChannelSet::stereo()) {
-    return false;
-  }
-
-  // The sidechain bus may be disabled or stereo.
-  if (layouts.inputBuses.size() > 1) {
-    const AudioChannelSet& sidechain = layouts.inputBuses.getReference(1);
-    if (!sidechain.isDisabled() && sidechain != AudioChannelSet::stereo())
-      return false;
-  }
-  return true;
-}
-
-void SynthPlugin::fillEffectInput(AudioSampleBuffer& buffer, int num_samples, int sample_offset) {
-  AudioSampleBuffer main_input = getBusBuffer(buffer, true, 0);
-  int num_inputs = main_input.getNumChannels();
-
-  if (num_inputs == 0) {
-    for (int i = 0; i < num_samples; ++i)
-      effect_input_[i] = 0.0f;
-    return;
-  }
-
-  const float* left = main_input.getReadPointer(0, sample_offset);
-  const float* right = main_input.getReadPointer(num_inputs > 1 ? 1 : 0, sample_offset);
-  for (int i = 0; i < num_samples; ++i)
-    effect_input_[i] = vital::poly_float(left[i], right[i]);
-}
-
-bool SynthPlugin::fillSidechainInput(AudioSampleBuffer& buffer, int num_samples, int sample_offset) {
-  if (getBusCount(true) < 2)
-    return false;
-
-  AudioProcessor::Bus* bus = getBus(true, 1);
-  if (bus == nullptr || !bus->isEnabled())
-    return false;
-
-  AudioSampleBuffer side_input = getBusBuffer(buffer, true, 1);
-  int num_inputs = side_input.getNumChannels();
-  if (num_inputs == 0)
-    return false;
-
-  const float* left = side_input.getReadPointer(0, sample_offset);
-  const float* right = side_input.getReadPointer(num_inputs > 1 ? 1 : 0, sample_offset);
-  for (int i = 0; i < num_samples; ++i)
-    effect_sidechain_[i] = vital::poly_float(left[i], right[i]);
-  return true;
-}
-#endif
-
 bool SynthPlugin::acceptsMidi() const {
 #if JucePlugin_WantsMidiInput
   return true;
@@ -191,22 +126,7 @@ const String SynthPlugin::getProgramName(int index) {
   return editor->getSynth()->getPresetName();
 }
 
-// The spectral stage delays by one FFT size while a spectral mode is chosen (none: no latency). The host must know before it plays, and again whenever the
-// FFT size changes, so the latency is set at prepare time and re-checked every block. (JUCE's own
-// getLatencySamples() is a plain getter of what setLatencySamples() was last given, so this class's
-// SynthBase::getEngineLatencySamples() is the engine's live value.)
-void SynthPlugin::checkLatency() {
-  int latency = SynthBase::getEngineLatencySamples();
-  if (latency != reported_latency_.load()) {
-    reported_latency_ = latency;
-    triggerAsyncUpdate();
-  }
-}
-
 void SynthPlugin::prepareToPlay(double sample_rate, int buffer_size) {
-  int latency = SynthBase::getEngineLatencySamples();
-  reported_latency_ = latency;
-  setLatencySamples(latency);
   engine_->setSampleRate(sample_rate);
   engine_->updateAllModulationSwitches();
   midi_manager_->setSampleRate(sample_rate);
@@ -222,8 +142,6 @@ void SynthPlugin::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midi_messa
     processBlockBypassed(buffer, midi_messages);
     return;
   }
-
-  checkLatency();
 
   int total_samples = buffer.getNumSamples();
   int num_channels = getTotalNumOutputChannels();
@@ -249,15 +167,7 @@ void SynthPlugin::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midi_messa
 
     engine_->correctToTime(last_seconds_time_);
     processMidi(midi_messages, sample_offset, sample_offset + num_samples);
-#if VITAL_FX
-    // Input must be captured before the engine writes to the (shared) buffer.
-    fillEffectInput(buffer, num_samples, sample_offset);
-    bool has_sidechain = fillSidechainInput(buffer, num_samples, sample_offset);
-    processAudioWithInput(&buffer, effect_input_, num_channels, num_samples, sample_offset,
-                          has_sidechain ? effect_sidechain_ : nullptr);
-#else
     processAudio(&buffer, num_channels, num_samples, sample_offset);
-#endif
 
     last_seconds_time_ += num_samples * sample_time;
     sample_offset += num_samples;

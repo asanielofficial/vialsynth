@@ -50,7 +50,7 @@ class CompressorEditor : public OpenGlComponent, public SynthSlider::SliderListe
     static constexpr int kRatioDbLines = kDbLineSections + kExtraDbLines;
     static constexpr int kTotalRatioLines = kRatioDbLines * kNumChannels;
 
-    CompressorEditor(const std::string& id = "compressor");
+    CompressorEditor();
     virtual ~CompressorEditor();
 
     void paintBackground(Graphics& g) override;
@@ -76,7 +76,6 @@ class CompressorEditor : public OpenGlComponent, public SynthSlider::SliderListe
     void setActive(bool active) { active_ = active; }
 
   private:
-    std::string id_;
     enum DragPoint {
       kNone,
       kLowUpperThreshold,

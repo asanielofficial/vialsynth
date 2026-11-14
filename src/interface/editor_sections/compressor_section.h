@@ -26,7 +26,7 @@ class SynthSlider;
 
 class CompressorSection : public SynthSection {
   public:
-    CompressorSection(const String& name, const std::string& id);
+    CompressorSection(const String& name);
     ~CompressorSection();
 
     void paintBackground(Graphics& g) override;
@@ -37,7 +37,6 @@ class CompressorSection : public SynthSection {
     void sliderValueChanged(Slider* changed_slider) override;
 
   private:
-    std::string id_;
     void setCompressorActiveBands();
 
     std::unique_ptr<SynthButton> on_;

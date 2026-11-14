@@ -56,8 +56,6 @@ class LineEditor : public OpenGlLineRenderer, public TextEditor::Listener {
       kInit,
       kFlipHorizontal,
       kFlipVertical,
-      kImportShape,
-      kExportShape,
       kNumMenuOptions
     };
 
@@ -90,7 +88,6 @@ class LineEditor : public OpenGlLineRenderer, public TextEditor::Listener {
       position_circle_.setBounds(getLocalBounds());
       point_circles_.setBounds(getLocalBounds());
       power_circles_.setBounds(getLocalBounds());
-      mod_circles_.setBounds(getLocalBounds());
       resetPositions();
     }
 
@@ -138,19 +135,6 @@ class LineEditor : public OpenGlLineRenderer, public TextEditor::Listener {
     int getGridSizeY() { return grid_size_y_; }
 
     void setModel(LineGenerator* model) { model_ = model; resetPositions(); }
-
-    // Modulation of points: the id of the edited line in the engine (SoundEngine::getPointModCurve), or -1 when
-    // its points cannot be modulated. Every editor is in the list while it exists.
-    void setPointModCurve(int id) { point_mod_curve_ = id; }
-    int getPointModCurve() const { return point_mod_curve_; }
-    Point<float> getPointPixelPosition(int index) {
-      std::pair<float, float> point = model_->getPoint(index);
-      return Point<float>(padX(point.first * getWidth()), padY(point.second * getHeight()));
-    }
-    static std::vector<LineEditor*>& allEditors() {
-      static std::vector<LineEditor*> editors;
-      return editors;
-    }
     LineGenerator* getModel() { return model_; }
     void showTextEntry();
     void hideTextEntry();
@@ -159,8 +143,6 @@ class LineEditor : public OpenGlLineRenderer, public TextEditor::Listener {
     void textEditorEscapeKeyPressed(TextEditor& editor) override;
     void setSliderPositionFromText();
     void setAllowFileLoading(bool allow) { allow_file_loading_ = allow; }
-    // Adds "Import Shape" and "Export Shape" to the right-click menu (they call the listeners' importLfo/exportLfo).
-    void setAllowImportExport(bool allow) { allow_import_export_ = allow; }
 
     void addListener(Listener* listener) { listeners_.push_back(listener); }
     void setActive(bool active) { active_ = active; }
@@ -224,8 +206,6 @@ class LineEditor : public OpenGlLineRenderer, public TextEditor::Listener {
     bool dragging_;
     bool reset_positions_;
     bool allow_file_loading_;
-    bool allow_import_export_ = false;
-    int point_mod_curve_ = -1;
     Point<float> last_mouse_position_;
     int last_model_render_;
     bool loop_;
@@ -247,7 +227,6 @@ class LineEditor : public OpenGlLineRenderer, public TextEditor::Listener {
     OpenGlQuad position_circle_;
     OpenGlMultiQuad point_circles_;
     OpenGlMultiQuad power_circles_;
-    OpenGlMultiQuad mod_circles_;  // rings on the points that have a modulation, at their modulated position
     std::unique_ptr<OpenGlTextEditor> value_entry_;
     bool entering_phase_;
     int entering_index_;
