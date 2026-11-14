@@ -195,7 +195,9 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     Authentication auth_;
     std::map<std::string, SynthSlider*> slider_lookup_;
     std::map<std::string, Button*> button_lookup_;
+#if VITAL_FX
     std::unique_ptr<PointModTargets> point_mod_targets_;
+#endif
     std::unique_ptr<ModulationManager> modulation_manager_;
     std::unique_ptr<ModulationMatrix> modulation_matrix_;
 

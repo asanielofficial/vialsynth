@@ -121,9 +121,6 @@ class LoadSave {
     static bool authenticated();
     static int getOversamplingAmount();
     static float loadWindowSize();
-    // Height scale relative to the width scale (1.0 = the default shape); the window can be any shape.
-    static float loadWindowAspect();
-    static void saveWindowAspect(float aspect);
     static String loadVersion();
     static String loadContentVersion();
     static void saveJsonToConfig(json config_state);
