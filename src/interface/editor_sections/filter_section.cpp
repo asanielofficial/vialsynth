@@ -56,6 +56,9 @@ namespace {
   }
 
   std::string getStyleName(int int_model, int style) {
+    // A host can automate the style to a value the model does not have, so keep the lookup in range.
+    if (int_model != vital::constants::kFormant)
+      style = std::max(0, std::min(style, getNumStyles(int_model) - 1));
     vital::constants::FilterModel model = static_cast<vital::constants::FilterModel>(int_model);
     switch (model) {
       case vital::constants::kAnalog:
@@ -448,7 +451,6 @@ void FilterSection::buttonClicked(Button* clicked_button) {
 void FilterSection::setAllValues(vital::control_map& controls) {
   current_model_ = std::round(controls[model_name_]->value());
   current_style_ = std::round(controls[style_name_]->value());
-  fprintf(stderr, "DBG filter %s=%d %s=%d ptr %p %p\n", model_name_.c_str(), current_model_, style_name_.c_str(), current_style_, (void*)controls[model_name_], (void*)controls[style_name_]);
   setFilterText();
 
   vital::constants::FilterModel model = static_cast<vital::constants::FilterModel>(current_model_);
