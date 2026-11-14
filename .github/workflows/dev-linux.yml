@@ -52,7 +52,7 @@ jobs:
           export LIBGL_ALWAYS_SOFTWARE=1
           export LD_PRELOAD=$(gcc -print-file-name=libasan.so)
           export ASAN_OPTIONS=detect_leaks=0:abort_on_error=1:detect_odr_violation=0
-          xvfb-run -a -s "-screen 0 1600x1000x24" timeout 420 pv/pluginval --validate-in-process --strictness-level 5 --skip-gui-tests --output-dir pvout --validate "$PWD/$VST" > run.txt 2>&1
+          xvfb-run -a -s "-screen 0 1600x1000x24" timeout 420 pv/pluginval --validate-in-process --strictness-level 5 --output-dir pvout --validate "$PWD/$VST" > run.txt 2>&1
           echo "pluginval/gdb exit: $?" >> run.txt
           tail -c 60000 run.txt > run-tail.txt
 
