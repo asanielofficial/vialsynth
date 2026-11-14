@@ -30,7 +30,7 @@ jobs:
       - name: Compile (keep going after errors)
         run: |
           set +e
-          make -k -j"$(nproc)" -C plugin/builds/linux_vst VST3 CONFIG=Release AR=gcc-ar \
+          make -k -j"$(nproc)" -C plugin/builds/linux_vst VST3 CONFIG=Debug AR=gcc-ar \
             SIMDFLAGS="-msse2" GLFLAGS="" BUILD_DATE="$(date +'%Y %m %d %H %M')" > build.log 2>&1
           echo "make exit: $?" | tee status.txt
           echo "log lines: $(wc -l < build.log)" | tee -a status.txt
