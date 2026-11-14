@@ -27,7 +27,7 @@ jobs:
           $code = 0
           foreach ($proj in 'Vial_SharedCode', 'Vial_VST3') {
             msbuild "plugin\builds\vs17\$proj.vcxproj" /m /nologo /p:Configuration=Release /p:Platform=x64 `
-              /p:PlatformToolset=v143 "/p:SolutionDir=$sd" "/flp:logfile=msbuild.log;verbosity=minimal;append"
+              /p:PlatformToolset=v143 /p:PostBuildEventUseInBuild=false "/p:SolutionDir=$sd" "/flp:logfile=msbuild.log;verbosity=minimal;append"
             $code = $LASTEXITCODE
             if ($code -ne 0) { break }
           }
