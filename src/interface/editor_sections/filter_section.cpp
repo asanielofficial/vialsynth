@@ -15,6 +15,7 @@
  */
 
 #include "filter_section.h"
+#include "other_filter.h"
 
 #include "skin.h"
 #include "digital_svf.h"
@@ -50,6 +51,8 @@ namespace {
         return 6;
       case vital::constants::kPhase:
         return 2;
+      case vital::constants::kOther:
+        return vital::OtherFilter::kNumOtherStyles;
       default:
         return 0;
     }
@@ -57,8 +60,10 @@ namespace {
 
   std::string getStyleName(int int_model, int style) {
     // A host can automate the style to a value the model does not have, so keep the lookup in range.
-    if (int_model != vital::constants::kFormant)
-      style = std::max(0, std::min(style, getNumStyles(int_model) - 1));
+    int num_styles = getNumStyles(int_model);
+    if (num_styles <= 0)
+      return "";
+    style = std::max(0, std::min(style, num_styles - 1));
     vital::constants::FilterModel model = static_cast<vital::constants::FilterModel>(int_model);
     switch (model) {
       case vital::constants::kAnalog:
@@ -82,6 +87,8 @@ namespace {
           return "Negative";
         else
           return "Positive";
+      case vital::constants::kOther:
+        return strings::kOtherFilterStyleNames[style];
       default:
         return "";
     }
@@ -551,11 +558,32 @@ void FilterSection::showModelKnobs() {
   keytrack_->setVisible(!formant);
   blend_->setVisible(!formant || vocal_tract);
   drive_->setVisible(!formant && !comb);
+
+  if (model == vital::constants::kOther) {
+    // The blend slider is the width of Band Reject, the stage count of the Disperser, the spacing of the Metal Comb,
+    // the size of the Metal Reverb and the frame of the Custom filter. All-Pass has none. Drive works on all of them.
+    drive_->setVisible(true);
+    blend_->setVisible(current_style_ != vital::OtherFilter::kAllPass);
+    switch (current_style_) {
+      case vital::OtherFilter::kBandReject: blend_->setPopupPrefix("Width: "); break;
+      case vital::OtherFilter::kMetalComb: blend_->setPopupPrefix("Spacing: "); break;
+      case vital::OtherFilter::kMetalReverb: blend_->setPopupPrefix("Size: "); break;
+      case vital::OtherFilter::kDisperser: blend_->setPopupPrefix("Stages: "); break;
+      case vital::OtherFilter::kCustom: blend_->setPopupPrefix("Frame: "); break;
+      default: break;
+    }
+  }
+  else
+    blend_->setPopupPrefix("Blend: ");
+
+  // The knob shadows (the dark circles) are painted into the background, so redo it when knobs come or go.
+  repaintBackground();
 }
 
 void FilterSection::setFilterText() {
-  std::string style = getStyleName(current_model_, current_style_);
-  preset_selector_->setText(strings::kFilterModelNames[current_model_], ":", style);
+  int model = std::max(0, std::min<int>(current_model_, vital::constants::kNumFilterModels - 1));
+  std::string style = getStyleName(model, current_style_);
+  preset_selector_->setText(strings::kFilterModelNames[model], ":", style);
 }
 
 void FilterSection::setLabelText() {
@@ -592,6 +620,8 @@ void FilterSection::setActive(bool active) {
 }
 
 Path FilterSection::getLeftMorphPath() {
+  if (current_model_ == vital::constants::kOther)
+    return current_style_ == vital::OtherFilter::kCustom ? Paths::lowPass() : Paths::narrowBand();
   if (current_model_ == vital::constants::kPhase)
     return Paths::phaser1();
   if (current_model_ == vital::constants::kFormant)
@@ -605,6 +635,8 @@ Path FilterSection::getLeftMorphPath() {
 }
 
 Path FilterSection::getRightMorphPath() {
+  if (current_model_ == vital::constants::kOther)
+    return current_style_ == vital::OtherFilter::kCustom ? Paths::highPass() : Paths::wideBand();
   if (current_model_ == vital::constants::kPhase)
     return Paths::phaser3();
   if (current_model_ == vital::constants::kFormant)

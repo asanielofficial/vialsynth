@@ -145,9 +145,7 @@ namespace vital {
       kFormant,
       kComb,
       kPhase,
-#if VITAL_FX
       kOther,
-#endif
       kNumFilterModels
     };
 
