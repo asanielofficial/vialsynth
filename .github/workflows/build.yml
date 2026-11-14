@@ -1,27 +1,15 @@
-name: Build VialFX
+name: Build VialSynth
 
-# One workflow for every platform: the Linux, Windows and macOS VST3 builds, plus the Windows (.exe) and macOS (.pkg)
-# installers. Run it from the Actions tab or push to main; the Nightly release workflow publishes its artifacts.
+# One workflow for every platform: the Linux, Windows and macOS VST3 builds of the synth. Run it from the Actions tab;
+# the Nightly and Stable release workflows reuse it and publish its artifacts.
+#
+# The CLAP wrapper and the Windows / macOS installers belonged to the effect plugin (VialFX) and are not part of this
+# project yet.
 on:
-  # Whole builds (all platforms, installers, CLAP, pluginval) run only when asked for: from the Actions tab, from the
-  # Nightly release workflow, or from the release workflow. Pushes do not start them; use "Test build" for a quick
-  # portable Windows or Linux build of a change.
+  # Whole builds run only when asked for: from the Actions tab, from the Nightly release workflow, or from the Stable
+  # release workflow. Pushes do not start them; use "Test build" for a quick portable build of a change.
   workflow_dispatch:
-    inputs:
-      stable:
-        description: "Stable release build (no NIGHTLY marker in the About box)"
-        type: boolean
-        default: false
   workflow_call:
-    inputs:
-      stable:
-        description: "Stable release build (no NIGHTLY marker in the About box)"
-        type: boolean
-        default: false
-
-env:
-  # clap-juce-extensions (MIT), the wrapper that turns the JUCE plugin into a CLAP. Pinned to a commit.
-  CLAP_EXT_SHA: 6bde108329ff9fc24404b79b8b397261a75cf6a8
 
 jobs:
   linux:
@@ -31,33 +19,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Mark the build channel
-        shell: bash
-        run: |
-          # Every build except a stable release says NIGHTLY in the About box.
-          if [ "${{ inputs.stable }}" != "true" ]; then
-            sed -i.bak 's/#define VIALFX_NIGHTLY 0/#define VIALFX_NIGHTLY 1/' src/common/build_channel.h
-            rm -f src/common/build_channel.h.bak
-          fi
-          grep VIALFX_NIGHTLY src/common/build_channel.h
-
       - name: Install build dependencies
         run: |
           sudo apt-get update
+          # libsecret and glib are linked by the Firebase libraries that ship in third_party.
           sudo apt-get install -y --no-install-recommends \
             build-essential pkg-config \
             libasound2-dev libfreetype6-dev libgl1-mesa-dev libcurl4-openssl-dev \
-            libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev
+            libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev \
+            libsecret-1-dev libglib2.0-dev
 
-      - name: Engine test (headless DSP checks)
-        run: |
-          # Passthrough, filters, routing, key tracking, all 9 effects, LFOs without MIDI. Fails on any check.
-          make -C effects/tests -j"$(nproc)"
-
-      - name: Build VialFX VST3
+      - name: Build VialSynth VST3
         run: |
           set +e
-          make -C effects/builds/linux_vst VST3 CONFIG=Release AR=gcc-ar \
+          make -C plugin/builds/linux_vst VST3 CONFIG=Release AR=gcc-ar \
             SIMDFLAGS="-msse2" GLFLAGS="" BUILD_DATE="$(date +'%Y %m %d %H %M')" > build.log 2>&1
           status=$?
           if [ $status -ne 0 ]; then
@@ -74,15 +49,16 @@ jobs:
         run: |
           set +e
           # The built plugin must not contain the original product's domains or author/company names.
-          strings -a effects/builds/linux_vst/build/VialFX.vst3/Contents/x86_64-linux/VialFX.so > binary_strings.txt
+          strings -a plugin/builds/linux_vst/build/Vial.vst3/Contents/x86_64-linux/Vial.so > binary_strings.txt
           if grep -i -n -E "vital\.audio|account\.vital|store\.vital|forum\.vital|vital audio|tytel" binary_strings.txt | head -20 > hits.txt && [ -s hits.txt ]; then
             while IFS= read -r l; do echo "::error::[binary] $l"; done < hits.txt
             exit 1
           fi
-          # No first-party source/build file (outside third_party, the licence files and copyright headers) may reference them either.
+          # No first-party source/build file of the plugin (outside third_party, the licence files and copyright headers)
+          # may reference them either.
           if grep -rIn -i -E "vital\.audio|vital audio|tytel\.org|matthewtytel" --exclude-dir=third_party --exclude-dir=.git \
                --exclude=LICENSE --exclude=NOTICE.md --exclude=copyright --exclude=changelog --exclude-dir=debian \
-               src effects Makefile README.md 2>/dev/null | grep -v -E "Copyright 20[0-9-]+ Matt Tytel" | head -20 > srchits.txt && [ -s srchits.txt ]; then
+               src plugin Makefile README.md 2>/dev/null | grep -v -E "Copyright 20[0-9-]+ Matt Tytel" | head -20 > srchits.txt && [ -s srchits.txt ]; then
             while IFS= read -r l; do echo "::error::[source] $l"; done < srchits.txt
             exit 1
           fi
@@ -91,35 +67,13 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          cp -r effects/builds/linux_vst/build/VialFX.vst3 dist/
+          cp -r plugin/builds/linux_vst/build/Vial.vst3 dist/
           ls -R dist | head -30
 
       - uses: actions/upload-artifact@v4
         with:
-          name: VialFX-linux-vst3
+          name: VialSynth-linux-vst3
           path: dist
-
-      - name: Build the CLAP
-        run: |
-          set -e
-          git init -q clap-ext
-          git -C clap-ext remote add origin https://github.com/free-audio/clap-juce-extensions
-          git -C clap-ext fetch -q --depth 1 origin "$CLAP_EXT_SHA"
-          git -C clap-ext checkout -q FETCH_HEAD
-          git -C clap-ext submodule update -q --init --depth 1 --recursive
-          cmake -S effects/clap -B clap-build -DCMAKE_BUILD_TYPE=Release \
-            -DPATH_TO_CLAP_EXTENSIONS="$PWD/clap-ext" \
-            -DVIALFX_SHARED_LIB="$PWD/effects/builds/linux_vst/build/VialFX.a" -DVIALFX_VERSION=1.3 2>&1 | tail -30
-          cmake --build clap-build --target VialFX_CLAP -j"$(nproc)" 2>&1 | tail -60
-          mkdir -p dist-clap
-          cp clap-build/VialFX_artefacts/Release/VialFX.clap dist-clap/
-          strings -a dist-clap/VialFX.clap | grep -i -E "vital\.audio|account\.vital|store\.vital|forum\.vital|vital audio|tytel" && exit 1
-          ls -l dist-clap
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: VialFX-linux-clap
-          path: dist-clap
 
       - name: Validate with pluginval
         run: |
@@ -127,7 +81,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends xvfb unzip wget gdb libfreetype6 libasound2 libcurl4 libxrandr2 libxinerama1 libxcursor1
           wget -q https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Linux.zip
           unzip -q pluginval_Linux.zip
-          PLUGIN=effects/builds/linux_vst/build/VialFX.vst3
+          PLUGIN=plugin/builds/linux_vst/build/Vial.vst3
           final=0
 
           # pluginval randomises parameter values, so run several fixed seeds. On a crash, rerun
@@ -161,7 +115,7 @@ jobs:
           exit $final
 
   windows:
-    name: Windows (VST3 + installer)
+    name: Windows (VST3)
     runs-on: windows-2022
     timeout-minutes: 90
     env:
@@ -169,22 +123,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Mark the build channel
-        shell: bash
-        run: |
-          # Every build except a stable release says NIGHTLY in the About box.
-          if [ "${{ inputs.stable }}" != "true" ]; then
-            sed -i.bak 's/#define VIALFX_NIGHTLY 0/#define VIALFX_NIGHTLY 1/' src/common/build_channel.h
-            rm -f src/common/build_channel.h.bak
-          fi
-          grep VIALFX_NIGHTLY src/common/build_channel.h
-
       - uses: microsoft/setup-msbuild@v2
 
-      - name: Build VialFX VST3 (x64, Release)
+      - name: Build VialSynth VST3 (x64, Release)
         shell: pwsh
         run: |
-          msbuild effects\builds\vs17\VialFX.sln /m /nologo /p:Configuration=Release /p:Platform=x64 `
+          msbuild plugin\builds\vs17\Vial.sln /m /nologo /p:Configuration=Release /p:Platform=x64 `
             /p:PlatformToolset=v143 "/flp:logfile=msbuild.log;verbosity=minimal"
           $code = $LASTEXITCODE
           if ($code -ne 0) {
@@ -197,7 +141,7 @@ jobs:
       - name: Locate the plugin
         shell: pwsh
         run: |
-          $f = Get-ChildItem -Recurse effects\builds\vs17 -Filter *.vst3 | Select-Object -First 1
+          $f = Get-ChildItem -Recurse plugin\builds\vs17 -Filter *.vst3 | Select-Object -First 1
           if (-not $f) { Write-Host "::error::no .vst3 produced"; exit 1 }
           New-Item -ItemType Directory dist | Out-Null
           Copy-Item $f.FullName dist\
@@ -212,52 +156,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: VialFX-windows-vst3
+          name: VialSynth-windows-vst3
           path: dist
-
-      - name: Build the CLAP
-        shell: pwsh
-        run: |
-          git init -q clap-ext
-          git -C clap-ext remote add origin https://github.com/free-audio/clap-juce-extensions
-          git -C clap-ext fetch -q --depth 1 origin "$CLAP_EXT_SHA"
-          git -C clap-ext checkout -q FETCH_HEAD
-          git -C clap-ext submodule update -q --init --depth 1 --recursive
-          cmake -S effects\clap -B clap-build -G "Visual Studio 17 2022" -A x64 `
-            "-DPATH_TO_CLAP_EXTENSIONS=$PWD\clap-ext" "-DVIALFX_SHARED_LIB=$PWD\effects\builds\vs17\x64\Release\Shared Code\VialFX.lib" -DVIALFX_VERSION=1.3
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cmake --build clap-build --config Release --target VialFX_CLAP -- /m /nologo "/flp:logfile=clap.log;verbosity=minimal"
-          $code = $LASTEXITCODE
-          if ($code -ne 0) {
-            Select-String -Path clap.log -Pattern ' error ' | Select-Object -Unique -First 40 |
-              ForEach-Object { $t = $_.Line.Trim(); if ($t.Length -gt 450) { $t = $t.Substring(0,450) }; Write-Host "::error::$t" }
-            exit $code
-          }
-          New-Item -ItemType Directory dist-clap | Out-Null
-          Copy-Item clap-build\VialFX_artefacts\Release\VialFX.clap dist-clap\
-          python -c "import re,sys,glob; d=open(glob.glob('dist-clap/*.clap')[0],'rb').read(); m=re.findall(rb'(?i)vital\.audio|account\.vital|store\.vital|forum\.vital|vital audio|tytel', d); print(m[:10]); sys.exit(1 if m else 0)"
-          if ($LASTEXITCODE -ne 0) { Write-Host "::error::[binary] Vital branding or service domain found in the CLAP"; exit 1 }
-          Get-ChildItem dist-clap | Format-Table Name, Length
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: VialFX-windows-clap
-          path: dist-clap
-
-      - name: Build the Windows installer
-        shell: pwsh
-        run: |
-          choco install innosetup -y --no-progress
-          New-Item -ItemType Directory installers | Out-Null
-          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          & $iscc "/DSourceFile=$PWD\dist\VialFX.vst3" "/DClapFile=$PWD\dist-clap\VialFX.clap" "/DAppVersion=1.3" "/O$PWD\installers" installer\windows\VialFX.iss
-          if ($LASTEXITCODE -ne 0) { Write-Host "::error::Inno Setup failed"; exit 1 }
-          Get-ChildItem installers | Format-Table Name, Length
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: VialFX-windows-installer
-          path: installers
 
       - name: Validate with pluginval (non-blocking)
         continue-on-error: true
@@ -278,23 +178,13 @@ jobs:
           }
 
   macos:
-    name: macOS (VST3 + installer)
+    name: macOS (VST3)
     # The last Intel runner: the prebuilt Projucer of the JUCE version this project uses is an Intel binary. The plugin
     # itself is built universal (arm64 + x86_64).
     runs-on: macos-15-intel
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
-
-      - name: Mark the build channel
-        shell: bash
-        run: |
-          # Every build except a stable release says NIGHTLY in the About box.
-          if [ "${{ inputs.stable }}" != "true" ]; then
-            sed -i.bak 's/#define VIALFX_NIGHTLY 0/#define VIALFX_NIGHTLY 1/' src/common/build_channel.h
-            rm -f src/common/build_channel.h.bak
-          fi
-          grep VIALFX_NIGHTLY src/common/build_channel.h
 
       - name: Get Projucer (JUCE 6.0.5)
         run: |
@@ -306,7 +196,7 @@ jobs:
         run: |
           python3 - <<'EOF'
           import re
-          p = 'effects/vial_fx.jucer'
+          p = 'plugin/vital.jucer'
           s = open(p).read()
           a = s.index('<XCODE_MAC')
           b = s.index('</XCODE_MAC>')
@@ -322,13 +212,13 @@ jobs:
           s = s[:a] + block + s[b:]
           open(p, 'w').write(s)
           EOF
-          juce_download/JUCE/Projucer.app/Contents/MacOS/Projucer --resave effects/vial_fx.jucer
-          ls effects/builds/osx
+          juce_download/JUCE/Projucer.app/Contents/MacOS/Projucer --resave plugin/vital.jucer
+          ls plugin/builds/osx
 
-      - name: Build VialFX VST3 (universal, Release)
+      - name: Build VialSynth VST3 (universal, Release)
         run: |
           set +e
-          xcodebuild -project effects/builds/osx/VialFX.xcodeproj -scheme "VialFX - VST3" -configuration Release \
+          xcodebuild -project plugin/builds/osx/Vial.xcodeproj -scheme "Vial - VST3" -configuration Release \
             ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO MACOSX_DEPLOYMENT_TARGET=10.13 \
             CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
             GCC_TREAT_WARNINGS_AS_ERRORS=NO > build.log 2>&1
@@ -345,7 +235,7 @@ jobs:
       - name: Check for Vital branding and service domains
         run: |
           set +e
-          BIN=$(find effects/builds/osx/build -name "VialFX" -path "*.vst3/Contents/MacOS/*" | head -1)
+          BIN=$(find plugin/builds/osx/build -name "Vial" -path "*.vst3/Contents/MacOS/*" | head -1)
           if [ -z "$BIN" ]; then echo "::error::no VST3 binary produced"; exit 1; fi
           file "$BIN"
           strings -a "$BIN" > binary_strings.txt
@@ -358,62 +248,11 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          VST3=$(find effects/builds/osx/build -name "VialFX.vst3" -maxdepth 4 | head -1)
-          ditto "$VST3" dist/VialFX.vst3
+          VST3=$(find plugin/builds/osx/build -name "Vial.vst3" -maxdepth 4 | head -1)
+          ditto "$VST3" dist/Vial.vst3
           ls -R dist | head -20
 
       - uses: actions/upload-artifact@v4
         with:
-          name: VialFX-macos-vst3
+          name: VialSynth-macos-vst3
           path: dist
-
-      - name: Build the CLAP
-        run: |
-          set -e
-          git init -q clap-ext
-          git -C clap-ext remote add origin https://github.com/free-audio/clap-juce-extensions
-          git -C clap-ext fetch -q --depth 1 origin "$CLAP_EXT_SHA"
-          git -C clap-ext checkout -q FETCH_HEAD
-          git -C clap-ext submodule update -q --init --depth 1 --recursive
-          LIB=$(find effects/builds/osx/build -name "libVialFX.a" | head -1)
-          echo "shared code library: $LIB"
-          cmake -S effects/clap -B clap-build -G Xcode -DCMAKE_BUILD_TYPE=Release \
-            -DPATH_TO_CLAP_EXTENSIONS="$PWD/clap-ext" -DVIALFX_SHARED_LIB="$PWD/$LIB" -DVIALFX_VERSION=1.3 \
-            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED=NO 2>&1 | tail -30
-          set +e
-          cmake --build clap-build --config Release --target VialFX_CLAP > clap.log 2>&1
-          status=$?
-          if [ $status -ne 0 ]; then
-            grep -n -m 40 -E "error:|fatal error|undefined symbol|\*\*\* " clap.log | cut -c1-450 | while IFS= read -r line; do echo "::error::${line}"; done
-            echo "::error::last lines: $(tail -n 8 clap.log | tr '\n' '|' | cut -c1-700)"
-            exit $status
-          fi
-          mkdir -p dist-clap
-          CLAP=$(find clap-build -name "VialFX.clap" -maxdepth 4 | head -1)
-          ditto "$CLAP" dist-clap/VialFX.clap
-          lipo -archs dist-clap/VialFX.clap/Contents/MacOS/VialFX
-          if strings -a dist-clap/VialFX.clap/Contents/MacOS/VialFX | grep -i -E "vital\.audio|account\.vital|store\.vital|forum\.vital|vital audio|tytel"; then echo "::error::[binary] Vital branding found in the CLAP"; exit 1; fi
-          ls -R dist-clap | head -20
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: VialFX-macos-clap
-          path: dist-clap
-
-      - name: Build the macOS installer (.pkg)
-        run: |
-          # One installer, two choices the user can switch on and off: VST3 and CLAP.
-          mkdir -p pkgroot-vst3 pkgroot-clap pkgs installers
-          cp -R dist/VialFX.vst3 pkgroot-vst3/VialFX.vst3
-          cp -R dist-clap/VialFX.clap pkgroot-clap/VialFX.clap
-          pkgbuild --root pkgroot-vst3 --identifier com.vialfx.vst3 --version 1.3 \
-            --install-location /Library/Audio/Plug-Ins/VST3 pkgs/vst3.pkg
-          pkgbuild --root pkgroot-clap --identifier com.vialfx.clap --version 1.3 \
-            --install-location /Library/Audio/Plug-Ins/CLAP pkgs/clap.pkg
-          productbuild --distribution installer/macos/distribution.xml --package-path pkgs installers/VialFX-1.3-macOS.pkg
-          ls -l installers
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: VialFX-macos-installer
-          path: installers

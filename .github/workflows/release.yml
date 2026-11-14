@@ -1,13 +1,13 @@
 name: Stable release
 
 # Run on request (Actions tab > Stable release > Run workflow).
-# Builds the current main as a stable release (no NIGHTLY marker) on all three platforms, then publishes it as the
-# latest release, using the notes in .github/release-notes/<version>.md.
+# Builds the current main on all three platforms, then publishes it as the latest release, using the notes in
+# .github/release-notes/<version>.md.
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version, for example 1.2 (needs .github/release-notes/<version>.md)"
+        description: "Version, for example 1.0 (needs .github/release-notes/<version>.md)"
         required: true
 
 permissions:
@@ -17,8 +17,6 @@ permissions:
 jobs:
   build:
     uses: ./.github/workflows/build.yml
-    with:
-      stable: true
 
   release:
     needs: build
@@ -39,14 +37,11 @@ jobs:
         run: |
           set -euo pipefail
           notes=".github/release-notes/$VERSION.md"
-          test -f "$notes"
+          if [ ! -f "$notes" ]; then echo "::error::Missing release notes: $notes"; exit 1; fi
           mkdir out
           for os in linux macos windows; do
-            (cd "art/VialFX-$os-vst3" && zip -qr "../../out/VialFX-$VERSION-$os-vst3.zip" .)
-            (cd "art/VialFX-$os-clap" && zip -qr "../../out/VialFX-$VERSION-$os-clap.zip" .)
+            (cd "art/VialSynth-$os-vst3" && zip -qr "../../out/VialSynth-$VERSION-$os-vst3.zip" .)
           done
-          cp art/VialFX-windows-installer/*.exe out/
-          cp art/VialFX-macos-installer/*.pkg out/
           ls -l out
           gh release create "v$VERSION" out/* --repo "$REPO" --target "${{ github.sha }}" \
-            --title "VialFX $VERSION" --notes-file "$notes" --latest
+            --title "VialSynth $VERSION" --notes-file "$notes" --latest

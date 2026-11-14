@@ -53,9 +53,14 @@ VialSynth has no such sections.
 ## Not done yet
 
 - **Nothing has been built.** Do a first Linux build and fix whatever the compiler finds.
-- **Branding.** The build targets, installers, Debian packaging, release notes and the GitHub workflows under
-  `.github/` still carry VialFX (and, for the plugin targets, "Vial") names and still point at the removed
-  `effects/` target. They need retargeting at the synth plugin before any CI run is useful.
+- **CI has never run.** The workflows under `.github/workflows/` now build the synth plugin (`plugin/`) as a VST3
+  on Linux, Windows and macOS, but nobody has run them yet, so expect the first run to need fixes. They are manual
+  (Actions tab) and publish VST3 zips only: the CLAP wrapper and the Windows and macOS installers belonged to the
+  effect plugin and are not part of this project yet.
+- **Names.** The plugin is still built as `Vial` (`Vial.vst3`), not `VialSynth`. The top-level `Makefile` install
+  targets still look for `Vital.*` files, and the Debian packaging, installer folder, standalone, headless and
+  test projects still carry the older names (and the original author's name in their project files). The CI
+  branding check covers `src/`, `plugin/`, the `Makefile` and this README, and the built VST3 binaries.
 - **FX-only code remains as dead code.** Branches guarded by `VITAL_FX` (the effect rack, table modes, spectral
   morph, vocoder, sidechain) are still in `src/` but are not compiled into the synth.
 - **Presets.** No presets are included (see the conditions in [NOTICE.md](NOTICE.md)).

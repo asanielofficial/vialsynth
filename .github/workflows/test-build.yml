@@ -1,7 +1,7 @@
 name: Test build
 
-# A quick portable build for trying a change: one platform (Windows or Linux), the VST3 zipped, no installers, no
-# CLAP, no validation. Run it from the Actions tab and pick the platform. The full builds are in "Build VialFX".
+# A quick portable build for trying a change: one platform (Windows or Linux), the VST3 zipped, no validation. Run it
+# from the Actions tab and pick the platform. The full builds are in "Build VialSynth".
 on:
   workflow_dispatch:
     inputs:
@@ -20,23 +20,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Mark the build as a test build
-        run: |
-          sed -i 's/#define VIALFX_NIGHTLY 0/#define VIALFX_NIGHTLY 1/' src/common/build_channel.h
-          grep VIALFX_NIGHTLY src/common/build_channel.h
-
       - name: Install build dependencies
         run: |
           sudo apt-get update
+          # libsecret and glib are linked by the Firebase libraries that ship in third_party.
           sudo apt-get install -y --no-install-recommends \
             build-essential pkg-config \
             libasound2-dev libfreetype6-dev libgl1-mesa-dev libcurl4-openssl-dev \
-            libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev zip
+            libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev \
+            libsecret-1-dev libglib2.0-dev zip
 
-      - name: Build VialFX VST3
+      - name: Build VialSynth VST3
         run: |
           set +e
-          make -C effects/builds/linux_vst VST3 CONFIG=Release AR=gcc-ar \
+          make -C plugin/builds/linux_vst VST3 CONFIG=Release AR=gcc-ar \
             SIMDFLAGS="-msse2" GLFLAGS="" BUILD_DATE="$(date +'%Y %m %d %H %M')" > build.log 2>&1
           status=$?
           if [ $status -ne 0 ]; then
@@ -48,7 +45,7 @@ jobs:
 
       - name: Check for Vital branding and service domains
         run: |
-          strings -a effects/builds/linux_vst/build/VialFX.vst3/Contents/x86_64-linux/VialFX.so > binary_strings.txt
+          strings -a plugin/builds/linux_vst/build/Vial.vst3/Contents/x86_64-linux/Vial.so > binary_strings.txt
           if grep -i -n -E "vital\.audio|account\.vital|store\.vital|forum\.vital|vital audio|tytel" binary_strings.txt | head -20 > hits.txt && [ -s hits.txt ]; then
             while IFS= read -r l; do echo "::error::[binary] $l"; done < hits.txt
             exit 1
@@ -58,14 +55,14 @@ jobs:
       - name: Zip
         run: |
           mkdir -p dist
-          cp -r effects/builds/linux_vst/build/VialFX.vst3 dist/
-          (cd dist && zip -qr ../VialFX-linux-portable.zip VialFX.vst3)
-          ls -l VialFX-linux-portable.zip
+          cp -r plugin/builds/linux_vst/build/Vial.vst3 dist/
+          (cd dist && zip -qr ../VialSynth-linux-portable.zip Vial.vst3)
+          ls -l VialSynth-linux-portable.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: VialFX-linux-portable
-          path: VialFX-linux-portable.zip
+          name: VialSynth-linux-portable
+          path: VialSynth-linux-portable.zip
 
   windows:
     if: inputs.platform == 'windows'
@@ -77,18 +74,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Mark the build as a test build
-        shell: bash
-        run: |
-          sed -i 's/#define VIALFX_NIGHTLY 0/#define VIALFX_NIGHTLY 1/' src/common/build_channel.h
-          grep VIALFX_NIGHTLY src/common/build_channel.h
-
       - uses: microsoft/setup-msbuild@v2
 
-      - name: Build VialFX VST3 (x64, Release)
+      - name: Build VialSynth VST3 (x64, Release)
         shell: pwsh
         run: |
-          msbuild effects\builds\vs17\VialFX.sln /m /nologo /p:Configuration=Release /p:Platform=x64 `
+          msbuild plugin\builds\vs17\Vial.sln /m /nologo /p:Configuration=Release /p:Platform=x64 `
             /p:PlatformToolset=v143 "/flp:logfile=msbuild.log;verbosity=minimal"
           $code = $LASTEXITCODE
           if ($code -ne 0) {
@@ -100,16 +91,16 @@ jobs:
       - name: Locate the plugin and check for Vital branding
         shell: pwsh
         run: |
-          $f = Get-ChildItem -Recurse effects\builds\vs17 -Filter *.vst3 | Select-Object -First 1
+          $f = Get-ChildItem -Recurse plugin\builds\vs17 -Filter *.vst3 | Select-Object -First 1
           if (-not $f) { Write-Host "::error::no .vst3 produced"; exit 1 }
           New-Item -ItemType Directory dist | Out-Null
           Copy-Item $f.FullName dist\
           python -c "import re,sys,glob; d=open(glob.glob('dist/*.vst3')[0],'rb').read(); m=re.findall(rb'(?i)vital\.audio|account\.vital|store\.vital|forum\.vital|vital audio|tytel', d); print(m[:10]); sys.exit(1 if m else 0)"
           if ($LASTEXITCODE -ne 0) { Write-Host "::error::[binary] Vital branding or service domain found in the plugin"; exit 1 }
-          Compress-Archive -Path dist\* -DestinationPath VialFX-windows-portable.zip
-          Get-ChildItem VialFX-windows-portable.zip | Format-Table Name, Length
+          Compress-Archive -Path dist\* -DestinationPath VialSynth-windows-portable.zip
+          Get-ChildItem VialSynth-windows-portable.zip | Format-Table Name, Length
 
       - uses: actions/upload-artifact@v4
         with:
-          name: VialFX-windows-portable
-          path: VialFX-windows-portable.zip
+          name: VialSynth-windows-portable
+          path: VialSynth-windows-portable.zip
