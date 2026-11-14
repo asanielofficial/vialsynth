@@ -57,10 +57,13 @@ VialSynth has no such sections.
   on Linux, Windows and macOS, but nobody has run them yet, so expect the first run to need fixes. They are manual
   (Actions tab) and publish VST3 zips only: the CLAP wrapper and the Windows and macOS installers belonged to the
   effect plugin and are not part of this project yet.
-- **Names.** The plugin is still built as `Vial` (`Vial.vst3`), not `VialSynth`. The top-level `Makefile` install
-  targets still look for `Vital.*` files, and the Debian packaging, installer folder, standalone, headless and
-  test projects still carry the older names (and the original author's name in their project files). The CI
-  branding check covers `src/`, `plugin/`, the `Makefile` and this README, and the built VST3 binaries.
+- **Names.** The plugin is called VialSynth and builds as `VialSynth.vst3`, `VialSynth.so` and so on (set by
+  `pluginName` and `targetName` in `plugin/vital.jucer`, and mirrored in the checked-in Linux, Windows, macOS and
+  iOS build files). The project files keep the name `Vial` (`Vial.sln`, `Vial.xcodeproj`, the "Vial - VST3"
+  targets), because renaming the Projucer project itself would rename all of them. The plugin's four-character
+  code (`Vial`) is unchanged. The Debian packaging, installer folder, standalone, headless and test projects still
+  carry the older names (and the original author's name in their project files). The CI branding check covers
+  `src/`, `plugin/`, the `Makefile` and this README, and the built VST3 binaries.
 - **FX-only code remains as dead code.** Branches guarded by `VITAL_FX` (the effect rack, table modes, spectral
   morph, vocoder, sidechain) are still in `src/` but are not compiled into the synth.
 - **Presets.** No presets are included (see the conditions in [NOTICE.md](NOTICE.md)).

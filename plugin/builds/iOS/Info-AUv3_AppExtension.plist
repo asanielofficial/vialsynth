@@ -12,9 +12,9 @@
     <key>CFBundleIdentifier</key>
     <string>audio.vial.synth.synthAUv3</string>
     <key>CFBundleName</key>
-    <string>Vial</string>
+    <string>VialSynth</string>
     <key>CFBundleDisplayName</key>
-    <string>Vial</string>
+    <string>VialSynth</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>CFBundleSignature</key>
@@ -39,7 +39,7 @@
         <array>
           <dict>
             <key>name</key>
-            <string>Vial Audio: Vial</string>
+            <string>Vial Audio: VialSynth</string>
             <key>description</key>
             <string></string>
             <key>factoryFunction</key>

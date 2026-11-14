@@ -10,9 +10,9 @@
     <key>CFBundleIdentifier</key>
     <string>audio.vial.synth</string>
     <key>CFBundleName</key>
-    <string>Vial</string>
+    <string>VialSynth</string>
     <key>CFBundleDisplayName</key>
-    <string>Vial</string>
+    <string>VialSynth</string>
     <key>CFBundlePackageType</key>
     <string>BNDL</string>
     <key>CFBundleSignature</key>

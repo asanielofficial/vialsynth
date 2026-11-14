@@ -508,7 +508,7 @@
 			isa = PBXFileReference;
 			explicitFileType = "wrapper.app-extension";
 			includeInIndex = 0;
-			path = Vial.appex;
+			path = VialSynth.appex;
 			sourceTree = "BUILT_PRODUCTS_DIR";
 		};
 		151134F0D4FD96A1D86D72D1 = {
@@ -1817,7 +1817,7 @@
 			isa = PBXFileReference;
 			explicitFileType = wrapper.application;
 			includeInIndex = 0;
-			path = Vial.app;
+			path = VialSynth.app;
 			sourceTree = "BUILT_PRODUCTS_DIR";
 		};
 		7740CF8E76D239091744FAB4 = {
@@ -2881,7 +2881,7 @@
 			isa = PBXFileReference;
 			explicitFileType = archive.ar;
 			includeInIndex = 0;
-			path = libVial.a;
+			path = libVialSynth.a;
 			sourceTree = "BUILT_PRODUCTS_DIR";
 		};
 		C0A5158BC65049BE31285110 = {
@@ -4571,9 +4571,9 @@
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
 				OTHER_CPLUSPLUSFLAGS = "-mtune=cortex-a53";
-				OTHER_LDFLAGS = "-lVial -mtune=cortex-a53";
+				OTHER_LDFLAGS = "-lVialSynth -mtune=cortex-a53";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				USE_HEADERMAP = NO;
 			};
 			name = Debug;
@@ -4659,9 +4659,9 @@
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
 				OTHER_CPLUSPLUSFLAGS = "-mtune=cortex-a53";
-				OTHER_LDFLAGS = "-lVial -mtune=cortex-a53";
+				OTHER_LDFLAGS = "-lVialSynth -mtune=cortex-a53";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				USE_HEADERMAP = NO;
 			};
 			name = Release;
@@ -4748,9 +4748,9 @@
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
 				OTHER_CPLUSPLUSFLAGS = "-mtune=cortex-a53";
-				OTHER_LDFLAGS = "-lVial -mtune=cortex-a53";
+				OTHER_LDFLAGS = "-lVialSynth -mtune=cortex-a53";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth.synthAUv3;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				USE_HEADERMAP = NO;
 			};
 			name = Debug;
@@ -4838,9 +4838,9 @@
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
 				OTHER_CPLUSPLUSFLAGS = "-mtune=cortex-a53";
-				OTHER_LDFLAGS = "-lVial -mtune=cortex-a53";
+				OTHER_LDFLAGS = "-lVialSynth -mtune=cortex-a53";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth.synthAUv3;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				USE_HEADERMAP = NO;
 			};
 			name = Release;
@@ -4928,9 +4928,9 @@
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
 				OTHER_CPLUSPLUSFLAGS = "-mtune=cortex-a53";
-				OTHER_LDFLAGS = "-lVial -mtune=cortex-a53";
+				OTHER_LDFLAGS = "-lVialSynth -mtune=cortex-a53";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				USE_HEADERMAP = NO;
 			};
 			name = Debug;
@@ -5019,9 +5019,9 @@
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
 				OTHER_CPLUSPLUSFLAGS = "-mtune=cortex-a53";
-				OTHER_LDFLAGS = "-lVial -mtune=cortex-a53";
+				OTHER_LDFLAGS = "-lVialSynth -mtune=cortex-a53";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				USE_HEADERMAP = NO;
 			};
 			name = Release;
@@ -5110,7 +5110,7 @@
 				OTHER_CPLUSPLUSFLAGS = "-mtune=cortex-a53";
 				OTHER_LDFLAGS = "-mtune=cortex-a53";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				SKIP_INSTALL = YES;
 				USE_HEADERMAP = NO;
 			};
@@ -5201,7 +5201,7 @@
 				OTHER_CPLUSPLUSFLAGS = "-mtune=cortex-a53";
 				OTHER_LDFLAGS = "-mtune=cortex-a53";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				SKIP_INSTALL = YES;
 				USE_HEADERMAP = NO;
 			};
@@ -5250,7 +5250,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.3;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "2";
 				WARNING_CFLAGS = "-Wreorder";
@@ -5300,7 +5300,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.3;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "2";
 				WARNING_CFLAGS = "-Wreorder";

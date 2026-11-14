@@ -14,9 +14,9 @@
     <key>CFBundleIdentifier</key>
     <string>audio.vial.synth</string>
     <key>CFBundleName</key>
-    <string>Vial</string>
+    <string>VialSynth</string>
     <key>CFBundleDisplayName</key>
-    <string>Vial</string>
+    <string>VialSynth</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleSignature</key>
@@ -44,7 +44,7 @@
     <array>
       <dict>
         <key>name</key>
-        <string>Vial Audio: Vial</string>
+        <string>Vial Audio: VialSynth</string>
         <key>manufacturer</key>
         <string>Open</string>
         <key>type</key>

@@ -17,9 +17,9 @@ BEGIN
     BEGIN
       VALUE "CompanyName",  "Vial Audio\0"
       VALUE "LegalCopyright",  "GPLv3, see LICENSE\0"
-      VALUE "FileDescription",  "Vial\0"
+      VALUE "FileDescription",  "VialSynth\0"
       VALUE "FileVersion",  "1.0.6\0"
-      VALUE "ProductName",  "Vial\0"
+      VALUE "ProductName",  "VialSynth\0"
       VALUE "ProductVersion",  "1.0.6\0"
     END
   END

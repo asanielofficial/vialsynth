@@ -1483,7 +1483,7 @@
 			isa = PBXFileReference;
 			explicitFileType = wrapper.cfbundle;
 			includeInIndex = 0;
-			path = Vial.vst;
+			path = VialSynth.vst;
 			sourceTree = "BUILT_PRODUCTS_DIR";
 		};
 		582A7E48BD6832825D3BBF1A = {
@@ -1504,21 +1504,21 @@
 			isa = PBXFileReference;
 			explicitFileType = wrapper.cfbundle;
 			includeInIndex = 0;
-			path = Vial.vst3;
+			path = VialSynth.vst3;
 			sourceTree = "BUILT_PRODUCTS_DIR";
 		};
 		2801D896A423C24FB939EBE6 = {
 			isa = PBXFileReference;
 			explicitFileType = wrapper.cfbundle;
 			includeInIndex = 0;
-			path = Vial.component;
+			path = VialSynth.component;
 			sourceTree = "BUILT_PRODUCTS_DIR";
 		};
 		14AFDF6020778057AA6BF015 = {
 			isa = PBXFileReference;
 			explicitFileType = "wrapper.app-extension";
 			includeInIndex = 0;
-			path = Vial.appex;
+			path = VialSynth.appex;
 			sourceTree = "BUILT_PRODUCTS_DIR";
 		};
 		3E408D90BF2575D57D470184 = {
@@ -1938,7 +1938,7 @@
 			isa = PBXFileReference;
 			explicitFileType = wrapper.application;
 			includeInIndex = 0;
-			path = Vial.app;
+			path = VialSynth.app;
 			sourceTree = "BUILT_PRODUCTS_DIR";
 		};
 		7740CF8E76D239091744FAB4 = {
@@ -3030,7 +3030,7 @@
 			isa = PBXFileReference;
 			explicitFileType = archive.ar;
 			includeInIndex = 0;
-			path = libVial.a;
+			path = libVialSynth.a;
 			sourceTree = "BUILT_PRODUCTS_DIR";
 		};
 		C0A5158BC65049BE31285110 = {
@@ -4827,9 +4827,9 @@
 					"../../../third_party",
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
-				OTHER_LDFLAGS = "-bundle -lVial -lgssapi_krb5";
+				OTHER_LDFLAGS = "-bundle -lVialSynth -lgssapi_krb5";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "arm64 arm64e x86_64";
@@ -4936,9 +4936,9 @@
 					"../../../third_party",
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
-				OTHER_LDFLAGS = "-bundle -lVial -lgssapi_krb5";
+				OTHER_LDFLAGS = "-bundle -lVialSynth -lgssapi_krb5";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "arm64 arm64e x86_64";
@@ -5044,9 +5044,9 @@
 					"../../../third_party",
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
-				OTHER_LDFLAGS = "-bundle -lVial -lgssapi_krb5";
+				OTHER_LDFLAGS = "-bundle -lVialSynth -lgssapi_krb5";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "arm64 arm64e x86_64";
@@ -5153,9 +5153,9 @@
 					"../../../third_party",
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
-				OTHER_LDFLAGS = "-bundle -lVial -lgssapi_krb5";
+				OTHER_LDFLAGS = "-bundle -lVialSynth -lgssapi_krb5";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "arm64 arm64e x86_64";
@@ -5261,10 +5261,10 @@
 					"../../../third_party",
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
-				OTHER_LDFLAGS = "-bundle -lVial -lgssapi_krb5";
+				OTHER_LDFLAGS = "-bundle -lVialSynth -lgssapi_krb5";
 				OTHER_REZFLAGS = "-d ppc_$ppc -d i386_$i386 -d ppc64_$ppc64 -d x86_64_$x86_64 -I /System/Library/Frameworks/CoreServices.framework/Frameworks/CarbonCore.framework/Versions/A/Headers -I \"$(DEVELOPER_DIR)/Extras/CoreAudio/AudioUnits/AUPublic/AUBase\" -I \"$(DEVELOPER_DIR)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AudioUnit.framework/Headers\"";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "arm64 arm64e x86_64";
@@ -5371,10 +5371,10 @@
 					"../../../third_party",
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
-				OTHER_LDFLAGS = "-bundle -lVial -lgssapi_krb5";
+				OTHER_LDFLAGS = "-bundle -lVialSynth -lgssapi_krb5";
 				OTHER_REZFLAGS = "-d ppc_$ppc -d i386_$i386 -d ppc64_$ppc64 -d x86_64_$x86_64 -I /System/Library/Frameworks/CoreServices.framework/Frameworks/CarbonCore.framework/Versions/A/Headers -I \"$(DEVELOPER_DIR)/Extras/CoreAudio/AudioUnits/AUPublic/AUBase\" -I \"$(DEVELOPER_DIR)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AudioUnit.framework/Headers\"";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "arm64 arm64e x86_64";
@@ -5475,9 +5475,9 @@
 					"../../../third_party",
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
-				OTHER_LDFLAGS = "-lVial -lgssapi_krb5";
+				OTHER_LDFLAGS = "-lVialSynth -lgssapi_krb5";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth.synthAUv3;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "arm64 arm64e x86_64";
@@ -5578,9 +5578,9 @@
 					"../../../third_party",
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
-				OTHER_LDFLAGS = "-lVial -lgssapi_krb5";
+				OTHER_LDFLAGS = "-lVialSynth -lgssapi_krb5";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth.synthAUv3;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "arm64 arm64e x86_64";
@@ -5680,9 +5680,9 @@
 					"../../../third_party",
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
-				OTHER_LDFLAGS = "-lVial -lgssapi_krb5";
+				OTHER_LDFLAGS = "-lVialSynth -lgssapi_krb5";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "arm64 arm64e x86_64";
@@ -5783,9 +5783,9 @@
 					"../../../third_party",
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
-				OTHER_LDFLAGS = "-lVial -lgssapi_krb5";
+				OTHER_LDFLAGS = "-lVialSynth -lgssapi_krb5";
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				USE_HEADERMAP = NO;
 				VALID_ARCHS = "arm64 arm64e x86_64";
@@ -5886,7 +5886,7 @@
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				USE_HEADERMAP = NO;
@@ -5989,7 +5989,7 @@
 					"../../../third_party/JUCE/modules/juce_audio_plugin_client",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = audio.vial.synth;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				USE_HEADERMAP = NO;
@@ -6038,7 +6038,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				SDKROOT = macosx;
 				WARNING_CFLAGS = "-Wreorder";
 				ZERO_LINK = NO;
@@ -6086,7 +6086,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				PRODUCT_NAME = "Vial";
+				PRODUCT_NAME = "VialSynth";
 				SDKROOT = macosx;
 				WARNING_CFLAGS = "-Wreorder";
 				ZERO_LINK = NO;

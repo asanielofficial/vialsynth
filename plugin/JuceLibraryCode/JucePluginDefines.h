@@ -38,7 +38,7 @@
  #define JucePlugin_Enable_IAA             1
 #endif
 #ifndef  JucePlugin_Name
- #define JucePlugin_Name                   "Vial"
+ #define JucePlugin_Name                   "VialSynth"
 #endif
 #ifndef  JucePlugin_Desc
  #define JucePlugin_Desc                   ""
@@ -149,7 +149,7 @@
  #define JucePlugin_IAASubType             JucePlugin_PluginCode
 #endif
 #ifndef  JucePlugin_IAAName
- #define JucePlugin_IAAName                "Vial Audio: Vial"
+ #define JucePlugin_IAAName                "Vial Audio: VialSynth"
 #endif
 #ifndef  JucePlugin_VSTNumMidiInputs
  #define JucePlugin_VSTNumMidiInputs       16

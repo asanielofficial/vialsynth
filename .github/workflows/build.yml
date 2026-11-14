@@ -49,7 +49,7 @@ jobs:
         run: |
           set +e
           # The built plugin must not contain the original product's domains or author/company names.
-          strings -a plugin/builds/linux_vst/build/Vial.vst3/Contents/x86_64-linux/Vial.so > binary_strings.txt
+          strings -a plugin/builds/linux_vst/build/VialSynth.vst3/Contents/x86_64-linux/VialSynth.so > binary_strings.txt
           if grep -i -n -E "vital\.audio|account\.vital|store\.vital|forum\.vital|vital audio|tytel" binary_strings.txt | head -20 > hits.txt && [ -s hits.txt ]; then
             while IFS= read -r l; do echo "::error::[binary] $l"; done < hits.txt
             exit 1
@@ -67,7 +67,7 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          cp -r plugin/builds/linux_vst/build/Vial.vst3 dist/
+          cp -r plugin/builds/linux_vst/build/VialSynth.vst3 dist/
           ls -R dist | head -30
 
       - uses: actions/upload-artifact@v4
@@ -81,7 +81,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends xvfb unzip wget gdb libfreetype6 libasound2 libcurl4 libxrandr2 libxinerama1 libxcursor1
           wget -q https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Linux.zip
           unzip -q pluginval_Linux.zip
-          PLUGIN=plugin/builds/linux_vst/build/Vial.vst3
+          PLUGIN=plugin/builds/linux_vst/build/VialSynth.vst3
           final=0
 
           # pluginval randomises parameter values, so run several fixed seeds. On a crash, rerun
@@ -235,7 +235,7 @@ jobs:
       - name: Check for Vital branding and service domains
         run: |
           set +e
-          BIN=$(find plugin/builds/osx/build -name "Vial" -path "*.vst3/Contents/MacOS/*" | head -1)
+          BIN=$(find plugin/builds/osx/build -name "VialSynth" -path "*.vst3/Contents/MacOS/*" | head -1)
           if [ -z "$BIN" ]; then echo "::error::no VST3 binary produced"; exit 1; fi
           file "$BIN"
           strings -a "$BIN" > binary_strings.txt
@@ -248,8 +248,8 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          VST3=$(find plugin/builds/osx/build -name "Vial.vst3" -maxdepth 4 | head -1)
-          ditto "$VST3" dist/Vial.vst3
+          VST3=$(find plugin/builds/osx/build -name "VialSynth.vst3" -maxdepth 4 | head -1)
+          ditto "$VST3" dist/VialSynth.vst3
           ls -R dist | head -20
 
       - uses: actions/upload-artifact@v4

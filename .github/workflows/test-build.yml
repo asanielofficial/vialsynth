@@ -45,7 +45,7 @@ jobs:
 
       - name: Check for Vital branding and service domains
         run: |
-          strings -a plugin/builds/linux_vst/build/Vial.vst3/Contents/x86_64-linux/Vial.so > binary_strings.txt
+          strings -a plugin/builds/linux_vst/build/VialSynth.vst3/Contents/x86_64-linux/VialSynth.so > binary_strings.txt
           if grep -i -n -E "vital\.audio|account\.vital|store\.vital|forum\.vital|vital audio|tytel" binary_strings.txt | head -20 > hits.txt && [ -s hits.txt ]; then
             while IFS= read -r l; do echo "::error::[binary] $l"; done < hits.txt
             exit 1
@@ -55,8 +55,8 @@ jobs:
       - name: Zip
         run: |
           mkdir -p dist
-          cp -r plugin/builds/linux_vst/build/Vial.vst3 dist/
-          (cd dist && zip -qr ../VialSynth-linux-portable.zip Vial.vst3)
+          cp -r plugin/builds/linux_vst/build/VialSynth.vst3 dist/
+          (cd dist && zip -qr ../VialSynth-linux-portable.zip VialSynth.vst3)
           ls -l VialSynth-linux-portable.zip
 
       - uses: actions/upload-artifact@v4
