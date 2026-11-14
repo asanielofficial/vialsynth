@@ -30,6 +30,91 @@
 
 #include <cfloat>
 
+namespace {
+  // Looks up how many entries a strings:: array has, so indexed parameters can never read past its end.
+  int getStringLookupSize(const std::string* lookup) {
+    if (lookup == nullptr)
+      return 0;
+    if (lookup == strings::kOffOnNames)
+      return sizeof(strings::kOffOnNames) / sizeof(strings::kOffOnNames[0]);
+    if (lookup == strings::kWavetableDimensionNames)
+      return sizeof(strings::kWavetableDimensionNames) / sizeof(strings::kWavetableDimensionNames[0]);
+    if (lookup == strings::kOversamplingNames)
+      return sizeof(strings::kOversamplingNames) / sizeof(strings::kOversamplingNames[0]);
+    if (lookup == strings::kDelayStyleNames)
+      return sizeof(strings::kDelayStyleNames) / sizeof(strings::kDelayStyleNames[0]);
+    if (lookup == strings::kCompressorBandNames)
+      return sizeof(strings::kCompressorBandNames) / sizeof(strings::kCompressorBandNames[0]);
+    if (lookup == strings::kCompressorBandShortNames)
+      return sizeof(strings::kCompressorBandShortNames) / sizeof(strings::kCompressorBandShortNames[0]);
+    if (lookup == strings::kPresetStyleNames)
+      return sizeof(strings::kPresetStyleNames) / sizeof(strings::kPresetStyleNames[0]);
+    if (lookup == strings::kUnisonStackNames)
+      return sizeof(strings::kUnisonStackNames) / sizeof(strings::kUnisonStackNames[0]);
+    if (lookup == strings::kFilterStyleNames)
+      return sizeof(strings::kFilterStyleNames) / sizeof(strings::kFilterStyleNames[0]);
+    if (lookup == strings::kDiodeStyleNames)
+      return sizeof(strings::kDiodeStyleNames) / sizeof(strings::kDiodeStyleNames[0]);
+    if (lookup == strings::kCombStyleNames)
+      return sizeof(strings::kCombStyleNames) / sizeof(strings::kCombStyleNames[0]);
+    if (lookup == strings::kFrequencySyncNames)
+      return sizeof(strings::kFrequencySyncNames) / sizeof(strings::kFrequencySyncNames[0]);
+    if (lookup == strings::kDistortionTypeShortNames)
+      return sizeof(strings::kDistortionTypeShortNames) / sizeof(strings::kDistortionTypeShortNames[0]);
+    if (lookup == strings::kDistortionTypeNames)
+      return sizeof(strings::kDistortionTypeNames) / sizeof(strings::kDistortionTypeNames[0]);
+    if (lookup == strings::kDistortionFilterOrderNames)
+      return sizeof(strings::kDistortionFilterOrderNames) / sizeof(strings::kDistortionFilterOrderNames[0]);
+    if (lookup == strings::kFilterModelNames)
+      return sizeof(strings::kFilterModelNames) / sizeof(strings::kFilterModelNames[0]);
+    if (lookup == strings::kPredefinedWaveformNames)
+      return sizeof(strings::kPredefinedWaveformNames) / sizeof(strings::kPredefinedWaveformNames[0]);
+    if (lookup == strings::kEffectOrder)
+      return sizeof(strings::kEffectOrder) / sizeof(strings::kEffectOrder[0]);
+    if (lookup == strings::kSyncedFrequencyNames)
+      return sizeof(strings::kSyncedFrequencyNames) / sizeof(strings::kSyncedFrequencyNames[0]);
+    if (lookup == strings::kSmoothModeNames)
+      return sizeof(strings::kSmoothModeNames) / sizeof(strings::kSmoothModeNames[0]);
+    if (lookup == strings::kSyncShortNames)
+      return sizeof(strings::kSyncShortNames) / sizeof(strings::kSyncShortNames[0]);
+    if (lookup == strings::kSyncNames)
+      return sizeof(strings::kSyncNames) / sizeof(strings::kSyncNames[0]);
+    if (lookup == strings::kRandomShortNames)
+      return sizeof(strings::kRandomShortNames) / sizeof(strings::kRandomShortNames[0]);
+    if (lookup == strings::kRandomNames)
+      return sizeof(strings::kRandomNames) / sizeof(strings::kRandomNames[0]);
+    if (lookup == strings::kPaintPatternNames)
+      return sizeof(strings::kPaintPatternNames) / sizeof(strings::kPaintPatternNames[0]);
+    if (lookup == strings::kVoicePriorityNames)
+      return sizeof(strings::kVoicePriorityNames) / sizeof(strings::kVoicePriorityNames[0]);
+    if (lookup == strings::kVoiceOverrideNames)
+      return sizeof(strings::kVoiceOverrideNames) / sizeof(strings::kVoiceOverrideNames[0]);
+    if (lookup == strings::kEqHighModeNames)
+      return sizeof(strings::kEqHighModeNames) / sizeof(strings::kEqHighModeNames[0]);
+    if (lookup == strings::kEqBandModeNames)
+      return sizeof(strings::kEqBandModeNames) / sizeof(strings::kEqBandModeNames[0]);
+    if (lookup == strings::kEqLowModeNames)
+      return sizeof(strings::kEqLowModeNames) / sizeof(strings::kEqLowModeNames[0]);
+    if (lookup == strings::kPhaseDistortionNames)
+      return sizeof(strings::kPhaseDistortionNames) / sizeof(strings::kPhaseDistortionNames[0]);
+    if (lookup == strings::kSpectralMorphNames)
+      return sizeof(strings::kSpectralMorphNames) / sizeof(strings::kSpectralMorphNames[0]);
+    if (lookup == strings::kStereoModeNames)
+      return sizeof(strings::kStereoModeNames) / sizeof(strings::kStereoModeNames[0]);
+    if (lookup == strings::kFxSpectralNames)
+      return sizeof(strings::kFxSpectralNames) / sizeof(strings::kFxSpectralNames[0]);
+    if (lookup == strings::kDiceNames)
+      return sizeof(strings::kDiceNames) / sizeof(strings::kDiceNames[0]);
+    if (lookup == strings::kFftSizeNames)
+      return sizeof(strings::kFftSizeNames) / sizeof(strings::kFftSizeNames[0]);
+    if (lookup == strings::kWarpNames)
+      return sizeof(strings::kWarpNames) / sizeof(strings::kWarpNames[0]);
+    if (lookup == strings::kDestinationNames)
+      return sizeof(strings::kDestinationNames) / sizeof(strings::kDestinationNames[0]);
+    return 0;
+  }
+} // namespace
+
 namespace vital {
 
   bool compareValueDetails(const ValueDetails* a, const ValueDetails* b) {
@@ -55,6 +140,9 @@ namespace vital {
   static const std::string kFilterNamePrefix = "Filter";
   static const std::string kModulationNamePrefix = "Modulation";
 
+  // The delay can also follow the played note (key track), the fifth tempo choice.
+  static constexpr double kEffectSyncMax = 4.0;
+
   const ValueDetails ValueDetailsLookup::parameter_list[] = {
     { "bypass", 0x000702, 0.0, 1.0, 0.0, 0.0, 60.0,
       ValueDetails::kIndexed, false, "", "Bypass", nullptr },
@@ -76,11 +164,11 @@ namespace vital {
       ValueDetails::kLinear, false, "", "Delay Filter Cutoff", nullptr },
     { "delay_filter_spread", 0x000000, 0.0, 1.0, 1.0, 0.0, 1.0,
       ValueDetails::kLinear, false, "", "Delay Filter Spread", nullptr },
-    { "delay_sync", 0x000000, 0.0, 3.0, 1.0, 0.0, 1.0,
+    { "delay_sync", 0x000000, 0.0, kEffectSyncMax, 1.0, 0.0, 1.0,
       ValueDetails::kIndexed, false, "", "Delay Sync", strings::kFrequencySyncNames },
     { "delay_tempo", 0x000000, 4.0, 12.0, 9.0, 0.0, 1.0,
       ValueDetails::kIndexed, false, "", "Delay Tempo", strings::kSyncedFrequencyNames },
-    { "delay_aux_sync", 0x000507, 0.0, 3.0, 1.0, 0.0, 1.0,
+    { "delay_aux_sync", 0x000507, 0.0, kEffectSyncMax, 1.0, 0.0, 1.0,
       ValueDetails::kIndexed, false, "", "Delay Sync 2", strings::kFrequencySyncNames },
     { "delay_aux_tempo", 0x000507, 4.0, 12.0, 9.0, 0.0, 1.0,
       ValueDetails::kIndexed, false, "", "Delay Tempo 2", strings::kSyncedFrequencyNames },
@@ -102,6 +190,252 @@ namespace vital {
       ValueDetails::kLinear, false, "", "Distortion Filter Blend", nullptr },
     { "distortion_stages", 0x000000, 1.0, 8.0, 1.0, 0.0, 1.0,
       ValueDetails::kLinear, false, "", "Distortion Stages", nullptr },
+    { "delay_keytrack_transpose", 0x000000, -60.0, 36.0, -12.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Delay Keytrack Transpose", nullptr },
+    { "delay_keytrack_tune", 0x000000, -1.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "", "Delay Keytrack Tune", nullptr },
+    { "delay_aux_keytrack_transpose", 0x000507, -60.0, 36.0, -12.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Delay 2 Keytrack Transpose", nullptr },
+    { "delay_aux_keytrack_tune", 0x000507, -1.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "", "Delay 2 Keytrack Tune", nullptr },
+    { "fft_size", 0x000000, 0.0, 7.0, 2.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "FFT Size", strings::kFftSizeNames },
+    { "morph_spectral_position", 0x000000, 0.0, 1.0, 0.5, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Spectral Position", nullptr },
+    { "morph_spectral_gain", 0x000000, 0.0, 1.0, 0.5, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Spectral Gain", nullptr },
+    { "morph_spectral_density", 0x000000, 0.0, 1.0, 0.5, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Spectral Density", nullptr },
+    { "morph_spectral_resonance", 0x000000, 0.0, 1.0, 0.5, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Spectral Resonance", nullptr },
+    { "morph_spectral_spread", 0x000000, 0.0, 1.0, 0.5, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Spectral Spread", nullptr },
+    { "morph_spectral_depth", 0x000000, 0.0, 1.0, 0.5, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Spectral Depth", nullptr },
+    { "morph_spectral_phase", 0x000000, 0.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Spectral Phase", nullptr },
+    { "morph_spectral_table_mix", 0x000000, 0.0, 1.0, 1.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Spectral Table Mix", nullptr },
+    { "morph_table_position", 0x000000, 0.0, 1.0, 0.5, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Table Pitch", nullptr },
+    { "morph_table_gain", 0x000000, 0.0, 1.0, 0.5, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Table Gain", nullptr },
+    { "morph_table_resonance", 0x000000, 0.0, 1.0, 0.5, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Table Resonance", nullptr },
+    { "morph_distortion_phase", 0x000000, 0.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Distortion Phase", nullptr },
+    { "morph_distortion_bias", 0x000000, -1.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Distortion Bias", nullptr },
+    { "morph_distortion_smooth", 0x000000, 0.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Distortion Smooth", nullptr },
+    { "morph_distortion_drive", 0x000000, 0.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Distortion Drive", nullptr },
+    { "morph_distortion_dc_filter", 0x000000, 0.0, 1.0, 1.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Morph Distortion DC Filter", strings::kOffOnNames },
+    { "morph_distortion_mix", 0x000000, 0.0, 1.0, 1.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Distortion Mix", nullptr },
+    { "morph_on", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Morph Switch", strings::kOffOnNames },
+    { "morph_spectral_morph_type", 0x000000, 0.0, 16.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Morph Spectral Mode", strings::kFxSpectralNames },
+    { "morph_spectral_morph_amount", 0x000000, 0.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Spectral Morph", nullptr },
+    { "morph_random_dice", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Morph Random Dice", strings::kDiceNames },
+    { "morph_random_shuffle", 0x000000, 0.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Random Shuffle", nullptr },
+    { "morph_distortion_type", 0x000000, 0.0, 9.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Morph Warp Mode", strings::kWarpNames },
+    { "morph_distortion_amount", 0x000000, 0.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Morph Distortion", nullptr },
+    { "morph_warp_first", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Morph Warp Before Spectral", strings::kOffOnNames },
+    { "freq_shifter_on", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Freq Shifter Switch", strings::kOffOnNames },
+    { "freq_shifter_shift", 0x000000, -1.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Freq Shifter Shift", nullptr },
+    { "freq_shifter_unit", 0x000000, 0.0, 5.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Freq Shifter Unit", strings::kFreqShifterUnitNames },
+    { "freq_shifter_frequency", 0x000000, 0.0, 13.0, 7.643856, 0.0, 1.0,
+      ValueDetails::kExponential, false, " Hz", "Freq Shifter Range", nullptr },
+    { "freq_shifter_period", 0x000000, -13.0, 0.0, -7.643856, 0.0, 1.0,
+      ValueDetails::kExponential, false, " secs", "Freq Shifter Range (Seconds)", nullptr },
+    { "freq_shifter_tempo", 0x000000, 0.0, 10.0, 4.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Freq Shifter Range (Tempo)", strings::kSyncedFrequencyNames },
+    { "freq_shifter_keytrack_transpose", 0x000000, -60.0, 36.0, -12.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, " st", "Freq Shifter Range (Keytrack)", nullptr },
+    { "freq_shifter_quality", 0x000000, 0.0, 3.0, 1.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Freq Shifter Quality", strings::kFreqShifterQualityNames },
+    { "freq_shifter_stereo", 0x000000, -1.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Freq Shifter Stereo", nullptr },
+    { "freq_shifter_allpass", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Freq Shifter All-pass", strings::kOffOnNames },
+    { "freq_shifter_feedback", 0x000000, 0.0, 1.0, 0.3, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Freq Shifter Feedback", nullptr },
+    { "freq_shifter_fb_direction", 0x000000, -1.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Freq Shifter Feedback Direction", nullptr },
+    { "freq_shifter_dry_wet", 0x000000, 0.0, 1.0, 0.5, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Freq Shifter Mix", nullptr },
+    { "vibrato_on", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Vibrato Switch", strings::kOffOnNames },
+    { "vibrato_mod_a", 0x000000, 0.0, 5.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Vibrato Mod Type A", strings::kVibratoModNames },
+    { "vibrato_mod_b", 0x000000, 0.0, 5.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Vibrato Mod Type B", strings::kVibratoModNames },
+    { "vibrato_rate_a", 0x000000, -3.0, 5.4, 2.321928, 0.0, 1.0,
+      ValueDetails::kExponential, false, " Hz", "Vibrato Rate A", nullptr },
+    { "vibrato_rate_b", 0x000000, -3.0, 5.4, 2.321928, 0.0, 1.0,
+      ValueDetails::kExponential, false, " Hz", "Vibrato Rate B", nullptr },
+    { "vibrato_unit_a", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Vibrato Rate A Unit", strings::kRateUnitNames },
+    { "vibrato_unit_b", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Vibrato Rate B Unit", strings::kRateUnitNames },
+    { "vibrato_tempo_a", 0x000000, 0.0, 10.0, 4.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Vibrato Rate A (Tempo)", strings::kSyncedFrequencyNames },
+    { "vibrato_tempo_b", 0x000000, 0.0, 10.0, 4.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Vibrato Rate B (Tempo)", strings::kSyncedFrequencyNames },
+    { "vibrato_amount_a", 0x000000, 0.0, 200.0, 25.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, " cents", "Vibrato Amount A", nullptr },
+    { "vibrato_amount_b", 0x000000, 0.0, 200.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, " cents", "Vibrato Amount B", nullptr },
+    { "tremolo_on", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Tremolo Switch", strings::kOffOnNames },
+    { "tremolo_mod_a", 0x000000, 0.0, 5.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Tremolo Mod Type A", strings::kVibratoModNames },
+    { "tremolo_mod_b", 0x000000, 0.0, 5.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Tremolo Mod Type B", strings::kVibratoModNames },
+    { "tremolo_rate_a", 0x000000, -3.0, 5.4, 2.321928, 0.0, 1.0,
+      ValueDetails::kExponential, false, " Hz", "Tremolo Rate A", nullptr },
+    { "tremolo_rate_b", 0x000000, -3.0, 5.4, 2.321928, 0.0, 1.0,
+      ValueDetails::kExponential, false, " Hz", "Tremolo Rate B", nullptr },
+    { "tremolo_unit_a", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Tremolo Rate A Unit", strings::kRateUnitNames },
+    { "tremolo_unit_b", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Tremolo Rate B Unit", strings::kRateUnitNames },
+    { "tremolo_tempo_a", 0x000000, 0.0, 10.0, 4.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Tremolo Rate A (Tempo)", strings::kSyncedFrequencyNames },
+    { "tremolo_tempo_b", 0x000000, 0.0, 10.0, 4.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Tremolo Rate B (Tempo)", strings::kSyncedFrequencyNames },
+    { "tremolo_amount_a", 0x000000, 0.0, 1.0, 0.5, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Tremolo Amount A", nullptr },
+    { "tremolo_amount_b", 0x000000, 0.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Tremolo Amount B", nullptr },
+    { "utility_on", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Utility Switch", strings::kOffOnNames },
+    { "utility_gain", 0x000000, -30.0, 30.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, " dB", "Utility Gain", nullptr },
+    { "utility_pan", 0x000000, -1.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Utility Pan", nullptr },
+    { "utility_spread", 0x000000, 0.0, 2.0, 1.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Utility Spread", nullptr },
+    { "utility_haas", 0x000000, -20.0, 20.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, " ms", "Utility Haas", nullptr },
+    { "utility_mono_frequency", 0x000000, 4.321928, 8.965784, 6.906891, 0.0, 1.0,
+      ValueDetails::kExponential, false, " Hz", "Utility Mono Bass Frequency", nullptr },
+    { "utility_invert_left", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Utility Polarity Invert Left", strings::kOffOnNames },
+    { "utility_invert_right", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Utility Polarity Invert Right", strings::kOffOnNames },
+    { "utility_swap", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Utility Swap L/R", strings::kOffOnNames },
+    { "utility_dc_filter", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Utility DC Filter", strings::kOffOnNames },
+    { "utility_mono_bass", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Utility Mono Bass", strings::kOffOnNames },
+    { "pitch_shifter_on", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Pitch Shifter Switch", strings::kOffOnNames },
+    { "pitch_shifter_mode", 0x000000, 0.0, 3.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Pitch Shifter Mode", strings::kPitchShifterModeNames },
+    { "pitch_shifter_compensation", 0x000000, 0.0, 2.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Pitch Shifter Compensation", strings::kPitchShifterCompensationNames },
+    { "pitch_shifter_pitch", 0x000000, -24.0, 24.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, " st", "Pitch Shifter Pitch", nullptr },
+    { "pitch_shifter_grain", 0x000000, 5.0, 200.0, 40.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, " ms", "Pitch Shifter Grain Size", nullptr },
+    { "pitch_shifter_resolution", 0x000000, 0.0, 1.0, 0.5, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Pitch Shifter Resolution", nullptr },
+    { "pitch_shifter_formant_control", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Pitch Shifter Formant Control", strings::kOffOnNames },
+    { "pitch_shifter_formant", 0x000000, -24.0, 24.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, " st", "Pitch Shifter Formant", nullptr },
+    { "pitch_shifter_dry_wet", 0x000000, 0.0, 1.0, 1.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "%", "Pitch Shifter Mix", nullptr },
+    { "phaser_keytrack_transpose", 0x000000, -60.0, 36.0, -12.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Phaser Keytrack Transpose", nullptr },
+    { "phaser_keytrack_tune", 0x000000, -1.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "", "Phaser Keytrack Tune", nullptr },
+    { "flanger_keytrack_transpose", 0x000000, -60.0, 36.0, -12.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Flanger Keytrack Transpose", nullptr },
+    { "flanger_keytrack_tune", 0x000000, -1.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "", "Flanger Keytrack Tune", nullptr },
+    { "chorus_keytrack_transpose", 0x000000, -60.0, 36.0, -12.0, 0.0, 1.0,
+      ValueDetails::kIndexed, false, "", "Chorus Keytrack Transpose", nullptr },
+    { "chorus_keytrack_tune", 0x000000, -1.0, 1.0, 0.0, 0.0, 100.0,
+      ValueDetails::kLinear, false, "", "Chorus Keytrack Tune", nullptr },
+    { "pointmod_1", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 1", nullptr },
+    { "pointmod_2", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 2", nullptr },
+    { "pointmod_3", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 3", nullptr },
+    { "pointmod_4", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 4", nullptr },
+    { "pointmod_5", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 5", nullptr },
+    { "pointmod_6", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 6", nullptr },
+    { "pointmod_7", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 7", nullptr },
+    { "pointmod_8", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 8", nullptr },
+    { "pointmod_9", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 9", nullptr },
+    { "pointmod_10", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 10", nullptr },
+    { "pointmod_11", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 11", nullptr },
+    { "pointmod_12", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 12", nullptr },
+    { "pointmod_13", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 13", nullptr },
+    { "pointmod_14", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 14", nullptr },
+    { "pointmod_15", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 15", nullptr },
+    { "pointmod_16", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 16", nullptr },
+    { "pointmod_17", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 17", nullptr },
+    { "pointmod_18", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 18", nullptr },
+    { "pointmod_19", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 19", nullptr },
+    { "pointmod_20", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 20", nullptr },
+    { "pointmod_21", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 21", nullptr },
+    { "pointmod_22", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 22", nullptr },
+    { "pointmod_23", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 23", nullptr },
+    { "pointmod_24", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 24", nullptr },
+    { "pointmod_25", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 25", nullptr },
+    { "pointmod_26", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 26", nullptr },
+    { "pointmod_27", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 27", nullptr },
+    { "pointmod_28", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 28", nullptr },
+    { "pointmod_29", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 29", nullptr },
+    { "pointmod_30", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 30", nullptr },
+    { "pointmod_31", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 31", nullptr },
+    { "pointmod_32", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Point Modulation 32", nullptr },
     { "legato", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
       ValueDetails::kIndexed, false, "", "Legato", strings::kOffOnNames },
     { "macro_control_1", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
@@ -585,11 +919,47 @@ namespace vital {
         kModulationIdPrefix, kModulationNamePrefix, kNewModulationVersion);
     }
 
+    // More copies of every effect: the same parameters under the names "<effect>_<n>_<parameter>".
+    {
+      static const char* kEffectIds[] = { "chorus", "compressor", "delay", "distortion", "eq", "filter_fx",
+                                          "flanger", "phaser", "reverb", "morph", "pitch_shifter",
+                                          "utility", "freq_shifter", "vibrato", "tremolo" };
+      static const char* kEffectTitles[] = { "Chorus", "Compressor", "Delay", "Distortion", "EQ", "Filter fx",
+                                             "Flanger", "Phaser", "Reverb", "Morph", "Pitch Shifter",
+                                             "Utility", "Freq Shifter", "Vibrato", "Tremolo" };
+      for (int e = 0; e < 15; ++e) {
+        std::string id = kEffectIds[e];
+        std::string title = kEffectTitles[e];
+        std::string start = id + "_";
+        std::vector<ValueDetails> originals;
+        for (auto& entry : details_lookup_) {
+          if (entry.first.compare(0, start.size(), start) == 0)
+            originals.push_back(entry.second);
+        }
+
+        for (int copy = 2; copy <= kMaxEffectInstances; ++copy) {
+          for (ValueDetails details : originals) {
+            std::string rest = details.name.substr(start.size());
+            details.name = start + std::to_string(copy) + "_" + rest;
+            if (details.display_name.compare(0, title.size(), title) == 0)
+              details.display_name = title + " " + std::to_string(copy) + details.display_name.substr(title.size());
+            else
+              details.display_name += " " + std::to_string(copy);
+            details_lookup_[details.name] = details;
+            details_list_.push_back(&details_lookup_[details.name]);
+          }
+        }
+      }
+    }
+
     details_lookup_["osc_1_on"].default_value = 1.0f;
     details_lookup_["osc_2_destination"].default_value = 1.0f;
     details_lookup_["osc_3_destination"].default_value = 3.0f;
     details_lookup_["filter_1_osc1_input"].default_value = 1.0f;
     details_lookup_["filter_2_osc2_input"].default_value = 1.0f;
+
+    for (auto& entry : details_lookup_)
+      entry.second.string_lookup_size = getStringLookupSize(entry.second.string_lookup);
 
     std::sort(details_list_.begin(), details_list_.end(), compareValueDetails);
   }

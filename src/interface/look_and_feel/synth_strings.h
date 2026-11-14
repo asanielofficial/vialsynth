@@ -305,14 +305,12 @@ namespace strings {
     "FLANGER",
     "PHASER",
     "REVERB",
-#if NEW_EFFECTS_PORTED
     "MORPH",
     "PITCH SHIFTER",
     "UTILITY",
     "FREQ SHIFTER",
     "VIBRATO",
     "TREMOLO",
-#endif
   };
 
   const std::string kDestinationMenuNames[vital::constants::kNumSourceDestinations + vital::constants::kNumEffects] = {
@@ -330,14 +328,12 @@ namespace strings {
     "Flanger",
     "Phaser",
     "Reverb",
-#if NEW_EFFECTS_PORTED
     "Morph",
     "Pitch Shifter",
     "Utility",
     "Freq Shifter",
     "Vibrato",
     "Tremolo",
-#endif
   };
 
   const std::string kRateUnitNames[] = {

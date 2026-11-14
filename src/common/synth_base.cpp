@@ -18,6 +18,9 @@
 
 #include "sample_source.h"
 #include "sound_engine.h"
+#if VITAL_FX
+#include "fx_tables.h"
+#endif
 #include "load_save.h"
 #include "memory.h"
 #include "modulation_connection_processor.h"
@@ -36,11 +39,11 @@ SynthBase::SynthBase() : expired_(false) {
 
   mod_connections_.reserve(vital::kMaxModulationConnections);
 
-  for (int i = 0; i < vital::kNumOscillators; ++i) {
+  for (int i = 0; i < vital::kNumWavetableSlots; ++i) {
     vital::Wavetable* wavetable = engine_->getWavetable(i);
     if (wavetable) {
       wavetable_creators_[i] = std::make_unique<WavetableCreator>(wavetable);
-      wavetable_creators_[i]->init();
+      initWavetableCreator(i);
     }
   }
 
@@ -64,7 +67,11 @@ SynthBase::SynthBase() : expired_(false) {
 SynthBase::~SynthBase() { }
 
 void SynthBase::valueChanged(const std::string& name, vital::mono_float value) {
-  controls_[name]->set(value);
+  // A parameter that this engine does not implement (e.g. synth-only ones in the effect build) is ignored
+  // instead of dereferencing a missing control.
+  auto control = controls_.find(name);
+  if (control != controls_.end() && control->second)
+    control->second->set(value);
 }
 
 void SynthBase::valueChangedInternal(const std::string& name, vital::mono_float value) {
@@ -73,7 +80,10 @@ void SynthBase::valueChangedInternal(const std::string& name, vital::mono_float 
 }
 
 void SynthBase::valueChangedThroughMidi(const std::string& name, vital::mono_float value) {
-  controls_[name]->set(value);
+  auto control = controls_.find(name);
+  if (control == controls_.end() || !control->second)
+    return;
+  control->second->set(value);
   ValueChangedCallback* callback = new ValueChangedCallback(self_reference_, name, value);
   setValueNotifyHost(name, value);
   callback->post();
@@ -284,7 +294,26 @@ vital::Wavetable* SynthBase::getWavetable(int index) {
 }
 
 WavetableCreator* SynthBase::getWavetableCreator(int index) {
+  if (index < 0 || index >= vital::kNumWavetableSlots)
+    return nullptr;
   return wavetable_creators_[index].get();
+}
+
+// The oscillators start from Vital's default wavetable. The effect build's four table slots start from the
+// built-in tables (transfer curves for the warp tables, filter responses for the spectral tables).
+void SynthBase::initWavetableCreator(int index) {
+  WavetableCreator* creator = getWavetableCreator(index);
+  if (creator == nullptr)
+    return;
+#if VITAL_FX
+  const int kind = vital::FxTables::kindOfSlot(index);
+  std::vector<float> frames(vital::FxTables::kFrames * vital::WaveFrame::kWaveformSize);
+  for (int f = 0; f < vital::FxTables::kFrames; ++f)
+    vital::FxTables::fillFrame(kind, f, frames.data() + f * vital::WaveFrame::kWaveformSize);
+  creator->initFromFrames(frames.data(), vital::FxTables::kFrames, kind == 0 ? "Distort Table" : "Spectral Table");
+#else
+  creator->init();
+#endif
 }
 
 vital::Sample* SynthBase::getSample() {
@@ -306,14 +335,21 @@ int SynthBase::getSampleRate() {
 void SynthBase::initEngine() {
   clearModulations();
   if (getWavetableCreator(0)) {
-    for (int i = 0; i < vital::kNumOscillators; ++i)
-      getWavetableCreator(i)->init();
+    for (int i = 0; i < vital::kNumWavetableSlots; ++i)
+      initWavetableCreator(i);
 
-    engine_->getSample()->init();
+    if (engine_->getSample())   // the effect build has no sample
+      engine_->getSample()->init();
   }
 
   for (int i = 0; i < vital::kNumLfos; ++i)
     getLfoSource(i)->initTriangle();
+
+#if VITAL_FX
+  for (int lane = 0; lane < vital::SoundEngine::kNumDrawingLanes; ++lane)
+    engine_->resetSpectralDrawings(lane);
+#endif
+  engine_->setEffectChain(nullptr, 0);  // no effects
 
   vital::control_map controls = engine_->getControls();
   for (auto& control : controls) {
@@ -586,10 +622,14 @@ void SynthBase::processAudio(AudioSampleBuffer* buffer, int channels, int sample
 }
 
 void SynthBase::processAudioWithInput(AudioSampleBuffer* buffer, const vital::poly_float* input_buffer,
-                                      int channels, int samples, int offset) {
+                                      int channels, int samples, int offset,
+                                      const vital::poly_float* sidechain_buffer) {
   if (expired_)
     return;
 
+#if VITAL_FX
+  engine_->setSidechainInput(sidechain_buffer);
+#endif
   engine_->processWithInput(input_buffer, samples);
   writeAudio(buffer, channels, samples, offset);
 }
@@ -737,10 +777,39 @@ String SynthBase::getMacroName(int index) {
   return name;
 }
 
-const vital::StereoMemory* SynthBase::getEqualizerMemory() {
-  if (engine_)
-    return engine_->getEqualizerMemory();
+const vital::StereoMemory* SynthBase::getInputMemory() {
+#if VITAL_FX
+  return engine_->getInputMemory();
+#else
   return nullptr;
+#endif
+}
+
+int SynthBase::getEngineLatencySamples() {
+  return engine_ ? engine_->getLatencySamples() : 0;
+}
+
+const vital::StereoMemory* SynthBase::getSidechainMemory() {
+#if VITAL_FX
+  return engine_->getSidechainMemory();
+#else
+  return nullptr;
+#endif
+}
+
+const vital::StereoMemory* SynthBase::getEqualizerMemory(int instance) {
+  if (engine_)
+    return engine_->getEqualizerMemory(instance);
+  return nullptr;
+}
+
+void SynthBase::setEffectChain(const int* slots, int num_slots) {
+  if (engine_)
+    engine_->setEffectChain(slots, num_slots);
+}
+
+int SynthBase::getEffectChain(int* slots) const {
+  return engine_ ? engine_->getEffectChain(slots) : 0;
 }
 
 vital::ModulationConnectionBank& SynthBase::getModulationBank() {

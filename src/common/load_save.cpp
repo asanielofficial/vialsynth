@@ -176,7 +176,10 @@ json LoadSave::stateToJson(SynthBase* synth, const CriticalSection& critical_sec
         point_mods.push_back({ { "slot", slot }, { "curve", curve_id }, { "point", point }, { "axis", axis } });
     }
     settings_data["point_mods"] = point_mods;
+  }
+#endif
 
+  {
     // The effect chain: effect ids in order (+ a flag for minimized effects); see FxEffectChain.
     int chain[vital::kMaxEffectInstances * vital::constants::kNumEffects];
     int count = synth->getEffectChain(chain);
@@ -185,7 +188,6 @@ json LoadSave::stateToJson(SynthBase* synth, const CriticalSection& critical_sec
       effect_chain.push_back(chain[i]);
     settings_data["effect_chain"] = effect_chain;
   }
-#endif
 
   json data;
   data["synth_version"] = ProjectInfo::versionString;
@@ -494,15 +496,17 @@ json LoadSave::updateFromOldVersion(json state) {
   }
 
   if (compareVersionStrings(version, "0.3.4") < 0) {
+    // Those presets only know the nine effects up to the Reverb.
+    constexpr int kLegacyEffects = vital::constants::kMorph;
     float float_order = settings["effect_chain_order"];
-    int effect_order[vital::constants::kNumEffects];
-    vital::utils::decodeFloatToOrder(effect_order, float_order, vital::constants::kNumEffects - 1);
-    for (int i = 0; i < vital::constants::kNumEffects - 1; ++i) {
+    int effect_order[kLegacyEffects];
+    vital::utils::decodeFloatToOrder(effect_order, float_order, kLegacyEffects - 1);
+    for (int i = 0; i < kLegacyEffects - 1; ++i) {
       if (effect_order[i] >= vital::constants::kFilterFx)
         effect_order[i] += 1;
     }
-    effect_order[vital::constants::kNumEffects - 1] = vital::constants::kFilterFx;
-    settings["effect_chain_order"] = vital::utils::encodeOrderToFloat(effect_order, vital::constants::kNumEffects);
+    effect_order[kLegacyEffects - 1] = vital::constants::kFilterFx;
+    settings["effect_chain_order"] = vital::utils::encodeOrderToFloat(effect_order, kLegacyEffects);
   }
 
   if (compareVersionStrings(version, "0.3.5") < 0) {
@@ -1141,7 +1145,9 @@ bool LoadSave::jsonToState(SynthBase* synth, std::map<std::string, String>& save
                                                binding["point"].get<int>(), binding["axis"].get<int>());
       }
     }
-
+  }
+#endif
+  {
     // The chain. Presets from before the effects list had a fixed set of effects in a permuted order.
     std::vector<int> chain;
     if (settings.count("effect_chain") && settings["effect_chain"].is_array()) {
@@ -1168,7 +1174,6 @@ bool LoadSave::jsonToState(SynthBase* synth, std::map<std::string, String>& save
     }
     synth->setEffectChain(chain.data(), static_cast<int>(chain.size()));
   }
-#endif
   loadSaveState(save_info, data);
   synth->checkOversampling();
   

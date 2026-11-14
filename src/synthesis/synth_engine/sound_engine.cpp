@@ -25,7 +25,11 @@
 #include "synth_voice_handler.h"
 #include "peak_meter.h"
 #include "operators.h"
-#include "reorderable_effect_chain.h"
+#include "fx_effect_chain.h"
+#include "fx_tables.h"
+#include "morph_module.h"
+#include "other_filter.h"
+#include "spectral_morph_processor.h"
 #include "value_switch.h"
 
 namespace vital {
@@ -33,6 +37,26 @@ namespace vital {
   SoundEngine::SoundEngine() : SynthModule(0, 1), voice_handler_(nullptr), effect_chain_(nullptr),
                                output_total_(nullptr), last_oversampling_amount_(-1), last_sample_rate_(-1),
                                oversampling_(nullptr), legato_(nullptr), decimator_(nullptr), peak_meter_(nullptr) {
+    for (int& curve : point_mod_curve_)
+      curve = -1;
+    // The wavetables of the Morph effects (slots 4 and up) start as the built-in ones; the editor can replace their
+    // contents. They exist before the graph, whose processors read them.
+    for (int i = kNumOscillators + 1; i < kNumFxTables; ++i) {
+      fx_tables_[i] = std::make_unique<Wavetable>(kNumOscillatorWaveFrames);
+      FxTables::fillWavetable(fx_tables_[i].get(), FxTables::kindOfSlot(i));
+    }
+    // The drawn curves of the Custom model of the Other filters exist before the graph too: every filter finds them
+    // through the table that is current while the graph is built.
+    const LineGenerator* filter_curve_table[kNumFilterCurveSets * kNumSpectralCurves];
+    for (int set = 0; set < kNumFilterCurveSets; ++set) {
+      int lane = kFirstFilterLane + set;
+      for (int i = 0; i < kNumSpectralCurves; ++i) {
+        spectral_curves_[lane][i] = std::make_unique<LineGenerator>();
+        filter_curve_table[set * kNumSpectralCurves + i] = spectral_curves_[lane][i].get();
+        resetSpectralCurve(lane, i);
+      }
+    }
+    OtherFilter::CurveScope curve_scope(filter_curve_table);
     SoundEngine::init();
     bps_ = data_->controls["beats_per_minute"];
     modulation_processors_.reserve(kMaxModulationConnections);
@@ -72,30 +96,60 @@ namespace vital {
     createBaseControl("pitch_wheel");
     createBaseControl("mod_wheel");
 
-    Value* effect_chain_order = createBaseControl("effect_chain_order");
-    effect_chain_ = new ReorderableEffectChain(beats_per_second, voice_handler_->midi_offset_output());
+    fft_size_ = createBaseControl("fft_size");
+    midi_current_ = new Value(60.0f);
+    midi_bent_ = new Value(60.0f);
+    addProcessor(midi_current_);
+    addProcessor(midi_bent_);
+
+    effect_chain_ = new FxEffectChain(beats_per_second, voice_handler_->midi_offset_output(), &keytrack_notes_);
     addSubmodule(effect_chain_);
     addProcessor(effect_chain_);
-    effect_chain_->plug(voice_handler_, ReorderableEffectChain::kAudio);
-    effect_chain_->plug(effect_chain_order, ReorderableEffectChain::kOrder);
+    effect_chain_->plug(voice_handler_, FxEffectChain::kAudio);
 
-    SynthModule* compressor = effect_chain_->getEffect(constants::kCompressor);
-    createStatusOutput("compressor_low_input", compressor->output(CompressorModule::kLowInputMeanSquared));
-    createStatusOutput("compressor_band_input", compressor->output(CompressorModule::kBandInputMeanSquared));
-    createStatusOutput("compressor_high_input", compressor->output(CompressorModule::kHighInputMeanSquared));
-    createStatusOutput("compressor_low_output", compressor->output(CompressorModule::kLowOutputMeanSquared));
-    createStatusOutput("compressor_band_output", compressor->output(CompressorModule::kBandOutputMeanSquared));
-    createStatusOutput("compressor_high_output", compressor->output(CompressorModule::kHighOutputMeanSquared));
+    // The effects' meters and displays read these; every copy of an effect has its own.
+    for (int copy = 0; copy < kMaxEffectInstances; ++copy) {
+      auto id = [copy](int type) { return FxEffectChain::instanceId(type, copy); };
 
-    SynthModule* chorus = effect_chain_->getEffect(constants::kChorus);
-    for (int i = 0; i < ChorusModule::kMaxDelayPairs; ++i)
-      createStatusOutput("chorus_delays" + std::to_string(i + 1), chorus->output(i + 1));
-    
-    SynthModule* phaser = effect_chain_->getEffect(constants::kPhaser);
-    createStatusOutput("phaser_cutoff", phaser->output(PhaserModule::kCutoffOutput));
+      SynthModule* compressor = effect_chain_->getEffect(constants::kCompressor, copy);
+      std::string compressor_id = id(constants::kCompressor);
+      createStatusOutput(compressor_id + "_low_input", compressor->output(CompressorModule::kLowInputMeanSquared));
+      createStatusOutput(compressor_id + "_band_input", compressor->output(CompressorModule::kBandInputMeanSquared));
+      createStatusOutput(compressor_id + "_high_input", compressor->output(CompressorModule::kHighInputMeanSquared));
+      createStatusOutput(compressor_id + "_low_output", compressor->output(CompressorModule::kLowOutputMeanSquared));
+      createStatusOutput(compressor_id + "_band_output", compressor->output(CompressorModule::kBandOutputMeanSquared));
+      createStatusOutput(compressor_id + "_high_output", compressor->output(CompressorModule::kHighOutputMeanSquared));
 
-    SynthModule* flanger = effect_chain_->getEffect(constants::kFlanger);
-    createStatusOutput("flanger_delay_frequency", flanger->output(FlangerModule::kFrequencyOutput));
+      SynthModule* chorus = effect_chain_->getEffect(constants::kChorus, copy);
+      for (int i = 0; i < ChorusModule::kMaxDelayPairs; ++i)
+        createStatusOutput(id(constants::kChorus) + "_delays" + std::to_string(i + 1), chorus->output(i + 1));
+
+      SynthModule* phaser = effect_chain_->getEffect(constants::kPhaser, copy);
+      createStatusOutput(id(constants::kPhaser) + "_cutoff", phaser->output(PhaserModule::kCutoffOutput));
+
+      SynthModule* flanger = effect_chain_->getEffect(constants::kFlanger, copy);
+      createStatusOutput(id(constants::kFlanger) + "_delay_frequency",
+                         flanger->output(FlangerModule::kFrequencyOutput));
+    }
+
+    effect_chain_->connectMorph(fft_size_);
+
+    // The Morph effects draw their curves and read their tables from the engine.
+    for (int instance = 0; instance < kMaxEffectInstances; ++instance) {
+      int lane = morphLane(instance);
+      MorphModule* morph = static_cast<MorphModule*>(effect_chain_->getEffect(constants::kMorph, instance));
+      for (int i = 0; i < kNumSpectralCurves; ++i) {
+        spectral_curves_[lane][i] = std::make_unique<LineGenerator>();
+        morph->setCurve(i, spectral_curves_[lane][i].get());
+      }
+      morph->setTables(fx_tables_[FxTables::morphSlot(instance, false)].get(),
+                       fx_tables_[FxTables::morphSlot(instance, true)].get());
+      resetSpectralDrawings(lane);
+    }
+
+    for (int i = 0; i < kNumPointMods; ++i)
+      point_mod_outputs_[i] = createMonoModControl(pointModName(i));
+    effect_chain_->connectNote(midi_bent_->output(), midi_current_->output());
 
     output_total_ = new Add();
     output_total_->plug(effect_chain_, 0);
@@ -244,7 +298,10 @@ namespace vital {
 
     FloatVectorOperations::disableDenormalisedNumberSupport();
     voice_handler_->setLegato(legato_->value());
+    midi_current_->set(static_cast<mono_float>(keytrack_notes_.lastNote()));
+    midi_bent_->set(static_cast<mono_float>(keytrack_notes_.lastNote()));
     ProcessorRouter::process(num_samples);
+    applyPointModulation();
 
     if (getNumActiveVoices() == 0) {
       CircularQueue<ModulationConnectionProcessor*>& connections = voice_handler_->enabledModulationConnection();
@@ -264,16 +321,19 @@ namespace vital {
   }
 
   void SoundEngine::allSoundsOff() {
+    keytrack_notes_.allNotesOff();
     voice_handler_->allSoundsOff();
     effect_chain_->hardReset();
     decimator_->hardReset();
   }
 
   void SoundEngine::allNotesOff(int sample) {
+    keytrack_notes_.allNotesOff();
     voice_handler_->allNotesOff(sample);
   }
 
   void SoundEngine::allNotesOff(int sample, int channel) {
+    keytrack_notes_.allNotesOff();
     voice_handler_->allNotesOff(channel);
   }
 
@@ -282,10 +342,12 @@ namespace vital {
   }
 
   void SoundEngine::noteOn(int note, mono_float velocity, int sample, int channel) {
+    keytrack_notes_.noteOn(note);
     voice_handler_->noteOn(note, velocity, sample, channel);
   }
 
   void SoundEngine::noteOff(int note, mono_float lift, int sample, int channel) {
+    keytrack_notes_.noteOff(note);
     voice_handler_->noteOff(note, lift, sample, channel);
   }
 
@@ -321,8 +383,27 @@ namespace vital {
     return getModulationSource(source)->owner->enabled();
   }
 
-  const StereoMemory* SoundEngine::getEqualizerMemory() {
-    return effect_chain_->getEqualizerMemory();
+  const StereoMemory* SoundEngine::getEqualizerMemory(int instance) {
+    return effect_chain_->getEqualizerMemory(instance);
+  }
+
+  void SoundEngine::setEffectChain(const int* slots, int num_slots) {
+    effect_chain_->setChain(slots, num_slots);
+  }
+
+  int SoundEngine::getEffectChain(int* slots) const {
+    return effect_chain_->getChain(slots);
+  }
+
+  bool SoundEngine::morphInChain(int instance) const {
+    return effect_chain_ != nullptr && effect_chain_->morphInChain(instance);
+  }
+
+  int SoundEngine::getLatencySamples() const {
+    if (fft_size_ == nullptr || effect_chain_ == nullptr)
+      return 0;
+
+    return effect_chain_->morphLatencySamples(static_cast<int>(fft_size_->value() + 0.5f));
   }
 
   void SoundEngine::setAftertouch(mono_float note, mono_float value, int sample, int channel) {
@@ -352,6 +433,11 @@ namespace vital {
   }
 
   Wavetable* SoundEngine::getWavetable(int index) {
+    if (index >= kNumOscillators) {
+      if (index >= kNumFxTables)
+        return nullptr;
+      return fx_tables_[index].get();
+    }
     return voice_handler_->getWavetable(index);
   }
 
@@ -364,10 +450,12 @@ namespace vital {
   }
 
   void SoundEngine::sustainOn(int channel) {
+    keytrack_notes_.sustainOn();
     voice_handler_->sustainOn(channel);
   }
 
   void SoundEngine::sustainOff(int sample, int channel) {
+    keytrack_notes_.sustainOff();
     voice_handler_->sustainOff(sample, channel);
   }
 
@@ -380,10 +468,12 @@ namespace vital {
   }
 
   void SoundEngine::sustainOnRange(int from_channel, int to_channel) {
+    keytrack_notes_.sustainOn();
     voice_handler_->sustainOnRange(from_channel, to_channel);
   }
 
   void SoundEngine::sustainOffRange(int sample, int from_channel, int to_channel) {
+    keytrack_notes_.sustainOff();
     voice_handler_->sustainOffRange(sample, from_channel, to_channel);
   }
 
@@ -394,4 +484,157 @@ namespace vital {
   void SoundEngine::sostenutoOffRange(int sample, int from_channel, int to_channel) {
     voice_handler_->sostenutoOffRange(sample, from_channel, to_channel);
   }
+
+  static_assert(SoundEngine::kNumPointMods == LineGenerator::kMaxPointSlots, "slot counts differ");
+
+  LineGenerator* SoundEngine::getPointModCurve(int curve_id) {
+    constexpr int kNumSpectral = kNumDrawingLanes * kNumSpectralCurves;
+    if (curve_id < 0 || curve_id >= kNumPointModCurves)
+      return nullptr;
+    if (curve_id < kNumSpectral)
+      return getSpectralCurve(curve_id / kNumSpectralCurves, curve_id % kNumSpectralCurves);
+    return getLfoSource(curve_id - kNumSpectral);
+  }
+
+  int SoundEngine::bindPointMod(int curve_id, int point, int axis) {
+    LineGenerator* curve = getPointModCurve(curve_id);
+    if (curve == nullptr || point < 0 || point >= curve->getNumPoints())
+      return -1;
+
+    int existing = curve->pointSlot(point, axis);
+    if (existing >= 0 && point_mod_curve_[existing] == curve_id)
+      return existing;
+
+    for (int slot = 0; slot < kNumPointMods; ++slot) {
+      if (point_mod_curve_[slot] < 0) {
+        point_mod_curve_[slot] = curve_id;
+        curve->setPointSlot(point, axis, slot);
+        return slot;
+      }
+    }
+    return -1;
+  }
+
+  bool SoundEngine::bindPointModToSlot(int slot, int curve_id, int point, int axis) {
+    LineGenerator* curve = getPointModCurve(curve_id);
+    if (curve == nullptr || slot < 0 || slot >= kNumPointMods || point_mod_curve_[slot] >= 0 || point < 0 ||
+        point >= curve->getNumPoints() || axis < 0 || axis >= LineGenerator::kNumAxes ||
+        curve->pointSlot(point, axis) >= 0)
+      return false;
+
+    point_mod_curve_[slot] = curve_id;
+    curve->setPointSlot(point, axis, slot);
+    return true;
+  }
+
+  void SoundEngine::unbindPointMod(int slot) {
+    if (slot < 0 || slot >= kNumPointMods || point_mod_curve_[slot] < 0)
+      return;
+
+    LineGenerator* curve = getPointModCurve(point_mod_curve_[slot]);
+    point_mod_curve_[slot] = -1;
+    int point, axis;
+    if (curve && curve->findSlot(slot, point, axis)) {
+      curve->setPointSlot(point, axis, -1);
+      float zeros[kNumPointMods] = {};
+      curve->applySlotValues(zeros);
+    }
+  }
+
+  void SoundEngine::unbindAllPointMods() {
+    for (int slot = 0; slot < kNumPointMods; ++slot)
+      point_mod_curve_[slot] = -1;
+    for (int id = 0; id < kNumPointModCurves; ++id) {
+      if (LineGenerator* curve = getPointModCurve(id))
+        curve->clearPointModulation();
+    }
+  }
+
+  // Once per block, after the modulation matrix has run: moves the bound points by their slot's value.
+  void SoundEngine::applyPointModulation() {
+    float values[kNumPointMods];
+    bool touched[kNumPointModCurves] = {};
+    bool any = false;
+    for (int slot = 0; slot < kNumPointMods; ++slot) {
+      values[slot] = 0.0f;
+      int id = point_mod_curve_[slot];
+      if (id < 0)
+        continue;
+      LineGenerator* curve = getPointModCurve(id);
+      if (curve == nullptr || !curve->hasSlot(slot)) {
+        point_mod_curve_[slot] = -1;  // the point it was bound to is gone
+        continue;
+      }
+      values[slot] = utils::clamp(point_mod_outputs_[slot]->buffer[0][0], -1.0f, 1.0f);
+      touched[id] = true;
+      any = true;
+    }
+
+    if (!any && !had_point_modulation_)
+      return;
+    for (int id = 0; id < kNumPointModCurves; ++id) {
+      if (touched[id] || point_mod_dirty_[id]) {
+        getPointModCurve(id)->applySlotValues(values);
+        point_mod_dirty_[id] = touched[id];
+      }
+    }
+    had_point_modulation_ = any;
+  }
+
+  // Flat gain, a rising phase ramp and a flat (x1) comb delay: the starting point of each drawable mode.
+  void SoundEngine::resetSpectralCurve(int lane, int index) {
+    LineGenerator* curve = spectral_curves_[lane][index].get();
+    curve->initLinear();
+    if (lane >= kFirstFilterLane) {
+      // Custom filter: A is a low pass, B a band pass, C a high pass (a point's y is upside down: 0 = pass).
+      static const float kShapes[3][5][2] = {
+        { { 0.0f, 0.0f }, { 0.35f, 0.0f }, { 0.7f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f } },
+        { { 0.0f, 1.0f }, { 0.35f, 1.0f }, { 0.5f, 0.0f }, { 0.65f, 1.0f }, { 1.0f, 1.0f } },
+        { { 0.0f, 1.0f }, { 0.3f, 1.0f }, { 0.65f, 0.0f }, { 1.0f, 0.0f }, { 1.0f, 0.0f } } };
+      int count = index == 1 ? 5 : 4;
+      curve->setNumPoints(count);
+      for (int i = 0; i < count; ++i) {
+        curve->setPoint(i, { kShapes[index][i][0], kShapes[index][i][1] });
+        curve->setPower(i, 0.0f);
+      }
+      curve->setSmooth(true);
+      curve->render();
+      return;
+    }
+    if (index != 1) {
+      float level = 0.5f;
+      curve->setNumPoints(2);
+      // (a line generator point is upside down: its value is 1 - y)
+      curve->setPoint(0, { 0.0f, 1.0f - level });
+      curve->setPoint(1, { 1.0f, 1.0f - level });
+      curve->setPower(0, 0.0f);
+      curve->setPower(1, 0.0f);
+    }
+    curve->render();
+  }
+
+  void SoundEngine::resetSpectralDrawings(int lane) {
+    for (int i = 0; i < kNumSpectralCurves; ++i)
+      resetSpectralCurve(lane, i);
+    setRandomSeed(lane, uint32_t(SpectralMorphProcessor::kDefaultSeed));
+  }
+
+  uint32_t SoundEngine::getRandomSeed(int lane) const {
+    if (lane >= kFirstFilterLane || lane < 2 || effect_chain_ == nullptr)
+      return uint32_t(SpectralMorphProcessor::kDefaultSeed);
+    return static_cast<MorphModule*>(effect_chain_->getEffect(constants::kMorph, lane - 2))->seed();
+  }
+
+  void SoundEngine::setRandomSeed(int lane, uint32_t seed) {
+    if (lane >= kFirstFilterLane || lane < 2 || effect_chain_ == nullptr)
+      return;
+    static_cast<MorphModule*>(effect_chain_->getEffect(constants::kMorph, lane - 2))->setSeed(seed);
+  }
+
+  LineGenerator* SoundEngine::getSpectralCurve(int lane, int index) {
+    if (lane < 0 || lane >= kNumDrawingLanes || index < 0 || index >= kNumSpectralCurves)
+      return nullptr;
+    return spectral_curves_[lane][index].get();
+  }
+
 } // namespace vital

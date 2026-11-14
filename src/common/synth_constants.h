@@ -125,14 +125,12 @@ namespace vital {
       kFlanger,
       kPhaser,
       kReverb,
-#if VITAL_FX
       kMorph,
       kPitchShifter,
       kUtility,
       kFreqShifter,
       kVibrato,
       kTremolo,
-#endif
       kNumEffects
     };
 
