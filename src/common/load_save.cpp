@@ -262,7 +262,7 @@ void LoadSave::loadWavetables(SynthBase* synth, const json& wavetables) {
     if (wavetable_creator == nullptr)
       break;
     if (wavetable.is_null())
-      synth->initWavetableCreator(i);   // the default table (a Morph copy that was not in use)
+      wavetable_creator->init();   // the default table
     else {
       wavetable_creator->jsonToState(wavetable);
       wavetable_creator->render();
