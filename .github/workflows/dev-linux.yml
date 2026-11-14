@@ -38,12 +38,30 @@ jobs:
           grep -E -c "undefined reference" build.log | sed 's/^/undefined references: /' | tee -a status.txt
           exit 0
 
+      - name: Load the plugin under pluginval with a debugger
+        if: always()
+        run: |
+          set +e
+          VST=$(ls -d plugin/builds/linux_vst/build/VialSynth.vst3 2>/dev/null)
+          if [ -z "$VST" ]; then echo "no VST3 built" > run.txt; exit 0; fi
+          sudo apt-get install -y --no-install-recommends xvfb gdb unzip libgl1-mesa-dri libglx-mesa0 mesa-utils >/dev/null 2>&1
+          curl -sL -o pv.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Linux.zip
+          unzip -q -o pv.zip -d pv
+          chmod +x pv/pluginval
+          export LIBGL_ALWAYS_SOFTWARE=1
+          xvfb-run -a -s "-screen 0 1600x1000x24" timeout 600 gdb -batch -ex "handle SIGPIPE nostop noprint" -ex "handle SIG34 nostop noprint" \
+            -ex run -ex bt -ex "thread apply all bt 15" \
+            --args pv/pluginval --validate-in-process --strictness-level 5 --output-dir pvout --validate "$PWD/$VST" > run.txt 2>&1
+          echo "pluginval/gdb exit: $?" >> run.txt
+          tail -c 60000 run.txt > run-tail.txt
+
       - name: Publish the log to the ci-logs branch
         if: always()
         run: |
           set +e
           mkdir ci-logs-out
           cp status.txt ci-logs-out/ 2>/dev/null
+          cp run-tail.txt ci-logs-out/run.txt 2>/dev/null
           echo "commit: ${GITHUB_SHA}" > ci-logs-out/commit.txt
           # every error with some context, de-duplicated by the line that names it
           grep -E -B2 -A6 "error:|fatal error:|undefined reference" build.log | cut -c1-400 | head -4000 > ci-logs-out/errors.txt
