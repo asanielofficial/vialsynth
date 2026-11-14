@@ -23,7 +23,19 @@
 #include "download_section.h"
 #include "header_section.h"
 #include "effects_interface.h"
+#if VITAL_FX
 #include "fx_voice_interface.h"
+#else
+// The synth has no effect-build voice tab. This empty stand-in is never created; it only lets the code shared with the
+// effect build compile.
+class FilterSection;
+class FxVoiceInterface : public SynthSection {
+  public:
+    FxVoiceInterface() : SynthSection("fx_voice") { }
+    FilterSection* getFilterSection1() { return nullptr; }
+    FilterSection* getFilterSection2() { return nullptr; }
+};
+#endif
 #include "memory.h"
 #include "modulation_matrix.h"
 #include "open_gl_background.h"
