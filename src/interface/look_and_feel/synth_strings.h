@@ -90,7 +90,10 @@ namespace strings {
     "24dB",
     "Notch Blend",
     "Notch Spread",
-    "B/P/N"
+    "B/P/N",
+    // The style parameter's range is 0-9 but only five names are used. The rest are empty so that a host reading
+    // the parameter text for any value stays inside the array.
+    "", "", "", "", ""
   };
 
   const std::string kDiodeStyleNames[] = {
