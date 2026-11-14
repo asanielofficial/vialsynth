@@ -54,7 +54,7 @@ EffectsInterface::EffectsInterface(const vital::output_map& mono_modulations) : 
   delay_section_ = std::make_unique<DelaySection>("DELAY", mono_modulations);
   container_->addSubSection(delay_section_.get());
 
-  distortion_section_ = std::make_unique<DistortionSection>("DISTORTION", mono_modulations);
+  distortion_section_ = std::make_unique<DistortionSection>("DISTORTION", "distortion", mono_modulations);
   container_->addSubSection(distortion_section_.get());
 
   equalizer_section_ = std::make_unique<EqualizerSection>("EQ", mono_modulations);
