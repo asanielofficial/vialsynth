@@ -198,7 +198,7 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
 
   private:
     bool wavetableEditorsInitialized() {
-      for (int i = 0; i < vital::kNumWavetableSlots; ++i) {
+      for (int i = 0; i < vital::kNumOscillators; ++i) {
         if (wavetable_edits_[i] == nullptr)
           return false;
       }

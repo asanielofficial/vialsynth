@@ -792,7 +792,7 @@ void FullInterface::setAllValues(vital::control_map& controls) {
 }
 
 void FullInterface::setWavetableNames() {
-  for (int i = 0; i < vital::kNumWavetableSlots; ++i) {
+  for (int i = 0; i < vital::kNumOscillators; ++i) {
     if (wavetable_edits_[i] && synthesis_interface_)
       synthesis_interface_->setWavetableName(i, wavetable_edits_[i]->getName());
   }
