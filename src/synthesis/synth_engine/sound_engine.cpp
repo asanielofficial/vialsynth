@@ -41,7 +41,7 @@ namespace vital {
       curve = -1;
     // The wavetables of the Morph effects (slots 4 and up) start as the built-in ones; the editor can replace their
     // contents. They exist before the graph, whose processors read them.
-    for (int i = kNumOscillators + 1; i < kNumFxTables; ++i) {
+    for (int i = kNumOscillators; i < kNumFxTables; ++i) {
       fx_tables_[i] = std::make_unique<Wavetable>(kNumOscillatorWaveFrames);
       FxTables::fillWavetable(fx_tables_[i].get(), FxTables::kindOfSlot(i));
     }

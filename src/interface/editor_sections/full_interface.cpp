@@ -77,6 +77,15 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
       wavetable_edits_[i]->setWaveFrameSlider(synthesis_interface_->getWaveFrameSlider(i));
     }
 
+    // The Morph effects' table editors (slots after the oscillators').
+    for (int i = vital::kNumOscillators + 1; i < vital::kNumWavetableSlots; ++i) {
+      if (synth_data->wavetable_creators[i] == nullptr)
+        continue;
+      wavetable_edits_[i] = std::make_unique<WavetableEditSection>(i, synth_data->wavetable_creators[i]);
+      addSubSection(wavetable_edits_[i].get());
+      wavetable_edits_[i]->setVisible(false);
+    }
+
     addSubSection(synthesis_interface_.get());
   }
 #if VITAL_FX
@@ -108,17 +117,12 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
   }
 #endif
 
-#if VITAL_FX
   effects_interface_ = std::make_unique<EffectsInterface>(synth_data->mono_modulations,
                                                           synth_data->poly_modulations,
                                                           synth_data->synth->getEngine());
-#else
-  effects_interface_ = std::make_unique<EffectsInterface>(synth_data->mono_modulations);
-#endif
   addSubSection(effects_interface_.get());
   effects_interface_->setVisible(false);
   effects_interface_->addListener(this);
-#if VITAL_FX
   // The Morph effects' table menus open the same wavetable editors as the voice panel's.
   effects_interface_->setTableEditorCallback([this](int index) { showWavetableEditSection(index); });
   effects_interface_->setTableImportCallback(
@@ -129,7 +133,6 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
         }
         return wavetable_edits_[index]->loadAudioAsWavetable(name, stream, style);
       });
-#endif
 
   master_controls_interface_ = std::make_unique<MasterControlsInterface>(synth_data->mono_modulations,
                                                                          synth_data->poly_modulations,

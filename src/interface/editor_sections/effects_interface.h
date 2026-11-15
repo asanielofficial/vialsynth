@@ -56,7 +56,7 @@ class EffectsViewport : public Viewport {
     std::vector<Listener*> listeners_;
 };
 
-#if VITAL_FX
+#if 1
 #include "fx_effects_interface.h"
 #else
 class EffectsInterface : public SynthSection, public DragDropEffectOrder::Listener,

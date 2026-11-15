@@ -163,7 +163,7 @@ class DelayFilterViewer : public OpenGlLineRenderer {
 
 class DelaySection : public SynthSection, DelayFilterViewer::Listener {
   public:
-    DelaySection(const String& name, const vital::output_map& mono_modulations);
+    DelaySection(const String& name, const std::string& id, const vital::output_map& mono_modulations);
     virtual ~DelaySection();
 
     void paintBackground(Graphics& g) override;
@@ -180,12 +180,15 @@ class DelaySection : public SynthSection, DelayFilterViewer::Listener {
     void deltaMovement(float x, float y) override;
 
   private:
+    std::string id_;
     std::unique_ptr<SynthButton> on_;
     std::unique_ptr<SynthSlider> frequency_;
     std::unique_ptr<SynthSlider> tempo_;
+    std::unique_ptr<SynthSlider> keytrack_transpose_;
     std::unique_ptr<TempoSelector> sync_;
     std::unique_ptr<SynthSlider> aux_frequency_;
     std::unique_ptr<SynthSlider> aux_tempo_;
+    std::unique_ptr<SynthSlider> aux_keytrack_transpose_;
     std::unique_ptr<TempoSelector> aux_sync_;
     std::unique_ptr<SynthSlider> feedback_;
     std::unique_ptr<SynthSlider> dry_wet_;
