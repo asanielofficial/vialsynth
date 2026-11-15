@@ -324,7 +324,7 @@ void SampleSection::setupDestination() {
   for (Listener* listener : listeners_)
     listener->sampleDestinationChanged(this, current_destination_);
 
-  destination_text_->setText(strings::kDestinationNames[current_destination_]);
+  destination_text_->setText(strings::kDestinationNames[std::max(0, std::min(current_destination_, vital::constants::kNumSourceDestinations + vital::constants::kNumEffects - 1))]);
 }
 
 void SampleSection::toggleFilterInput(int filter_index, bool on) {
