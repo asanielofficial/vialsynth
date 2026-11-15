@@ -39,6 +39,10 @@ namespace vital {
       static constexpr int kNumLaneTables = 4;
       static int kindOfSlot(int slot) { return slot < 4 ? (slot < 2 ? 0 : 1) : ((slot - 4) & 1); }
       static int morphSlot(int instance, bool spectral) { return 4 + 2 * instance + (spectral ? 1 : 0); }
+      // The three oscillators' Distort Table and Spectral Table follow the Morph copies' tables.
+      static int oscSlot(int oscillator, bool spectral) {
+        return 4 + 2 * kMaxEffectInstances + 2 * oscillator + (spectral ? 1 : 0);
+      }
       static constexpr float kMinHz = 20.0f;
       static constexpr float kOctaves = 9.9658f;   // log2(20000 / 20)
 

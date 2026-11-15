@@ -88,7 +88,11 @@ namespace vital {
       static constexpr int kNumSpectralCurves = 3;
       static constexpr int kFirstFilterLane = 2 + kMaxEffectInstances;
       static constexpr int kNumFilterCurveSets = 2 + kMaxEffectInstances;
-      static constexpr int kNumDrawingLanes = kFirstFilterLane + kNumFilterCurveSets;
+      // The three oscillators' Spectral Filter / Phaser / Flanger drawings follow the filter lanes (lanes 20 .. 22).
+      static constexpr int kFirstOscLane = kFirstFilterLane + kNumFilterCurveSets;
+      static constexpr int kNumDrawingLanes = kFirstOscLane + kNumOscillators;
+      static int oscLane(int oscillator) { return kFirstOscLane + oscillator; }
+      static bool isFilterLane(int lane) { return lane >= kFirstFilterLane && lane < kFirstOscLane; }
       static int morphLane(int instance) { return 2 + instance; }
       static int filterLane(int filter) { return kFirstFilterLane + filter; }
       static int filterFxLane(int instance) { return kFirstFilterLane + 2 + instance; }

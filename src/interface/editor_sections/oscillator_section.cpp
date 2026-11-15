@@ -48,6 +48,11 @@ namespace {
     "PHASE DISP",
     "SHEPARD TONE",
     "TIME SKEW",
+    "SPEC GATE",
+    "SPEC FILTER",
+    "SPEC PHASER",
+    "SPEC FLANGER",
+    "SPEC TABLE",
   };
 
   const std::string kDistortionTypes[vital::SynthOscillator::kNumDistortionTypes] = {
@@ -63,7 +68,8 @@ namespace {
     "FM <- SAMPLE",
     "RM <- OSC",
     "RM <- OSC",
-    "RM <- SAMPLE"
+    "RM <- SAMPLE",
+    "DIST TABLE"
   };
 
   const std::string kLanguageNames[] = {
@@ -152,11 +158,12 @@ namespace {
   }
 
   bool isSpectralMenuSeparator(int index) {
-    return index == (vital::SynthOscillator::kNoSpectralMorph + 1);
+    return index == (vital::SynthOscillator::kNoSpectralMorph + 1) || index == vital::SynthOscillator::kSpectralGate;
   }
 
   bool isDistortionMenuSeparator(int index) {
-    return index == (vital::SynthOscillator::kNone + 1) || index == vital::SynthOscillator::kFmOscillatorA;
+    return index == (vital::SynthOscillator::kNone + 1) || index == vital::SynthOscillator::kFmOscillatorA ||
+           index == vital::SynthOscillator::kDistortTable;
   }
 
   String getDistortionMenuString(int type, int index) {

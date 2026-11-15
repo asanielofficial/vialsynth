@@ -47,7 +47,9 @@ namespace vital {
     }
     // Lanes 0 and 1 (the input and sidechain lanes of the effect-only build) are unused here, but they are saved
     // with the preset like the others, so they exist too.
-    for (int lane = 0; lane < 2; ++lane) {
+    for (int lane = 0; lane < kNumDrawingLanes; ++lane) {
+      if (lane >= 2 && lane < kFirstOscLane)
+        continue;
       for (int i = 0; i < kNumSpectralCurves; ++i) {
         spectral_curves_[lane][i] = std::make_unique<LineGenerator>();
         resetSpectralCurve(lane, i);
@@ -194,6 +196,15 @@ namespace vital {
     }
 
     effect_chain_->connectNote(midi_bent_->output(), midi_current_->output());
+
+    // The oscillators' drawn curves and tables (the new Spectral Filter, Phaser, Flanger, Table and Distort Table modes).
+    for (int osc = 0; osc < kNumOscillators; ++osc) {
+      const LineGenerator* curves[kNumSpectralCurves];
+      for (int i = 0; i < kNumSpectralCurves; ++i)
+        curves[i] = spectral_curves_[oscLane(osc)][i].get();
+      voice_handler_->setOscillatorWarp(osc, curves, fx_tables_[FxTables::oscSlot(osc, true)].get(),
+                                        fx_tables_[FxTables::oscSlot(osc, false)].get());
+    }
 
     disableUnnecessaryModSources();
     setOversamplingAmount(kDefaultOversamplingAmount, kDefaultSampleRate);
@@ -594,7 +605,7 @@ namespace vital {
   void SoundEngine::resetSpectralCurve(int lane, int index) {
     LineGenerator* curve = spectral_curves_[lane][index].get();
     curve->initLinear();
-    if (lane >= kFirstFilterLane) {
+    if (isFilterLane(lane)) {
       // Custom filter: A is a low pass, B a band pass, C a high pass (a point's y is upside down: 0 = pass).
       static const float kShapes[3][5][2] = {
         { { 0.0f, 0.0f }, { 0.35f, 0.0f }, { 0.7f, 1.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f } },

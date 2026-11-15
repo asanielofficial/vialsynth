@@ -756,6 +756,16 @@ namespace vital {
       setFourierWaveBuffers<phaseMorph>(phase_inc, index, false);
     else if (voice_block_.spectral_morph == kSkew)
       setFourierWaveBuffers<wavetableSkewMorph>(phase_inc, index, false);
+    else if (voice_block_.spectral_morph == kSpectralGate)
+      setFourierWaveBuffers<spectralGateMorph>(phase_inc, index, false);
+    else if (voice_block_.spectral_morph == kSpectralFilter)
+      setFourierWaveBuffers<spectralFilterMorph>(phase_inc, index, false);
+    else if (voice_block_.spectral_morph == kSpectralPhaser)
+      setFourierWaveBuffers<spectralPhaserMorph>(phase_inc, index, false);
+    else if (voice_block_.spectral_morph == kSpectralFlanger)
+      setFourierWaveBuffers<spectralFlangerMorph>(phase_inc, index, false);
+    else if (voice_block_.spectral_morph == kSpectralTable)
+      setFourierWaveBuffers<spectralTableMorph>(phase_inc, index, false);
     else
       setFourierWaveBuffers<passthroughMorph>(phase_inc, index, false);
 
@@ -791,7 +801,8 @@ namespace vital {
       last_harmonic = std::min(last_harmonic, WaveFrame::kWaveformSize / 2);
 
       spectralMorph(wavetable_data, table_index, fourier_buffer,
-                    fourier_transform_.get(), shift, last_harmonic, RandomValues::instance()->buffer());
+                    fourier_transform_.get(), shift, last_harmonic,
+                    reinterpret_cast<const poly_float*>(&warp_context_));
       wave_buffers_[buffer_index] = ((mono_float*)fourier_buffer) + poly_float::kSize - 1;
 
       if (i == index && morph_amount[i] == morph_amount[i + 1] && wave_index[i] == wave_index[i + 1]) {
@@ -1097,10 +1108,6 @@ namespace vital {
           values[i] = poly_float(1.0f) - invert * invert * invert;
         }
         break;
-      case kRandomAmplitudes:
-        for (int i = 0; i < num_values; ++i)
-          values[i] = values[i] * (kRandomAmplitudeStages - 1);
-        break;
       case kPhaseDisperse:
         for (int i = 0; i < num_values; ++i)
           values[i] = -(values[i] * 2.0f - 1.0f) * kPhaseDisperseScale;
@@ -1120,7 +1127,14 @@ namespace vital {
   
   void SynthOscillator::runSpectralMorph(SpectralMorph morph_type, float morph_amount,
                                          const Wavetable::WavetableData* wavetable_data,
-                                         int wavetable_index, poly_float* dest, FourierTransform* transform) {
+                                         int wavetable_index, poly_float* dest, FourierTransform* transform,
+                                         const OscillatorWarpContext* context) {
+    static OscillatorWarpContext default_context = [] {
+      OscillatorWarpContext defaults;
+      defaults.updateRandom(0, 0.0f);
+      return defaults;
+    }();
+    const poly_float* data = reinterpret_cast<const poly_float*>(context ? context : &default_context);
     int h = Wavetable::kNumHarmonics;
     switch (morph_type) {
       case kVocode:
@@ -1137,8 +1151,22 @@ namespace vital {
         smearMorph(wavetable_data, wavetable_index, dest, transform, morph_amount, h, nullptr);
         break;
       case kRandomAmplitudes:
-        randomAmplitudeMorph(wavetable_data, wavetable_index,
-                             dest, transform, morph_amount, h, RandomValues::instance()->buffer());
+        randomAmplitudeMorph(wavetable_data, wavetable_index, dest, transform, morph_amount, h, data);
+        break;
+      case kSpectralGate:
+        spectralGateMorph(wavetable_data, wavetable_index, dest, transform, morph_amount, h, data);
+        break;
+      case kSpectralFilter:
+        spectralFilterMorph(wavetable_data, wavetable_index, dest, transform, morph_amount, h, data);
+        break;
+      case kSpectralPhaser:
+        spectralPhaserMorph(wavetable_data, wavetable_index, dest, transform, morph_amount, h, data);
+        break;
+      case kSpectralFlanger:
+        spectralFlangerMorph(wavetable_data, wavetable_index, dest, transform, morph_amount, h, data);
+        break;
+      case kSpectralTable:
+        spectralTableMorph(wavetable_data, wavetable_index, dest, transform, morph_amount, h, data);
         break;
       case kShepardTone:
         shepardMorph(wavetable_data, wavetable_index, dest, transform, morph_amount, h, nullptr);
@@ -1219,6 +1247,17 @@ namespace vital {
     DistortionType distortion_type = static_cast<DistortionType>((int)input(kDistortionType)->at(0)[0]);
     setSpectralMorphValues(spectral_morph);
     setDistortionValues(distortion_type);
+
+    warp_context_.position = utils::clamp(input(kSpectralPosition)->at(0)[0], 0.0f, 1.0f);
+    warp_context_.spectral_table = nullptr;
+    if (spectral_morph == kRandomAmplitudes)
+      warp_context_.updateRandom(static_cast<int>(input(kRandomSeed)->at(0)[0] + 0.5f),
+                                 input(kRandomShuffle)->at(0)[0]);
+    bool spectral_table_used = spectral_morph == kSpectralTable && spectral_table_ != nullptr;
+    if (spectral_table_used) {
+      spectral_table_->markUsed();   // tells the editing thread the table is being read
+      warp_context_.spectral_table = spectral_table_->getAllActiveData();
+    }
     voice_block_.phase_inc_buffer = phase_inc_buffer_->buffer;
     voice_block_.spectral_morph = spectral_morph;
 
@@ -1280,6 +1319,8 @@ namespace vital {
         break;
     }
 
+    if (spectral_table_used)
+      spectral_table_->markUnused();
     wavetable_->markUnused();
   }
 
@@ -1506,9 +1547,29 @@ namespace vital {
       phases_[0] = center_phase;
   }
 
+  // Distort Table: the blended oscillator goes through a transfer curve, a frame of the oscillator's table that the
+  // distortion amount picks (frame 0 is the clean one). Before the level and pan, like the other distortions.
+  void SynthOscillator::applyDistortTable(poly_float* audio, int num_samples) {
+    if (static_cast<int>(input(kDistortionType)->at(0)[0]) != kDistortTable || distort_table_ == nullptr)
+      return;
+
+    distort_table_->markUsed();   // tells the editing thread the table is being read
+    const Wavetable::WavetableData* data = distort_table_->getAllActiveData();
+    poly_float amount = utils::clamp(input(kDistortionAmount)->at(0), 0.0f, 1.0f);
+    for (int i = 0; i < num_samples; ++i) {
+      poly_float x = audio[i];
+      poly_float y = x;
+      for (size_t lane = 0; lane < poly_float::kSize; ++lane)
+        y.set(lane, FxTables::distort(data, x[lane], amount[lane]));
+      audio[i] = y;
+    }
+    distort_table_->markUnused();
+  }
+
   void SynthOscillator::processBlend(int num_samples, poly_mask reset_mask) {
     poly_float* audio_out = output(kRaw)->buffer;
     stereoBlend(audio_out, num_samples, reset_mask);
+    applyDistortTable(audio_out, num_samples);
     levelOutput(output(kLevelled)->buffer, audio_out, num_samples, reset_mask);
   }
 } // namespace vital

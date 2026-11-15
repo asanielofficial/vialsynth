@@ -83,6 +83,9 @@ namespace vital {
         kSpectralMorphType,
         kSpectralMorphAmount,
         kSpectralUnison,
+        kSpectralPosition,
+        kRandomShuffle,
+        kRandomSeed,
         kDistortionType,
         kDistortionAmount,
         kActiveVoices,
@@ -110,6 +113,11 @@ namespace vital {
         kPhaseDisperse,
         kShepardTone,
         kSkew,
+        kSpectralGate,
+        kSpectralFilter,
+        kSpectralPhaser,
+        kSpectralFlanger,
+        kSpectralTable,
         kNumSpectralMorphTypes
       };
 
@@ -127,6 +135,7 @@ namespace vital {
         kRmOscillatorA,
         kRmOscillatorB,
         kRmSample,
+        kDistortTable,
         kNumDistortionTypes
       };
 
@@ -199,7 +208,8 @@ namespace vital {
                                          poly_float* values, int num_values, bool spread);
       static void runSpectralMorph(SpectralMorph morph_type, float morph_amount,
                                    const Wavetable::WavetableData* wavetable_data,
-                                   int wavetable_index, poly_float* dest, FourierTransform* transform);
+                                   int wavetable_index, poly_float* dest, FourierTransform* transform,
+                                   const OscillatorWarpContext* context = nullptr);
       static vital::poly_int adjustPhase(DistortionType distortion_type, poly_int phase,
                                          poly_float distortion_amount, poly_int distortion_phase);
       static vital::poly_float getPhaseWindow(DistortionType distortion_type, poly_int phase,
@@ -219,6 +229,14 @@ namespace vital {
       void setFirstOscillatorOutput(Output* oscillator) { first_mod_oscillator_ = oscillator; }
       void setSecondOscillatorOutput(Output* oscillator) { second_mod_oscillator_ = oscillator; }
       void setSampleOutput(Output* sample) { sample_ = sample; }
+      // The drawings (Spectral Filter, Phaser, Flanger) and tables (Spectral Table, Distort Table) the new modes read.
+      // They belong to the engine, which keeps them alive for as long as this oscillator runs.
+      void setWarpSources(const LineGenerator* const* curves, Wavetable* spectral_table, Wavetable* distort_table) {
+        for (int i = 0; i < 3; ++i)
+          warp_context_.curves[i] = curves[i];
+        spectral_table_ = spectral_table;
+        distort_table_ = distort_table;
+      }
 
       virtual void setOversampleAmount(int oversample) override {
         Processor::setOversampleAmount(oversample);
@@ -235,6 +253,7 @@ namespace vital {
       void processChunk(poly_float current_center_amplitude, poly_float current_detuned_amplitude);
 
       void processBlend(int num_samples, poly_mask reset_mask);
+      void applyDistortTable(poly_float* audio, int num_samples);
 
       void loadVoiceBlock(VoiceBlock& voice_block, int index, poly_mask active_mask);
 
@@ -308,6 +327,9 @@ namespace vital {
       Output* first_mod_oscillator_;
       Output* second_mod_oscillator_;
       Output* sample_;
+      OscillatorWarpContext warp_context_;
+      Wavetable* spectral_table_ = nullptr;
+      Wavetable* distort_table_ = nullptr;
     
       poly_float fourier_frames1_[kNumBuffers + 1][kSpectralBufferSize];
       poly_float fourier_frames2_[kNumBuffers + 1][kSpectralBufferSize];

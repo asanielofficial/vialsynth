@@ -28,7 +28,7 @@ namespace vital {
   // 3 sidechain spectral table.
   // The Morph effect adds two more for each of its copies (kMaxEffectInstances = 8): slot 4 + 2n is the Distort Table
   // and slot 5 + 2n the Spectral Table of copy n.
-  constexpr int kNumFxTables = 4 + 2 * 8;
+  constexpr int kNumFxTables = 4 + 2 * 8 + 2 * 3;
   constexpr int kNumWavetableSlots = kNumFxTables;
   constexpr int kNumOscillatorWaveFrames = 257;
   constexpr int kNumEnvelopes = 6;

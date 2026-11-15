@@ -378,7 +378,8 @@ namespace strings {
     "FM <- Sample",
     "RM <- Osc",
     "RM <- Osc",
-    "RM <- Sample"
+    "RM <- Sample",
+    "Distort Table"
   };
 
   // Distortion warp modes of the effect build's input lanes (None first; the sidechain lane offers the first seven).
@@ -434,5 +435,10 @@ namespace strings {
     "Phase Disperse",
     "Shepard Tone",
     "Spectral Time Skew",
+    "Spectral Gate",
+    "Spectral Filter",
+    "Spectral Phaser",
+    "Spectral Flanger",
+    "Spectral Table",
   };
 } // namespace strings

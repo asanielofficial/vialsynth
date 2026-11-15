@@ -61,6 +61,9 @@ namespace vital {
     Output* spectral_morph_spread = createPolyModControl(prefix_ + "_spectral_morph_spread");
     Value* spectral_morph_type = createBaseControl(prefix_ + "_spectral_morph_type");
     Output* spectral_morph_amount = createPolyModControl(prefix_ + "_spectral_morph_amount");
+    Output* spectral_position = createPolyModControl(prefix_ + "_spectral_position");
+    Output* random_shuffle = createPolyModControl(prefix_ + "_random_shuffle");
+    Value* random_seed = createBaseControl(prefix_ + "_random_seed");
 
     oscillator_->useInput(input(kReset), SynthOscillator::kReset);
     oscillator_->useInput(input(kRetrigger), SynthOscillator::kRetrigger);
@@ -92,6 +95,9 @@ namespace vital {
     oscillator_->plug(spectral_morph_spread, SynthOscillator::kUnisonSpectralMorphSpread);
     oscillator_->plug(spectral_morph_type, SynthOscillator::kSpectralMorphType);
     oscillator_->plug(spectral_morph_amount, SynthOscillator::kSpectralMorphAmount);
+    oscillator_->plug(spectral_position, SynthOscillator::kSpectralPosition);
+    oscillator_->plug(random_shuffle, SynthOscillator::kRandomShuffle);
+    oscillator_->plug(random_seed, SynthOscillator::kRandomSeed);
     oscillator_->useOutput(output(kRaw), SynthOscillator::kRaw);
     oscillator_->useOutput(output(kLevelled), SynthOscillator::kLevelled);
 

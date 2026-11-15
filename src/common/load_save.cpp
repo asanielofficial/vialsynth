@@ -127,7 +127,8 @@ json LoadSave::stateToJson(SynthBase* synth, const CriticalSection& critical_sec
       if (wavetable_creator == nullptr)
         continue;
       // The tables of the Morph copies that are not in the chain are the defaults: a null keeps the preset small.
-      if (i >= vital::FxTables::kNumLaneTables && !synth->getEngine()->isMorphInUse((i - vital::FxTables::kNumLaneTables) / 2)) {
+      if (i >= vital::FxTables::kNumLaneTables && i < vital::FxTables::oscSlot(0, false) &&
+          !synth->getEngine()->isMorphInUse((i - vital::FxTables::kNumLaneTables) / 2)) {
         wavetables.push_back(nullptr);
         continue;
       }
