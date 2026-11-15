@@ -132,25 +132,8 @@ namespace vital {
                          flanger->output(FlangerModule::kFrequencyOutput));
     }
 
-    effect_chain_->connectMorph(fft_size_);
-
-    // The Morph effects draw their curves and read their tables from the engine.
-    for (int instance = 0; instance < kMaxEffectInstances; ++instance) {
-      int lane = morphLane(instance);
-      MorphModule* morph = static_cast<MorphModule*>(effect_chain_->getEffect(constants::kMorph, instance));
-      for (int i = 0; i < kNumSpectralCurves; ++i) {
-        spectral_curves_[lane][i] = std::make_unique<LineGenerator>();
-        morph->setCurve(i, spectral_curves_[lane][i].get());
-      }
-      morph->setTables(fx_tables_[FxTables::morphSlot(instance, false)].get(),
-                       fx_tables_[FxTables::morphSlot(instance, true)].get());
-      resetSpectralDrawings(lane);
-    }
-
     for (int i = 0; i < kNumPointMods; ++i)
       point_mod_outputs_[i] = createMonoModControl(pointModName(i));
-    effect_chain_->connectNote(midi_bent_->output(), midi_current_->output());
-
     output_total_ = new Add();
     output_total_->plug(effect_chain_, 0);
     output_total_->plug(voice_handler_->getDirectOutput(), 1);
@@ -186,6 +169,24 @@ namespace vital {
     clamp->useOutput(output());
 
     SynthModule::init();
+
+    effect_chain_->connectMorph(fft_size_);
+
+    // The Morph effects draw their curves and read their tables from the engine.
+    for (int instance = 0; instance < kMaxEffectInstances; ++instance) {
+      int lane = morphLane(instance);
+      MorphModule* morph = static_cast<MorphModule*>(effect_chain_->getEffect(constants::kMorph, instance));
+      for (int i = 0; i < kNumSpectralCurves; ++i) {
+        spectral_curves_[lane][i] = std::make_unique<LineGenerator>();
+        morph->setCurve(i, spectral_curves_[lane][i].get());
+      }
+      morph->setTables(fx_tables_[FxTables::morphSlot(instance, false)].get(),
+                       fx_tables_[FxTables::morphSlot(instance, true)].get());
+      resetSpectralDrawings(lane);
+    }
+
+    effect_chain_->connectNote(midi_bent_->output(), midi_current_->output());
+
     disableUnnecessaryModSources();
     setOversamplingAmount(kDefaultOversamplingAmount, kDefaultSampleRate);
   }
