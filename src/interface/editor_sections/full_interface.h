@@ -149,6 +149,7 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     // Opens the popup of an oscillator's mode settings: kind 0-2 the Spectral Filter / Phaser / Flanger drawing, 3 the
     // Random Amplitudes shuffle and dice, 4 the Spectral Table and 5 the Distort Table (their table editors).
     void showOscillatorWarpEditor(int oscillator, int kind);
+    void oscillatorPopupVisibilityChanged(bool visible);
     std::string getLastBrowsedWavetable(int index);
     std::string getWavetableName(int index);
     std::string getSignedInName();
@@ -231,6 +232,7 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     std::unique_ptr<SynthesisInterface> synthesis_interface_;
     std::unique_ptr<FxVoiceInterface> fx_voice_interface_;
     bool effects_hidden_by_editor_ = false;
+    bool switching_oscillator_popup_ = false;
     std::unique_ptr<MasterControlsInterface> master_controls_interface_;
     std::unique_ptr<ModulationInterface> modulation_interface_;
     std::unique_ptr<ExtraModSection> extra_mod_section_;
