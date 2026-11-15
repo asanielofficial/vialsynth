@@ -45,6 +45,14 @@ namespace vital {
       fx_tables_[i] = std::make_unique<Wavetable>(kNumOscillatorWaveFrames);
       FxTables::fillWavetable(fx_tables_[i].get(), FxTables::kindOfSlot(i));
     }
+    // Lanes 0 and 1 (the input and sidechain lanes of the effect-only build) are unused here, but they are saved
+    // with the preset like the others, so they exist too.
+    for (int lane = 0; lane < 2; ++lane) {
+      for (int i = 0; i < kNumSpectralCurves; ++i) {
+        spectral_curves_[lane][i] = std::make_unique<LineGenerator>();
+        resetSpectralCurve(lane, i);
+      }
+    }
     // The drawn curves of the Custom model of the Other filters exist before the graph too: every filter finds them
     // through the table that is current while the graph is built.
     const LineGenerator* filter_curve_table[kNumFilterCurveSets * kNumSpectralCurves];
