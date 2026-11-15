@@ -38,9 +38,9 @@
 #include "overlay.h"
 #include "portamento_section.h"
 #include "preset_browser.h"
-#if VITAL_FX
-#include "spectral_warp_editor.h"
 #include "random_amp_editor.h"
+#include "spectral_warp_editor.h"
+#if VITAL_FX
 #include "point_mod_targets.h"
 #endif
 #include "synthesis_interface.h"
