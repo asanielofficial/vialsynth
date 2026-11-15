@@ -1290,18 +1290,11 @@ void PopupBrowser::closingAreaClicked(PopupClosingArea* closing_area, const Mous
 }
 
 void PopupBrowser::checkNoContent() {
-#if VITAL_FX
-  bool has_content = true;   // the search bar is always useful (user LFO shapes live in the user folder)
-#else
-  bool has_content = LoadSave::hasDataDirectory();
-#endif
+  // There is no content download: the search bar is always shown (user presets, shapes and skins live in the user
+  // folder).
   if (search_box_)
-    search_box_->setVisible(has_content);
-#if VITAL_FX
+    search_box_->setVisible(true);
   download_button_->setVisible(false);
-#else
-  download_button_->setVisible(!has_content);
-#endif
 }
 
 void PopupBrowser::checkStoreButton() {
