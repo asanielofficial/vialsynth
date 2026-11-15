@@ -17,9 +17,7 @@
 #include "load_save.h"
 #include "modulation_connection_processor.h"
 #include "sound_engine.h"
-#if VITAL_FX
 #include "fx_tables.h"
-#endif
 #include "midi_manager.h"
 #include "sample_source.h"
 #include "synth_base.h"
@@ -128,13 +126,11 @@ json LoadSave::stateToJson(SynthBase* synth, const CriticalSection& critical_sec
       WavetableCreator* wavetable_creator = synth->getWavetableCreator(i);
       if (wavetable_creator == nullptr)
         continue;
-#if VITAL_FX
       // The tables of the Morph copies that are not in the chain are the defaults: a null keeps the preset small.
       if (i >= vital::FxTables::kNumLaneTables && !synth->getEngine()->isMorphInUse((i - vital::FxTables::kNumLaneTables) / 2)) {
         wavetables.push_back(nullptr);
         continue;
       }
-#endif
       wavetables.push_back(wavetable_creator->stateToJson());
     }
 
@@ -149,7 +145,6 @@ json LoadSave::stateToJson(SynthBase* synth, const CriticalSection& critical_sec
 
   settings_data["lfos"] = lfos;
 
-#if VITAL_FX
   // Drawn curves (Spectral Filter, Phaser, Flanger) and the dice seed of Random Amplitudes, per lane. Not
   // parameters: they are saved here only, so they can be neither automated nor modulated.
   {
@@ -177,7 +172,6 @@ json LoadSave::stateToJson(SynthBase* synth, const CriticalSection& critical_sec
     }
     settings_data["point_mods"] = point_mods;
   }
-#endif
 
   {
     // The effect chain: effect ids in order (+ a flag for minimized effects); see FxEffectChain.
@@ -272,13 +266,11 @@ void LoadSave::loadWavetables(SynthBase* synth, const json& wavetables) {
     i++;
   }
 
-#if VITAL_FX
   // Older presets have no tables for the Morph copies.
   for (; i < vital::kNumWavetableSlots; ++i) {
     if (synth->getWavetableCreator(i))
       synth->initWavetableCreator(i);
   }
-#endif
 }
 
 void LoadSave::loadLfos(SynthBase* synth, const json& lfos) {
@@ -1115,7 +1107,6 @@ bool LoadSave::jsonToState(SynthBase* synth, std::map<std::string, String>& save
   loadSample(synth, sample);
   loadWavetables(synth, wavetables);
   loadLfos(synth, lfos);
-#if VITAL_FX
   {
     // Presets without drawings (older ones) get the defaults.
     for (int lane = 0; lane < vital::SoundEngine::kNumDrawingLanes; ++lane) {
@@ -1146,7 +1137,6 @@ bool LoadSave::jsonToState(SynthBase* synth, std::map<std::string, String>& save
       }
     }
   }
-#endif
   {
     // The chain. Presets from before the effects list had a fixed set of effects in a permuted order.
     std::vector<int> chain;

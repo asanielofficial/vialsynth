@@ -18,9 +18,7 @@
 
 #include "sample_source.h"
 #include "sound_engine.h"
-#if VITAL_FX
 #include "fx_tables.h"
-#endif
 #include "load_save.h"
 #include "memory.h"
 #include "modulation_connection_processor.h"
@@ -305,15 +303,15 @@ void SynthBase::initWavetableCreator(int index) {
   WavetableCreator* creator = getWavetableCreator(index);
   if (creator == nullptr)
     return;
-#if VITAL_FX
+  if (index >= vital::kNumOscillators) {
   const int kind = vital::FxTables::kindOfSlot(index);
   std::vector<float> frames(vital::FxTables::kFrames * vital::WaveFrame::kWaveformSize);
   for (int f = 0; f < vital::FxTables::kFrames; ++f)
     vital::FxTables::fillFrame(kind, f, frames.data() + f * vital::WaveFrame::kWaveformSize);
   creator->initFromFrames(frames.data(), vital::FxTables::kFrames, kind == 0 ? "Distort Table" : "Spectral Table");
-#else
-  creator->init();
-#endif
+  }
+  else
+    creator->init();
 }
 
 vital::Sample* SynthBase::getSample() {
@@ -345,10 +343,8 @@ void SynthBase::initEngine() {
   for (int i = 0; i < vital::kNumLfos; ++i)
     getLfoSource(i)->initTriangle();
 
-#if VITAL_FX
   for (int lane = 0; lane < vital::SoundEngine::kNumDrawingLanes; ++lane)
     engine_->resetSpectralDrawings(lane);
-#endif
   engine_->setEffectChain(nullptr, 0);  // no effects
 
   vital::control_map controls = engine_->getControls();
