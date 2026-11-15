@@ -17,13 +17,15 @@
 #pragma once
 
 #include "JuceHeader.h"
+#include <atomic>
 
 #include "synth_base.h"
 #include "value_bridge.h"
 
 class ValueBridge;
 
-class SynthPlugin : public SynthBase, public AudioProcessor, public ValueBridge::Listener {
+class SynthPlugin : public SynthBase, public AudioProcessor, public ValueBridge::Listener,
+                    private AsyncUpdater {
   public:
     static constexpr int kSetProgramWaitMilliseconds = 500;
 
@@ -70,6 +72,10 @@ class SynthPlugin : public SynthBase, public AudioProcessor, public ValueBridge:
     void parameterChanged(std::string name, vital::mono_float value) override;
 
   private:
+    void handleAsyncUpdate() override { setLatencySamples(reported_latency_.load()); }
+    void checkLatency();
+    std::atomic<int> reported_latency_ { -1 };
+
     ValueBridge* bypass_parameter_;
     double last_seconds_time_;
 

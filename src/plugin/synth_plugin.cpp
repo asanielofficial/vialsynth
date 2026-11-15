@@ -38,6 +38,7 @@ SynthPlugin::SynthPlugin() {
 }
 
 SynthPlugin::~SynthPlugin() {
+  cancelPendingUpdate();
   midi_manager_ = nullptr;
   keyboard_state_ = nullptr;
 }
@@ -130,6 +131,19 @@ void SynthPlugin::prepareToPlay(double sample_rate, int buffer_size) {
   engine_->setSampleRate(sample_rate);
   engine_->updateAllModulationSwitches();
   midi_manager_->setSampleRate(sample_rate);
+  int latency = SynthBase::getEngineLatencySamples();
+  reported_latency_ = latency;
+  setLatencySamples(latency);
+}
+
+// The Morph effects delay by one FFT size while a spectral mode is chosen (none: no latency). The host must know
+// before it plays, and again whenever the FFT size changes, so this is re-checked every block.
+void SynthPlugin::checkLatency() {
+  int latency = SynthBase::getEngineLatencySamples();
+  if (latency != reported_latency_.load()) {
+    reported_latency_ = latency;
+    triggerAsyncUpdate();
+  }
 }
 
 void SynthPlugin::releaseResources() {
@@ -142,6 +156,8 @@ void SynthPlugin::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midi_messa
     processBlockBypassed(buffer, midi_messages);
     return;
   }
+
+  checkLatency();
 
   int total_samples = buffer.getNumSamples();
   int num_channels = getTotalNumOutputChannels();
