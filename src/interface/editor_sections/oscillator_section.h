@@ -74,6 +74,7 @@ class OscillatorSection : public SynthSection, public PresetSelector::Listener,
     void setDistortionSelected(int selection);
     int getDistortion() const { return current_distortion_type_; }
     void setSpectralMorphSelected(int selection);
+    void openModeSettings(int kind);
     void setDestinationSelected(int selection);
     void toggleFilterInput(int filter_index, bool on);
 

@@ -40,6 +40,7 @@
 #include "preset_browser.h"
 #if VITAL_FX
 #include "spectral_warp_editor.h"
+#include "random_amp_editor.h"
 #include "point_mod_targets.h"
 #endif
 #include "synthesis_interface.h"
@@ -87,6 +88,18 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
     }
 
     addSubSection(synthesis_interface_.get());
+
+    // The popups of the oscillators' mode settings (drawings, shuffle and dice).
+    for (int i = 0; i < vital::kNumOscillators; ++i) {
+      std::string prefix = "osc_" + std::to_string(i + 1);
+      osc_curve_editors_[i] = std::make_unique<SpectralWarpEditor>(synth_data->synth->getEngine(),
+                                                                   vital::SoundEngine::oscLane(i), prefix, true);
+      addSubSection(osc_curve_editors_[i].get());
+      osc_curve_editors_[i]->setVisible(false);
+      osc_random_editors_[i] = std::make_unique<RandomAmpEditor>(i);
+      addSubSection(osc_random_editors_[i].get());
+      osc_random_editors_[i]->setVisible(false);
+    }
   }
 #if VITAL_FX
   else {
@@ -711,6 +724,15 @@ void FullInterface::resized() {
       wavetable_edits_[i]->setBounds(left, 0, width, height);
   }
 
+  // The oscillator mode popups sit in the middle of the window.
+  Rectangle<int> popup_bounds(left + width * 0.12f, height * 0.12f, width * 0.76f, std::min<float>(height * 0.7f, 460.0f * size_ratio_));
+  for (int i = 0; i < vital::kNumOscillators; ++i) {
+    if (osc_curve_editors_[i])
+      osc_curve_editors_[i]->setBounds(popup_bounds);
+    if (osc_random_editors_[i])
+      osc_random_editors_[i]->setBounds(popup_bounds.withHeight(std::min<float>(popup_bounds.getHeight(), 110.0f * size_ratio_)));
+  }
+
   if (synthesis_interface_) {
     for (int i = 0; i < vital::kNumOscillators; ++i)
       master_controls_interface_->setOscillatorBounds(i, synthesis_interface_->getOscillatorBounds(i));
@@ -1059,6 +1081,28 @@ void FullInterface::showWavetableEditSection(int index) {
     effects_interface_->setVisible(true);
   }
   redoBackground();
+}
+
+void FullInterface::showOscillatorWarpEditor(int oscillator, int kind) {
+  if (oscillator < 0 || oscillator >= vital::kNumOscillators || osc_curve_editors_[oscillator] == nullptr)
+    return;
+
+  ScopedLock lock(open_gl_critical_section_);
+  for (int i = 0; i < vital::kNumOscillators; ++i) {
+    osc_curve_editors_[i]->setVisible(false);
+    osc_random_editors_[i]->setVisible(false);
+  }
+
+  if (kind >= 0 && kind < 3) {
+    osc_curve_editors_[oscillator]->showCurve(0, kind);
+    osc_curve_editors_[oscillator]->toFront(false);
+  }
+  else if (kind == 3) {
+    osc_random_editors_[oscillator]->setVisible(true);
+    osc_random_editors_[oscillator]->toFront(false);
+  }
+  else if (kind == 4 || kind == 5)
+    showWavetableEditSection(vital::FxTables::oscSlot(oscillator, kind == 4));
 }
 
 std::string FullInterface::getLastBrowsedWavetable(int index) {

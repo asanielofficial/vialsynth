@@ -98,9 +98,11 @@ class SpectralWarpEditor : public SynthSection, public PresetSelector::Listener,
     // Each editor is bound to one drawing lane of the engine (0 = input, 1 = sidechain, 2 + n = copy n of the Morph
     // effect), so several can be open at once. prefix is the start of the lane's parameter names ("input",
     // "sidechain", "morph", "morph_2" ...); the default is the one of the two input lanes.
-    SpectralWarpEditor(vital::SoundEngine* engine, int owned_lane, const std::string& prefix = "") :
+    // lean: an oscillator's editor: only the drawing, the position slider and the harmonic axis (no detail controls).
+    SpectralWarpEditor(vital::SoundEngine* engine, int owned_lane, const std::string& prefix = "",
+                       bool lean = false) :
         SynthSection("spectral_warp_editor_" + String(owned_lane)), engine_(engine), owned_lane_(owned_lane),
-        lane_(owned_lane), prefix_(!prefix.empty() ? prefix : (owned_lane == 0 ? "input" : "sidechain")) {
+        lane_(owned_lane), prefix_(!prefix.empty() ? prefix : (owned_lane == 0 ? "input" : "sidechain")), lean_(lean) {
 
       for (int curve = 0; curve < kNumCurves; ++curve) {
         editors_[curve] = std::make_unique<SpectralCurveEditor>(engine_->getSpectralCurve(owned_lane_, curve));
@@ -155,6 +157,11 @@ class SpectralWarpEditor : public SynthSection, public PresetSelector::Listener,
       preset_selector_->addListener(this);
 
       const char* axis_labels[kNumAxisLabels] = { "100 Hz", "1 kHz", "10 kHz" };
+      if (lean_) {
+        axis_labels[0] = "H4";
+        axis_labels[1] = "H32";
+        axis_labels[2] = "H256";
+      }
       for (int i = 0; i < kNumAxisLabels; ++i) {
         axis_[i] = std::make_unique<PlainTextComponent>("Axis", axis_labels[i]);
         addOpenGlComponent(axis_[i].get());
@@ -185,7 +192,7 @@ class SpectralWarpEditor : public SynthSection, public PresetSelector::Listener,
       // The detail bar under the position slider: gain, and up to three controls whose meaning depends on the mode.
       // Each is a modulation target (parameters <lane>_spectral_gain / _density / _resonance / _spread).
       static const char* kDetailParameters[kNumDetails] = { "gain", "density", "resonance", "spread", "depth", "phase" };
-      for (int i = 0; i < kNumDetails; ++i) {
+      for (int i = 0; i < (lean_ ? 0 : kNumDetails); ++i) {
         detail_[i] = std::make_unique<SynthSlider>(prefix_ + "_spectral_" + kDetailParameters[i]);
         SynthSlider* slider = detail_[i].get();
         addSlider(slider);
@@ -195,7 +202,7 @@ class SpectralWarpEditor : public SynthSection, public PresetSelector::Listener,
         slider->setDoubleClickReturnValue(true, i == 5 ? 0.0 : 0.5);
         slider->setVisible(false);
       }
-      for (int i = 0; i < kNumDetails; ++i) {
+      for (int i = 0; i < (lean_ ? 0 : kNumDetails); ++i) {
         detail_labels_[i] = std::make_unique<PlainTextComponent>("Detail", "");
         addOpenGlComponent(detail_labels_[i].get());
         detail_labels_[i]->setFontType(PlainTextComponent::kLight);
@@ -235,7 +242,7 @@ class SpectralWarpEditor : public SynthSection, public PresetSelector::Listener,
         { "Gain", "Notches", "Resonance", "", "", "" },
         { "Gain", "Taps", "Resonance", "Spread", "Depth", "Phase" }
       };
-      for (int i = 0; i < kNumDetails; ++i) {
+      for (int i = 0; i < (lean_ ? 0 : kNumDetails); ++i) {
         detail_labels_[i]->setText(kDetailNames[curve_][i]);
         detail_[i]->setVisible(kDetailNames[curve_][i][0] != '\0');
         detail_[i]->setPopupPrefix(std::string(kDetailNames[curve_][i]) + ": ");
@@ -319,17 +326,17 @@ class SpectralWarpEditor : public SynthSection, public PresetSelector::Listener,
       // The drawing well fills the width, with the position slider flush underneath (like the LFO's phase bar).
       // The flanger has six detail controls: they are layered in two rows of three so each keeps room for its name
       // even in a half-width (split) panel; the other modes use one row.
-      int num_details = curve_ == kNumCurves - 1 ? kNumDetails : 3;
-      int num_rows = num_details > 3 ? 2 : 1;
-      int per_row = (num_details + num_rows - 1) / num_rows;
+      int num_details = lean_ ? 0 : (curve_ == kNumCurves - 1 ? kNumDetails : 3);
+      int num_rows = num_details > 3 ? 2 : (num_details > 0 ? 1 : 0);
+      int per_row = std::max(1, (num_details + num_rows - 1) / std::max(1, num_rows));
       int row_gap = margin / 2;
-      int detail_top = getHeight() - margin - num_rows * slider_height - (num_rows - 1) * row_gap;
+      int detail_top = getHeight() - margin - num_rows * slider_height - std::max(0, num_rows - 1) * row_gap;
       int slider_y = detail_top - row_gap - slider_height;
       position_->setBounds(margin, slider_y, getWidth() - 2 * margin, slider_height);
 
       int cell_width = (getWidth() - 2 * margin) / per_row;
       int label_width = std::min<int>(size_ratio_ * 70, cell_width / 2);
-      for (int i = 0; i < kNumDetails; ++i) {
+      for (int i = 0; i < (lean_ ? 0 : kNumDetails); ++i) {
         int row = i / per_row;
         int cell_x = margin + (i % per_row) * cell_width;
         int detail_y = detail_top + row * (slider_height + row_gap);
@@ -363,10 +370,11 @@ class SpectralWarpEditor : public SynthSection, public PresetSelector::Listener,
 
       // Positions of 100 Hz, 1 kHz and 10 kHz on the 20 Hz .. 20 kHz log axis.
       static const float kAxisPositions[kNumAxisLabels] = { 0.2330f, 0.5663f, 0.8997f };
+      static const float kHarmonicAxisPositions[kNumAxisLabels] = { 0.2f, 0.5f, 0.8f };   // harmonic 4, 32, 256
       int axis_label_width = size_ratio_ * 60;
       for (int i = 0; i < kNumAxisLabels; ++i) {
         axis_[i]->setTextSize(text_size);
-        int label_x = editor_x + kAxisPositions[i] * editor_width - axis_label_width / 2;
+        int label_x = editor_x + (lean_ ? kHarmonicAxisPositions[i] : kAxisPositions[i]) * editor_width - axis_label_width / 2;
         axis_[i]->setBounds(label_x, axis_y, axis_label_width, text_height);
       }
 
@@ -629,6 +637,7 @@ class SpectralWarpEditor : public SynthSection, public PresetSelector::Listener,
     int owned_lane_ = 0;
     int lane_ = 0;
     std::string prefix_;
+    bool lean_ = false;
     int curve_ = 0;
     Rectangle<int> pattern_group_;
     Rectangle<int> grid_group_;

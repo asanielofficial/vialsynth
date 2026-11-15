@@ -35,6 +35,24 @@
 #include "wavetable_3d.h"
 
 namespace {
+  constexpr int kEditModeSettings = 1000;
+
+  // The popup a mode has (see FullInterface::showOscillatorWarpEditor), or -1.
+  int spectralSettingsKind(int type) {
+    switch (type) {
+      case vital::SynthOscillator::kSpectralFilter: return 0;
+      case vital::SynthOscillator::kSpectralPhaser: return 1;
+      case vital::SynthOscillator::kSpectralFlanger: return 2;
+      case vital::SynthOscillator::kRandomAmplitudes: return 3;
+      case vital::SynthOscillator::kSpectralTable: return 4;
+      default: return -1;
+    }
+  }
+
+  int distortionSettingsKind(int type) {
+    return type == vital::SynthOscillator::kDistortTable ? 5 : -1;
+  }
+
   const std::string kSpectralMorphTypes[vital::SynthOscillator::kNumSpectralMorphTypes] = {
     "---",
     "VOCODE",
@@ -762,9 +780,20 @@ void OscillatorSection::buttonClicked(Button* clicked_button) {
 
       options.addItem(i, strings::kSpectralMorphNames[i]);
     }
+    if (spectralSettingsKind(current_spectral_morph_type_) >= 0) {
+      options.addItem(-1, "");
+      options.addItem(kEditModeSettings, "Edit Settings...");
+    }
 
     Point<int> position(spectral_morph_type_selector_->getX(), spectral_morph_type_selector_->getBottom());
-    showPopupSelector(this, position, options, [=](int selection) { setSpectralMorphSelected(selection); });
+    showPopupSelector(this, position, options, [=](int selection) {
+      if (selection == kEditModeSettings)
+        openModeSettings(spectralSettingsKind(current_spectral_morph_type_));
+      else {
+        setSpectralMorphSelected(selection);
+        openModeSettings(spectralSettingsKind(selection));
+      }
+    });
   }
   else if (clicked_button == distortion_type_selector_.get()) {
     PopupItems options;
@@ -775,9 +804,20 @@ void OscillatorSection::buttonClicked(Button* clicked_button) {
 
       options.addItem(i, getDistortionMenuString(i, index_).toStdString());
     }
+    if (distortionSettingsKind(current_distortion_type_) >= 0) {
+      options.addItem(-1, "");
+      options.addItem(kEditModeSettings, "Edit Settings...");
+    }
 
     Point<int> position(distortion_type_selector_->getX(), distortion_type_selector_->getBottom());
-    showPopupSelector(this, position, options, [=](int selection) { setDistortionSelected(selection); });
+    showPopupSelector(this, position, options, [=](int selection) {
+      if (selection == kEditModeSettings)
+        openModeSettings(distortionSettingsKind(current_distortion_type_));
+      else {
+        setDistortionSelected(selection);
+        openModeSettings(distortionSettingsKind(selection));
+      }
+    });
   }
   else if (clicked_button == destination_selector_.get()) {
     PopupItems options;
@@ -943,6 +983,14 @@ void OscillatorSection::setDistortionSelected(int selection) {
   vital::SynthOscillator::DistortionType type = (vital::SynthOscillator::DistortionType)current_distortion_type_;
   setDistortionPhaseVisible(vital::SynthOscillator::usesDistortionPhase(type));
   notifyDistortionTypeChange();
+}
+
+void OscillatorSection::openModeSettings(int kind) {
+  if (kind < 0)
+    return;
+  FullInterface* parent = findParentComponentOfClass<FullInterface>();
+  if (parent)
+    parent->showOscillatorWarpEditor(index_, kind);
 }
 
 void OscillatorSection::setSpectralMorphSelected(int selection) {
