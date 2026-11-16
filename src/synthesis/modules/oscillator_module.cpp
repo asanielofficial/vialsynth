@@ -64,6 +64,15 @@ namespace vital {
     Output* spectral_position = createPolyModControl(prefix_ + "_spectral_position");
     Output* random_shuffle = createPolyModControl(prefix_ + "_random_shuffle");
     Value* random_seed = createBaseControl(prefix_ + "_random_seed");
+    Output* spectral_table_mix = createMonoModControl(prefix_ + "_spectral_table_mix");
+    Output* table_position = createMonoModControl(prefix_ + "_table_position");
+    Output* table_gain = createMonoModControl(prefix_ + "_table_gain");
+    Output* table_resonance = createMonoModControl(prefix_ + "_table_resonance");
+    Output* distortion_bias = createMonoModControl(prefix_ + "_distortion_bias");
+    Output* distortion_smooth = createMonoModControl(prefix_ + "_distortion_smooth");
+    Output* distortion_drive = createMonoModControl(prefix_ + "_distortion_drive");
+    Value* distortion_dc_filter = createBaseControl(prefix_ + "_distortion_dc_filter");
+    Output* distortion_mix = createMonoModControl(prefix_ + "_distortion_mix");
 
     oscillator_->useInput(input(kReset), SynthOscillator::kReset);
     oscillator_->useInput(input(kRetrigger), SynthOscillator::kRetrigger);
@@ -98,6 +107,15 @@ namespace vital {
     oscillator_->plug(spectral_position, SynthOscillator::kSpectralPosition);
     oscillator_->plug(random_shuffle, SynthOscillator::kRandomShuffle);
     oscillator_->plug(random_seed, SynthOscillator::kRandomSeed);
+    oscillator_->plug(spectral_table_mix, SynthOscillator::kSpectralTableMix);
+    oscillator_->plug(table_position, SynthOscillator::kTablePosition);
+    oscillator_->plug(table_gain, SynthOscillator::kTableGain);
+    oscillator_->plug(table_resonance, SynthOscillator::kTableResonance);
+    oscillator_->plug(distortion_bias, SynthOscillator::kDistortionBias);
+    oscillator_->plug(distortion_smooth, SynthOscillator::kDistortionSmooth);
+    oscillator_->plug(distortion_drive, SynthOscillator::kDistortionDrive);
+    oscillator_->plug(distortion_dc_filter, SynthOscillator::kDistortionDcFilter);
+    oscillator_->plug(distortion_mix, SynthOscillator::kDistortionMix);
     oscillator_->useOutput(output(kRaw), SynthOscillator::kRaw);
     oscillator_->useOutput(output(kLevelled), SynthOscillator::kLevelled);
 

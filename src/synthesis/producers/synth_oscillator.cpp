@@ -1250,6 +1250,10 @@ namespace vital {
 
     warp_context_.position = utils::clamp(input(kSpectralPosition)->at(0)[0], 0.0f, 1.0f);
     warp_context_.spectral_table = nullptr;
+    warp_context_.table_shift = utils::clamp(input(kTablePosition)->at(0)[0], 0.0f, 1.0f);
+    warp_context_.table_gain = utils::clamp(input(kTableGain)->at(0)[0], 0.0f, 1.0f);
+    warp_context_.table_resonance = utils::clamp(input(kTableResonance)->at(0)[0], 0.0f, 1.0f);
+    warp_context_.table_mix = utils::clamp(input(kSpectralTableMix)->at(0)[0], 0.0f, 1.0f);
     if (spectral_morph == kRandomAmplitudes)
       warp_context_.updateRandom(static_cast<int>(input(kRandomSeed)->at(0)[0] + 0.5f),
                                  input(kRandomShuffle)->at(0)[0]);
@@ -1556,11 +1560,26 @@ namespace vital {
     distort_table_->markUsed();   // tells the editing thread the table is being read
     const Wavetable::WavetableData* data = distort_table_->getAllActiveData();
     poly_float amount = utils::clamp(input(kDistortionAmount)->at(0), 0.0f, 1.0f);
+    // The settings are the Morph effect's: the phase knob is the oscillator's own (centre = none), the bias and drive
+    // push the signal into the curve, smooth blurs it, the DC filter removes what the curve leaves, mix is dry / wet.
+    float phase = input(kDistortionPhase)->at(0)[0] - 0.5f;
+    float bias = utils::clamp(input(kDistortionBias)->at(0)[0], -1.0f, 1.0f);
+    float smooth = utils::clamp(input(kDistortionSmooth)->at(0)[0], 0.0f, 1.0f);
+    float drive_gain = std::exp2(4.0f * utils::clamp(input(kDistortionDrive)->at(0)[0], 0.0f, 1.0f));
+    float mix = utils::clamp(input(kDistortionMix)->at(0)[0], 0.0f, 1.0f);
+    bool dc_filter = input(kDistortionDcFilter)->at(0)[0] > 0.5f;
+    const float dc_coef = 1.0f - std::exp(-2.0f * 3.14159265f * 10.0f / std::max(getSampleRate(), 8000));
     for (int i = 0; i < num_samples; ++i) {
       poly_float x = audio[i];
       poly_float y = x;
-      for (size_t lane = 0; lane < poly_float::kSize; ++lane)
-        y.set(lane, FxTables::distort(data, x[lane], amount[lane]));
+      for (size_t lane = 0; lane < poly_float::kSize; ++lane) {
+        float shaped = FxTables::distort(data, drive_gain * x[lane] + bias, amount[lane], phase, smooth);
+        if (dc_filter) {
+          dc_state_[lane] += (shaped - dc_state_[lane]) * dc_coef;
+          shaped -= dc_state_[lane];
+        }
+        y.set(lane, x[lane] + (shaped - x[lane]) * mix);
+      }
       audio[i] = y;
     }
     distort_table_->markUnused();

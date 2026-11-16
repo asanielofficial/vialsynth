@@ -38,7 +38,7 @@
 #include "overlay.h"
 #include "portamento_section.h"
 #include "preset_browser.h"
-#include "random_amp_editor.h"
+#include "table_settings_editor.h"
 #include "spectral_warp_editor.h"
 #if VITAL_FX
 #include "point_mod_targets.h"
@@ -97,10 +97,7 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
       addSubSection(osc_curve_editors_[i].get());
       osc_curve_editors_[i]->setVisible(false);
       osc_curve_editors_[i]->setVisibilityCallback([this](bool visible) { oscillatorPopupVisibilityChanged(visible); });
-      osc_random_editors_[i] = std::make_unique<RandomAmpEditor>(i);
-      addSubSection(osc_random_editors_[i].get());
-      osc_random_editors_[i]->setVisible(false);
-      osc_random_editors_[i]->setVisibilityCallback([this](bool visible) { oscillatorPopupVisibilityChanged(visible); });
+
     }
   }
 #if VITAL_FX
@@ -308,6 +305,26 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
 
   bin_highlight_ = std::make_unique<BinHighlight>();
   addSubSection(bin_highlight_.get());
+
+  // The oscillators' table mode menus (the gear next to a table mode's knob). They are added last so they draw over
+  // the sections underneath.
+  if (synthesis_interface_) {
+    for (int i = 0; i < vital::kNumOscillators; ++i) {
+      std::string prefix = "osc_" + std::to_string(i + 1);
+      std::string subtitle = "OSC " + std::to_string(i + 1);
+      osc_spectral_settings_[i] = std::make_unique<TableSettingsEditor>(
+          TableSettingsEditor::kSpectral, prefix, vital::FxTables::oscSlot(i, true), synth_data->mono_modulations,
+          synth_data->poly_modulations, subtitle);
+      osc_distort_settings_[i] = std::make_unique<TableSettingsEditor>(
+          TableSettingsEditor::kDistort, prefix, vital::FxTables::oscSlot(i, false), synth_data->mono_modulations,
+          synth_data->poly_modulations, subtitle, true);
+      for (TableSettingsEditor* editor : { osc_spectral_settings_[i].get(), osc_distort_settings_[i].get() }) {
+        addSubSection(editor);
+        editor->setVisible(false);
+        editor->setVisibilityCallback([this](bool visible) { oscillatorPopupVisibilityChanged(visible); });
+      }
+    }
+  }
 
   setAllValues(synth_data->controls);
   setOpaque(true);
@@ -732,8 +749,10 @@ void FullInterface::resized() {
   for (int i = 0; i < vital::kNumOscillators; ++i) {
     if (osc_curve_editors_[i])
       osc_curve_editors_[i]->setBounds(popup_bounds);
-    if (osc_random_editors_[i])
-      osc_random_editors_[i]->setBounds(popup_bounds.withHeight(std::min<float>(popup_bounds.getHeight(), 110.0f * size_ratio_)));
+    if (osc_spectral_settings_[i])
+      osc_spectral_settings_[i]->setBounds(popup_bounds);
+    if (osc_distort_settings_[i])
+      osc_distort_settings_[i]->setBounds(popup_bounds);
   }
 
   if (synthesis_interface_) {
@@ -1094,19 +1113,22 @@ void FullInterface::showOscillatorWarpEditor(int oscillator, int kind) {
   switching_oscillator_popup_ = true;
   for (int i = 0; i < vital::kNumOscillators; ++i) {
     osc_curve_editors_[i]->setVisible(false);
-    osc_random_editors_[i]->setVisible(false);
+    osc_spectral_settings_[i]->setVisible(false);
+    osc_distort_settings_[i]->setVisible(false);
   }
 
-  if (kind >= 0 && kind < 4) {
+  if (kind >= 0 && kind < 5) {
     // No table editor is meant: this hides the rest of the window, and the popup closing brings it back.
     showWavetableEditSection(vital::kNumWavetableSlots);
     if (kind < 3)
       osc_curve_editors_[oscillator]->showCurve(0, kind);
+    else if (kind == 3)
+      osc_spectral_settings_[oscillator]->setVisible(true);
     else
-      osc_random_editors_[oscillator]->setVisible(true);
+      osc_distort_settings_[oscillator]->setVisible(true);
   }
-  else if (kind == 4 || kind == 5)
-    showWavetableEditSection(vital::FxTables::oscSlot(oscillator, kind == 4));
+  else if (kind == 5 || kind == 6)
+    showWavetableEditSection(vital::FxTables::oscSlot(oscillator, kind == 5));
   switching_oscillator_popup_ = false;
 }
 

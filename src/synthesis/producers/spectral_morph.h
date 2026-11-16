@@ -505,6 +505,10 @@ namespace vital {
     const LineGenerator* curves[3] = { nullptr, nullptr, nullptr };
     const Wavetable::WavetableData* spectral_table = nullptr;
     float position = 0.5f;
+    float table_shift = 0.5f;   // Spectral Table settings (the same as the Morph effect's)
+    float table_gain = 0.5f;
+    float table_resonance = 0.5f;
+    float table_mix = 1.0f;
     float random_a[kRandomSize];
     float random_b[kRandomSize];
     float random_blend = 0.0f;
@@ -605,12 +609,16 @@ namespace vital {
                                  float shift, int last_harmonic, const poly_float* data_buffer) {
     const OscillatorWarpContext* context = warpContext(data_buffer);
     float table_position = std::max(0.0f, std::min(shift, 1.0f));
-    float shift_octaves = (context->position - 0.5f) * 8.0f;
+    float shift_octaves = (context->table_shift - 0.5f) * 8.0f;
+    float out_gain = 2.0f * context->table_gain;
+    float depth = 2.0f * context->table_resonance;
+    float mix = context->table_mix;
     harmonicGainMorph(wavetable_data, wavetable_index, dest, transform, last_harmonic,
                       [&](int i, float amplitude, float& re, float& im) {
       float octave = OscillatorWarpContext::harmonicPosition(i) * OscillatorWarpContext::kOctaves - shift_octaves;
-      float db = FxTables::spectralDb(context->spectral_table, octave, table_position);
-      re = std::min(std::pow(10.0f, db / 20.0f), 64.0f);
+      float db = FxTables::spectralDb(context->spectral_table, octave, table_position) * depth;
+      float gain = std::min(std::pow(10.0f, db / 20.0f), 64.0f) * out_gain;
+      re = 1.0f + (gain - 1.0f) * mix;
     });
   }
 

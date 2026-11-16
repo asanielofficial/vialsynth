@@ -117,6 +117,15 @@ class Wavetable3d : public OpenGlComponent, public AudioFileDropSource {
       auto mono = mono_modulations.find(name);
       frame_amount_outputs_ = { mono == mono_modulations.end() ? nullptr : mono->second, nullptr };
     }
+    // Also looks in the poly modulations (an oscillator's amounts are poly controls).
+    void setFrameModulation(const vital::output_map& mono_modulations, const vital::output_map& poly_modulations,
+                            const std::string& name) {
+      table_mode_ = true;
+      auto mono = mono_modulations.find(name);
+      auto poly = poly_modulations.find(name);
+      frame_amount_outputs_ = { mono == mono_modulations.end() ? nullptr : mono->second,
+                                poly == poly_modulations.end() ? nullptr : poly->second };
+    }
     void setSpectralMorphSlider(Slider* slider) { spectral_morph_slider_ = slider; }
     void setDistortionSlider(Slider* slider) { distortion_slider_ = slider; }
     void setDistortionPhaseSlider(Slider* slider) { distortion_phase_slider_ = slider; }

@@ -35,22 +35,15 @@
 #include "wavetable_3d.h"
 
 namespace {
-  constexpr int kEditModeSettings = 1000;
-
-  // The popup a mode has (see FullInterface::showOscillatorWarpEditor), or -1.
-  int spectralSettingsKind(int type) {
-    switch (type) {
-      case vital::SynthOscillator::kSpectralFilter: return 0;
-      case vital::SynthOscillator::kSpectralPhaser: return 1;
-      case vital::SynthOscillator::kSpectralFlanger: return 2;
-      case vital::SynthOscillator::kRandomAmplitudes: return 3;
-      case vital::SynthOscillator::kSpectralTable: return 4;
-      default: return -1;
-    }
-  }
-
-  int distortionSettingsKind(int type) {
-    return type == vital::SynthOscillator::kDistortTable ? 5 : -1;
+  // A die: a rounded square with five holes.
+  Path dicePath() {
+    Path path;
+    path.setUsingNonZeroWinding(false);
+    path.addRoundedRectangle(0.15f, 0.15f, 0.7f, 0.7f, 0.14f);
+    const float pips[5][2] = { { 0.3f, 0.3f }, { 0.7f, 0.3f }, { 0.5f, 0.5f }, { 0.3f, 0.7f }, { 0.7f, 0.7f } };
+    for (const auto& pip : pips)
+      path.addEllipse(pip[0] - 0.055f, pip[1] - 0.055f, 0.11f, 0.11f);
+    return path;
   }
 
   const std::string kSpectralMorphTypes[vital::SynthOscillator::kNumSpectralMorphTypes] = {
@@ -418,6 +411,30 @@ OscillatorSection::OscillatorSection(Authentication* auth,
   spectral_morph_amount_->setKnobSizeScale(1.5f);
   spectral_morph_amount_->setPopupPrefix("Spectral Morph: ");
 
+  auto make_tool = [this](const String& name, const Path& shape) {
+    auto tool = std::make_unique<OpenGlShapeButton>(name);
+    addAndMakeVisible(tool.get());
+    addOpenGlComponent(tool->getGlComponent());
+    tool->addListener(this);
+    tool->setShape(shape);
+    tool->setVisible(false);
+    return tool;
+  };
+  curve_button_ = make_tool("Spectral Tool", Paths::pencil());
+  spectral_edit_button_ = make_tool("Spectral Table Editor", Paths::pencil());
+  warp_tool_button_ = make_tool("Table Settings", Paths::gear());
+  warp_edit_button_ = make_tool("Table Editor", Paths::pencil());
+  dice_button_ = make_tool("Dice", dicePath());
+
+  shuffle_ = std::make_unique<SynthSlider>("osc_" + number + "_random_shuffle");
+  addSlider(shuffle_.get());
+  shuffle_->setSliderStyle(Slider::LinearBar);
+  shuffle_->setPopupPlacement(BubbleComponent::above);
+  shuffle_->setModulationPlacement(BubbleComponent::above);
+  shuffle_->setPopupPrefix("Shuffle: ");
+  shuffle_->setDoubleClickReturnValue(true, 0.0);
+  shuffle_->setVisible(false);
+
   spectral_morph_type_selector_ = std::make_unique<ShapeButton>("Spectral Morph", Colour(0xff666666),
                                                                  Colour(0xffaaaaaa), Colour(0xff888888));
   addAndMakeVisible(spectral_morph_type_selector_.get());
@@ -731,6 +748,31 @@ void OscillatorSection::resized() {
   distortion_type_selector_->setBounds(distortion_menu_x, prev_distortion_->getY(),
                                        next_distortion_->getX() - distortion_menu_x, prev_distortion_->getHeight());
 
+  // Tool buttons sit in the top corners of the knobs; Random Amplitudes keeps the dice and the shuffle bar in a strip
+  // at the right of its knob.
+  Rectangle<int> spectral_cell = spectral_morph_amount_->getBounds();
+  Rectangle<int> distortion_cell = distortion_amount_->getBounds();
+  int tool_size = std::max(1, static_cast<int>(spectral_cell.getHeight() * 0.24f));
+  curve_button_->setBounds(spectral_cell.getRight() - tool_size, spectral_cell.getY(), tool_size, tool_size);
+  spectral_edit_button_->setBounds(spectral_cell.getX(), spectral_cell.getY(), tool_size, tool_size);
+  warp_tool_button_->setBounds(distortion_cell.getRight() - tool_size, distortion_cell.getY(), tool_size, tool_size);
+  warp_edit_button_->setBounds(distortion_cell.getX(), distortion_cell.getY(), tool_size, tool_size);
+  if (dice_button_->isVisible()) {
+    int strip = std::max(1, std::min(spectral_cell.getWidth() / 4, static_cast<int>(spectral_cell.getHeight() * 0.5f)));
+    int centre = spectral_cell.getRight() - strip / 2;
+    int dice_size = std::max(1, std::min(strip - widget_margin, static_cast<int>(spectral_cell.getHeight() * 0.22f)));
+    int bar_height = std::max(14, static_cast<int>(spectral_cell.getHeight() * 0.16f));
+    int bar_width = std::max(1, strip - widget_margin);
+    int block = dice_size + widget_margin + bar_height;
+    int tool_y = spectral_cell.getY() + (spectral_cell.getHeight() - block) / 2;
+    dice_button_->setBounds(centre - dice_size / 2, tool_y, dice_size, dice_size);
+    shuffle_->setBounds(centre - bar_width / 2, dice_button_->getBottom() + widget_margin, bar_width, bar_height);
+  }
+  else {
+    dice_button_->setBounds(0, 0, 0, 0);
+    shuffle_->setBounds(0, 0, 0, 0);
+  }
+
   distortion_phase_->setBounds(wavetable_->getX() - widget_margin,
                                wavetable_->getBottom() - slider_overlap + widget_margin,
                                wavetable_->getWidth() + 2 * widget_margin, slider_width);
@@ -780,20 +822,9 @@ void OscillatorSection::buttonClicked(Button* clicked_button) {
 
       options.addItem(i, strings::kSpectralMorphNames[i]);
     }
-    if (spectralSettingsKind(current_spectral_morph_type_) >= 0) {
-      options.addItem(-1, "");
-      options.addItem(kEditModeSettings, "Edit Settings...");
-    }
 
     Point<int> position(spectral_morph_type_selector_->getX(), spectral_morph_type_selector_->getBottom());
-    showPopupSelector(this, position, options, [=](int selection) {
-      if (selection == kEditModeSettings)
-        openModeSettings(spectralSettingsKind(current_spectral_morph_type_));
-      else {
-        setSpectralMorphSelected(selection);
-        openModeSettings(spectralSettingsKind(selection));
-      }
-    });
+    showPopupSelector(this, position, options, [=](int selection) { setSpectralMorphSelected(selection); });
   }
   else if (clicked_button == distortion_type_selector_.get()) {
     PopupItems options;
@@ -804,21 +835,25 @@ void OscillatorSection::buttonClicked(Button* clicked_button) {
 
       options.addItem(i, getDistortionMenuString(i, index_).toStdString());
     }
-    if (distortionSettingsKind(current_distortion_type_) >= 0) {
-      options.addItem(-1, "");
-      options.addItem(kEditModeSettings, "Edit Settings...");
-    }
 
     Point<int> position(distortion_type_selector_->getX(), distortion_type_selector_->getBottom());
-    showPopupSelector(this, position, options, [=](int selection) {
-      if (selection == kEditModeSettings)
-        openModeSettings(distortionSettingsKind(current_distortion_type_));
-      else {
-        setDistortionSelected(selection);
-        openModeSettings(distortionSettingsKind(selection));
-      }
-    });
+    showPopupSelector(this, position, options, [=](int selection) { setDistortionSelected(selection); });
   }
+  else if (clicked_button == curve_button_.get()) {
+    int type = current_spectral_morph_type_;
+    if (type == vital::SynthOscillator::kSpectralTable)
+      openModeSettings(3);
+    else if (type >= vital::SynthOscillator::kSpectralFilter && type <= vital::SynthOscillator::kSpectralFlanger)
+      openModeSettings(type - vital::SynthOscillator::kSpectralFilter);
+  }
+  else if (clicked_button == spectral_edit_button_.get())
+    openModeSettings(5);
+  else if (clicked_button == warp_tool_button_.get())
+    openModeSettings(4);
+  else if (clicked_button == warp_edit_button_.get())
+    openModeSettings(6);
+  else if (clicked_button == dice_button_.get())
+    rollDice();
   else if (clicked_button == destination_selector_.get()) {
     PopupItems options;
 
@@ -874,6 +909,7 @@ void OscillatorSection::setAllValues(vital::control_map& controls) {
   setupSpectralMorph();
   setupDistortion();
   setupDestination();
+  updateWarpTools();
   vital::SynthOscillator::DistortionType type = (vital::SynthOscillator::DistortionType)current_distortion_type_;
 
   setDistortionPhaseVisible(vital::SynthOscillator::usesDistortionPhase(type));
@@ -977,8 +1013,49 @@ Slider* OscillatorSection::getWaveFrameSlider() {
   return wave_frame_.get();
 }
 
+// The dice picks a new seed for the Random Amplitudes pattern.
+void OscillatorSection::rollDice() {
+  SynthGuiInterface* parent = findParentComponentOfClass<SynthGuiInterface>();
+  if (parent == nullptr || parent->getSynth() == nullptr)
+    return;
+
+  static Random random;
+  std::string name = "osc_" + std::to_string(index_ + 1) + "_random_seed";
+  float current = 0.0f;
+  auto& controls = parent->getSynth()->getControls();
+  auto control = controls.find(name);
+  if (control != controls.end() && control->second)
+    current = control->second->value();
+
+  float seed = current;
+  while (seed == current)
+    seed = static_cast<float>(random.nextInt(99999) + 1);
+  parent->getSynth()->valueChangedInternal(name, seed);
+  parent->notifyChange();
+}
+
+// Pencils, cogs and the dice only exist for the modes that have something to open or roll.
+void OscillatorSection::updateWarpTools() {
+  int type = current_spectral_morph_type_;
+  bool drawable = type >= vital::SynthOscillator::kSpectralFilter && type <= vital::SynthOscillator::kSpectralFlanger;
+  bool spectral_table = type == vital::SynthOscillator::kSpectralTable;
+  bool random = type == vital::SynthOscillator::kRandomAmplitudes;
+  bool distort_table = current_distortion_type_ == vital::SynthOscillator::kDistortTable;
+
+  curve_button_->setVisible(drawable || spectral_table);
+  curve_button_->setShape(drawable ? Paths::pencil() : Paths::gear());
+  spectral_edit_button_->setVisible(spectral_table);
+  warp_tool_button_->setVisible(distort_table);
+  warp_edit_button_->setVisible(distort_table);
+  dice_button_->setVisible(random);
+  shuffle_->setVisible(random);
+  resized();
+  repaintBackground();
+}
+
 void OscillatorSection::setDistortionSelected(int selection) {
   current_distortion_type_ = selection;
+  updateWarpTools();
   wavetable_->setDistortionType(selection);
   vital::SynthOscillator::DistortionType type = (vital::SynthOscillator::DistortionType)current_distortion_type_;
   setDistortionPhaseVisible(vital::SynthOscillator::usesDistortionPhase(type));
@@ -995,6 +1072,7 @@ void OscillatorSection::openModeSettings(int kind) {
 
 void OscillatorSection::setSpectralMorphSelected(int selection) {
   current_spectral_morph_type_ = selection;
+  updateWarpTools();
   wavetable_->setSpectralMorphType(selection);
   notifySpectralMorphTypeChange();
 }

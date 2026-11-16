@@ -86,6 +86,15 @@ namespace vital {
         kSpectralPosition,
         kRandomShuffle,
         kRandomSeed,
+        kSpectralTableMix,
+        kTablePosition,
+        kTableGain,
+        kTableResonance,
+        kDistortionBias,
+        kDistortionSmooth,
+        kDistortionDrive,
+        kDistortionDcFilter,
+        kDistortionMix,
         kDistortionType,
         kDistortionAmount,
         kActiveVoices,
@@ -330,6 +339,7 @@ namespace vital {
       OscillatorWarpContext warp_context_;
       Wavetable* spectral_table_ = nullptr;
       Wavetable* distort_table_ = nullptr;
+      mono_float dc_state_[poly_float::kSize] = { 0.0f };
     
       poly_float fourier_frames1_[kNumBuffers + 1][kSpectralBufferSize];
       poly_float fourier_frames2_[kNumBuffers + 1][kSpectralBufferSize];

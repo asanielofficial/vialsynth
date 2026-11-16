@@ -47,7 +47,7 @@ class FxVoiceInterface : public SynthSection {
 #include "update_check_section.h"
 #include "wavetable_creator.h"
 
-class RandomAmpEditor;
+class TableSettingsEditor;
 class SpectralWarpEditor;
 class AboutSection;
 class BankExporter;
@@ -146,8 +146,8 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     void externalPresetLoaded(const File& preset);
     void showFullScreenSection(SynthSection* full_screen);
     void showWavetableEditSection(int index);
-    // Opens the popup of an oscillator's mode settings: kind 0-2 the Spectral Filter / Phaser / Flanger drawing, 3 the
-    // Random Amplitudes shuffle and dice, 4 the Spectral Table and 5 the Distort Table (their table editors).
+    // Opens an oscillator's mode editor: kind 0-2 the Spectral Filter / Phaser / Flanger drawing, 3 / 4 the Spectral
+    // Table / Distort Table settings menu (the gear), 5 / 6 the Spectral Table / Distort Table wavetable editor.
     void showOscillatorWarpEditor(int oscillator, int kind);
     void oscillatorPopupVisibilityChanged(bool visible);
     std::string getLastBrowsedWavetable(int index);
@@ -239,7 +239,8 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     std::unique_ptr<EffectsInterface> effects_interface_;
     std::unique_ptr<WavetableEditSection> wavetable_edits_[vital::kNumWavetableSlots];
     std::unique_ptr<SpectralWarpEditor> osc_curve_editors_[vital::kNumOscillators];
-    std::unique_ptr<RandomAmpEditor> osc_random_editors_[vital::kNumOscillators];
+    std::unique_ptr<TableSettingsEditor> osc_spectral_settings_[vital::kNumOscillators];
+    std::unique_ptr<TableSettingsEditor> osc_distort_settings_[vital::kNumOscillators];
     std::unique_ptr<KeyboardInterface> keyboard_interface_;
     std::unique_ptr<BendSection> bend_section_;
     std::unique_ptr<PortamentoSection> portamento_section_;

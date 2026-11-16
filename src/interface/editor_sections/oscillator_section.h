@@ -75,6 +75,8 @@ class OscillatorSection : public SynthSection, public PresetSelector::Listener,
     int getDistortion() const { return current_distortion_type_; }
     void setSpectralMorphSelected(int selection);
     void openModeSettings(int kind);
+    void rollDice();
+    void updateWarpTools();
     void setDestinationSelected(int selection);
     void toggleFilterInput(int filter_index, bool on);
 
@@ -154,6 +156,12 @@ class OscillatorSection : public SynthSection, public PresetSelector::Listener,
     std::unique_ptr<PlainTextComponent> spectral_morph_type_text_;
     std::unique_ptr<ShapeButton> spectral_morph_type_selector_;
     std::unique_ptr<SynthSlider> spectral_morph_amount_;
+    std::unique_ptr<SynthSlider> shuffle_;
+    std::unique_ptr<OpenGlShapeButton> dice_button_;
+    std::unique_ptr<OpenGlShapeButton> curve_button_;
+    std::unique_ptr<OpenGlShapeButton> spectral_edit_button_;
+    std::unique_ptr<OpenGlShapeButton> warp_tool_button_;
+    std::unique_ptr<OpenGlShapeButton> warp_edit_button_;
 
     std::unique_ptr<PlainTextComponent> destination_text_;
     std::unique_ptr<ShapeButton> destination_selector_;

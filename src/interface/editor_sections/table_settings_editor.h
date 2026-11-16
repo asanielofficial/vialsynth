@@ -45,7 +45,7 @@ class TableSettingsEditor : public SynthSection, public Wavetable3d::Listener {
     // subtitle (the title says which copy).
     TableSettingsEditor(Kind kind, const std::string& prefix, int slot,
                         const vital::output_map& mono_modulations, const vital::output_map& poly_modulations,
-                        const std::string& subtitle = "") :
+                        const std::string& subtitle = "", bool phase_bipolar = false) :
         SynthSection("table_settings_" + prefix + (kind == kSpectral ? "_spectral" : "_distort")), kind_(kind) {
       struct KnobInfo {
         std::string parameter;
@@ -62,7 +62,7 @@ class TableSettingsEditor : public SynthSection, public Wavetable3d::Listener {
         title_ = "SPECTRAL TABLE";
       }
       else {
-        knobs = { { prefix + "_distortion_phase", "PHASE", "Phase: ", false },
+        knobs = { { prefix + "_distortion_phase", "PHASE", "Phase: ", phase_bipolar },
                   { prefix + "_distortion_bias", "BIAS", "Bias: ", true },
                   { prefix + "_distortion_smooth", "SMOOTH", "Smooth: ", false },
                   { prefix + "_distortion_drive", "DRIVE", "Drive: ", false },
@@ -93,8 +93,8 @@ class TableSettingsEditor : public SynthSection, public Wavetable3d::Listener {
       wavetable_->setRenderType(Wavetable3d::kWave3d);
       wavetable_->addListener(this);
       // The display follows the lane's amount knob, modulation included.
-      wavetable_->setFrameModulation(mono_modulations, prefix + (kind == kSpectral ? "_spectral_morph_amount"
-                                                                                  : "_distortion_amount"));
+      wavetable_->setFrameModulation(mono_modulations, poly_modulations,
+                                     prefix + (kind == kSpectral ? "_spectral_morph_amount" : "_distortion_amount"));
 
       dimension_button_ = std::make_unique<OpenGlToggleButton>("dimension");
       addAndMakeVisible(dimension_button_.get());
