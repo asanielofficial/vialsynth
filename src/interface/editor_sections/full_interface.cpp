@@ -1101,6 +1101,9 @@ void FullInterface::showOscillatorWarpEditor(int oscillator, int kind) {
     window->setTopLeftPosition(x, y);
     window->setVisible(true);
     osc_popup_window_ = window;
+    content->refreshLayout();
+    Component::SafePointer<OscillatorPopupInterface> safe_content(content);
+    Timer::callAfterDelay(250, [safe_content]() { if (safe_content != nullptr) safe_content->refreshLayout(); });
   }
   else if (kind == 5 || kind == 6)
     showWavetableEditSection(vital::FxTables::oscSlot(oscillator, kind == 5));

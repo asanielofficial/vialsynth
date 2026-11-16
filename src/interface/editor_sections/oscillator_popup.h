@@ -30,6 +30,7 @@ class OscillatorPopupInterface : public FullInterface, public SynthGuiInterface,
     void openGLContextClosing() override;
 
     void timerCallback() override;
+    void refreshLayout();
 
   private:
     void redoPopupBackground();

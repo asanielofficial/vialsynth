@@ -100,6 +100,24 @@ OscillatorPopupInterface::OscillatorPopupInterface(SynthGuiInterface* main, vita
 
 OscillatorPopupInterface::~OscillatorPopupInterface() {
   stopTimer();
+  // The render thread uses the editors below: stop it while this class (and so its overrides) is still alive.
+  open_gl_context_.detach();
+  open_gl_context_.setRenderer(nullptr);
+}
+
+// Text and images of the editors are drawn when they are laid out while showing, which a window that has not been
+// shown yet is not: lay everything out once more after it is up.
+void OscillatorPopupInterface::refreshLayout() {
+  if (content_ == nullptr || getWidth() <= 0)
+    return;
+
+  {
+    ScopedLock lock(open_gl_critical_section_);
+    Rectangle<int> bounds = content_->getBounds();
+    content_->setBounds(bounds.withWidth(bounds.getWidth() + 1));
+    content_->setBounds(bounds);
+  }
+  redoPopupBackground();
 }
 
 String OscillatorPopupInterface::titleFor(int oscillator, int kind) {
