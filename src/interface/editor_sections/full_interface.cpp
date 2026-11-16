@@ -88,17 +88,6 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
     }
 
     addSubSection(synthesis_interface_.get());
-
-    // The popups of the oscillators' mode settings (drawings, shuffle and dice).
-    for (int i = 0; i < vital::kNumOscillators; ++i) {
-      std::string prefix = "osc_" + std::to_string(i + 1);
-      osc_curve_editors_[i] = std::make_unique<SpectralWarpEditor>(synth_data->synth->getEngine(),
-                                                                   vital::SoundEngine::oscLane(i), prefix, true);
-      addSubSection(osc_curve_editors_[i].get());
-      osc_curve_editors_[i]->setVisible(false);
-      osc_curve_editors_[i]->setVisibilityCallback([this](bool visible) { oscillatorPopupVisibilityChanged(visible); });
-
-    }
   }
 #if VITAL_FX
   else {
@@ -306,11 +295,17 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
   bin_highlight_ = std::make_unique<BinHighlight>();
   addSubSection(bin_highlight_.get());
 
-  // The oscillators' table mode menus (the gear next to a table mode's knob). They are added last so they draw over
-  // the sections underneath.
+  // The oscillators' mode popups (the pencils and cogs next to the warp knobs). They are added last so they draw
+  // over the sections underneath.
   if (synthesis_interface_) {
     for (int i = 0; i < vital::kNumOscillators; ++i) {
       std::string prefix = "osc_" + std::to_string(i + 1);
+      osc_curve_editors_[i] = std::make_unique<SpectralWarpEditor>(synth_data->synth->getEngine(),
+                                                                   vital::SoundEngine::oscLane(i), prefix, true);
+      addSubSection(osc_curve_editors_[i].get());
+      osc_curve_editors_[i]->setVisible(false);
+      osc_curve_editors_[i]->setVisibilityCallback([this](bool visible) { oscillatorPopupVisibilityChanged(visible); });
+
       std::string subtitle = "OSC " + std::to_string(i + 1);
       osc_spectral_settings_[i] = std::make_unique<TableSettingsEditor>(
           TableSettingsEditor::kSpectral, prefix, vital::FxTables::oscSlot(i, true), synth_data->mono_modulations,
@@ -743,16 +738,19 @@ void FullInterface::resized() {
       wavetable_edits_[i]->setBounds(left, 0, width, height);
   }
 
-  // The oscillator mode popups take the place of the rest of the window while they are open (like the table editors),
-  // since the sections underneath draw their OpenGL parts over anything laid on top of them.
-  Rectangle<int> popup_bounds(left, 0, width, height);
+  // The oscillator mode popups are windows centred over the synth; they are registered after every other section so
+  // their OpenGL parts draw on top.
+  Rectangle<int> curve_bounds(0, 0, static_cast<int>(width * 0.62f), static_cast<int>(height * 0.62f));
+  Rectangle<int> settings_bounds(0, 0, static_cast<int>(width * 0.5f), static_cast<int>(height * 0.62f));
+  curve_bounds.setCentre(left + width / 2, height / 2);
+  settings_bounds.setCentre(left + width / 2, height / 2);
   for (int i = 0; i < vital::kNumOscillators; ++i) {
     if (osc_curve_editors_[i])
-      osc_curve_editors_[i]->setBounds(popup_bounds);
+      osc_curve_editors_[i]->setBounds(curve_bounds);
     if (osc_spectral_settings_[i])
-      osc_spectral_settings_[i]->setBounds(popup_bounds);
+      osc_spectral_settings_[i]->setBounds(settings_bounds);
     if (osc_distort_settings_[i])
-      osc_distort_settings_[i]->setBounds(popup_bounds);
+      osc_distort_settings_[i]->setBounds(settings_bounds);
   }
 
   if (synthesis_interface_) {
@@ -1118,8 +1116,6 @@ void FullInterface::showOscillatorWarpEditor(int oscillator, int kind) {
   }
 
   if (kind >= 0 && kind < 5) {
-    // No table editor is meant: this hides the rest of the window, and the popup closing brings it back.
-    showWavetableEditSection(vital::kNumWavetableSlots);
     if (kind < 3)
       osc_curve_editors_[oscillator]->showCurve(0, kind);
     else if (kind == 3)
@@ -1133,8 +1129,6 @@ void FullInterface::showOscillatorWarpEditor(int oscillator, int kind) {
 }
 
 void FullInterface::oscillatorPopupVisibilityChanged(bool visible) {
-  if (!visible && !switching_oscillator_popup_)
-    showWavetableEditSection(-1);
 }
 
 std::string FullInterface::getLastBrowsedWavetable(int index) {
