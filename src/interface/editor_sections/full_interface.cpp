@@ -1116,6 +1116,15 @@ void FullInterface::showOscillatorWarpEditor(int oscillator, int kind) {
   }
 
   if (kind >= 0 && kind < 5) {
+    // The popup takes the place of the oscillator panel (the sections underneath draw their OpenGL parts over
+    // anything laid on top of them); the panels on the right stay as they are.
+    Rectangle<int> area = synthesis_interface_ ? synthesis_interface_->getBounds() : getLocalBounds();
+    if (synthesis_interface_)
+      synthesis_interface_->setVisible(false);
+    Rectangle<int> popup = area.reduced(area.getWidth() / 10, area.getHeight() / 10);
+    osc_curve_editors_[oscillator]->setBounds(popup);
+    osc_spectral_settings_[oscillator]->setBounds(popup);
+    osc_distort_settings_[oscillator]->setBounds(popup);
     if (kind < 3)
       osc_curve_editors_[oscillator]->showCurve(0, kind);
     else if (kind == 3)
@@ -1129,6 +1138,8 @@ void FullInterface::showOscillatorWarpEditor(int oscillator, int kind) {
 }
 
 void FullInterface::oscillatorPopupVisibilityChanged(bool visible) {
+  if (!visible && !switching_oscillator_popup_ && synthesis_interface_)
+    synthesis_interface_->setVisible(true);
 }
 
 std::string FullInterface::getLastBrowsedWavetable(int index) {
