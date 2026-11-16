@@ -313,6 +313,10 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
       osc_distort_settings_[i] = std::make_unique<TableSettingsEditor>(
           TableSettingsEditor::kDistort, prefix, vital::FxTables::oscSlot(i, false), synth_data->mono_modulations,
           synth_data->poly_modulations, subtitle, true);
+      // Dragging the display moves the mode's amount knob (the table position), as in the Morph effect.
+      OscillatorSection* section = synthesis_interface_->getOscillatorSection(i);
+      osc_spectral_settings_[i]->setFrameSlider(const_cast<SynthSlider*>(section->getSpectralMorphSlider()));
+      osc_distort_settings_[i]->setFrameSlider(const_cast<SynthSlider*>(section->getDistortionSlider()));
       for (TableSettingsEditor* editor : { osc_spectral_settings_[i].get(), osc_distort_settings_[i].get() }) {
         addSubSection(editor);
         editor->setVisible(false);
