@@ -1135,11 +1135,16 @@ void FullInterface::showOscillatorWarpEditor(int oscillator, int kind) {
   else if (kind == 5 || kind == 6)
     showWavetableEditSection(vital::FxTables::oscSlot(oscillator, kind == 5));
   switching_oscillator_popup_ = false;
+  redoBackground();   // the cached background still holds the panel that was just hidden
 }
 
 void FullInterface::oscillatorPopupVisibilityChanged(bool visible) {
-  if (!visible && !switching_oscillator_popup_ && synthesis_interface_)
+  if (!visible && !switching_oscillator_popup_ && synthesis_interface_) {
+    ScopedLock lock(open_gl_critical_section_);
     synthesis_interface_->setVisible(true);
+    synthesis_interface_->repaintBackground();
+    redoBackground();   // the popup's pixels are part of the cached background until it is redone
+  }
 }
 
 std::string FullInterface::getLastBrowsedWavetable(int index) {
