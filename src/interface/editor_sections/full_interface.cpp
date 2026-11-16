@@ -38,6 +38,7 @@
 #include "overlay.h"
 #include "portamento_section.h"
 #include "preset_browser.h"
+#include "oscillator_popup.h"
 #include "table_settings_editor.h"
 #include "spectral_warp_editor.h"
 #if VITAL_FX
@@ -56,6 +57,9 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
                                                          enable_redo_background_(true), needs_download_(false),
                                                          open_gl_(open_gl_context_) {
   full_screen_section_ = nullptr;
+  engine_ = synth_data->synth->getEngine();
+  mono_modulations_ = synth_data->mono_modulations;
+  poly_modulations_ = synth_data->poly_modulations;
   Skin default_skin;
   setSkinValues(default_skin, true);
   default_skin.copyValuesToLookAndFeel(DefaultLookAndFeel::instance());
@@ -295,36 +299,6 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
   bin_highlight_ = std::make_unique<BinHighlight>();
   addSubSection(bin_highlight_.get());
 
-  // The oscillators' mode popups (the pencils and cogs next to the warp knobs). They are added last so they draw
-  // over the sections underneath.
-  if (synthesis_interface_) {
-    for (int i = 0; i < vital::kNumOscillators; ++i) {
-      std::string prefix = "osc_" + std::to_string(i + 1);
-      osc_curve_editors_[i] = std::make_unique<SpectralWarpEditor>(synth_data->synth->getEngine(),
-                                                                   vital::SoundEngine::oscLane(i), prefix, true);
-      addSubSection(osc_curve_editors_[i].get());
-      osc_curve_editors_[i]->setVisible(false);
-      osc_curve_editors_[i]->setVisibilityCallback([this](bool visible) { oscillatorPopupVisibilityChanged(visible); });
-
-      std::string subtitle = "OSC " + std::to_string(i + 1);
-      osc_spectral_settings_[i] = std::make_unique<TableSettingsEditor>(
-          TableSettingsEditor::kSpectral, prefix, vital::FxTables::oscSlot(i, true), synth_data->mono_modulations,
-          synth_data->poly_modulations, subtitle);
-      osc_distort_settings_[i] = std::make_unique<TableSettingsEditor>(
-          TableSettingsEditor::kDistort, prefix, vital::FxTables::oscSlot(i, false), synth_data->mono_modulations,
-          synth_data->poly_modulations, subtitle, true);
-      // Dragging the display moves the mode's amount knob (the table position), as in the Morph effect.
-      OscillatorSection* section = synthesis_interface_->getOscillatorSection(i);
-      osc_spectral_settings_[i]->setFrameSlider(const_cast<SynthSlider*>(section->getSpectralMorphSlider()));
-      osc_distort_settings_[i]->setFrameSlider(const_cast<SynthSlider*>(section->getDistortionSlider()));
-      for (TableSettingsEditor* editor : { osc_spectral_settings_[i].get(), osc_distort_settings_[i].get() }) {
-        addSubSection(editor);
-        editor->setVisible(false);
-        editor->setVisibilityCallback([this](bool visible) { oscillatorPopupVisibilityChanged(visible); });
-      }
-    }
-  }
-
   setAllValues(synth_data->controls);
   setOpaque(true);
   setSkinValues(default_skin, true);
@@ -339,7 +313,11 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
   open_gl_context_.attachTo(*this);
 }
 
-FullInterface::FullInterface() : SynthSection("EMPTY"), open_gl_(open_gl_context_) {
+FullInterface::FullInterface() : SynthSection("EMPTY"), width_(0), resized_width_(0), last_render_scale_(0.0f),
+                                 display_scale_(1.0f), pixel_multiple_(1), setting_all_values_(false),
+                                 unsupported_(false), animate_(true), enable_redo_background_(true),
+                                 needs_download_(false), open_gl_(open_gl_context_) {
+  full_screen_section_ = nullptr;
   Skin default_skin;
   setSkinValues(default_skin, true);
 
@@ -355,6 +333,7 @@ FullInterface::FullInterface() : SynthSection("EMPTY"), open_gl_(open_gl_context
 }
 
 FullInterface::~FullInterface() {
+  osc_popup_window_.deleteAndZero();
   UpdateMemory::getInstance()->decrementChecker();
 
   open_gl_context_.detach();
@@ -391,8 +370,10 @@ void FullInterface::paintBackground(Graphics& g) {
 
 void FullInterface::setSkinValues(const Skin& skin, bool top_level) {
   SynthSection::setSkinValues(skin, top_level);
-  if (top_level)
+  if (top_level) {
+    current_skin_ = skin;
     updateGlow(skin);
+  }
 }
 
 void FullInterface::updateGlow(const Skin& skin) {
@@ -740,21 +721,6 @@ void FullInterface::resized() {
   for (int i = 0; i < vital::kNumWavetableSlots; ++i) {
     if (wavetable_edits_[i])
       wavetable_edits_[i]->setBounds(left, 0, width, height);
-  }
-
-  // The oscillator mode popups are windows centred over the synth; they are registered after every other section so
-  // their OpenGL parts draw on top.
-  Rectangle<int> curve_bounds(0, 0, static_cast<int>(width * 0.62f), static_cast<int>(height * 0.62f));
-  Rectangle<int> settings_bounds(0, 0, static_cast<int>(width * 0.5f), static_cast<int>(height * 0.62f));
-  curve_bounds.setCentre(left + width / 2, height / 2);
-  settings_bounds.setCentre(left + width / 2, height / 2);
-  for (int i = 0; i < vital::kNumOscillators; ++i) {
-    if (osc_curve_editors_[i])
-      osc_curve_editors_[i]->setBounds(curve_bounds);
-    if (osc_spectral_settings_[i])
-      osc_spectral_settings_[i]->setBounds(settings_bounds);
-    if (osc_distort_settings_[i])
-      osc_distort_settings_[i]->setBounds(settings_bounds);
   }
 
   if (synthesis_interface_) {
@@ -1108,47 +1074,36 @@ void FullInterface::showWavetableEditSection(int index) {
 }
 
 void FullInterface::showOscillatorWarpEditor(int oscillator, int kind) {
-  if (oscillator < 0 || oscillator >= vital::kNumOscillators || osc_curve_editors_[oscillator] == nullptr)
+  osc_popup_window_.deleteAndZero();
+  if (oscillator < 0 || oscillator >= vital::kNumOscillators)
     return;
 
-  ScopedLock lock(open_gl_critical_section_);
-  switching_oscillator_popup_ = true;
-  for (int i = 0; i < vital::kNumOscillators; ++i) {
-    osc_curve_editors_[i]->setVisible(false);
-    osc_spectral_settings_[i]->setVisible(false);
-    osc_distort_settings_[i]->setVisible(false);
-  }
-
   if (kind >= 0 && kind < 5) {
-    // The popup takes the place of the oscillator panel (the sections underneath draw their OpenGL parts over
-    // anything laid on top of them); the panels on the right stay as they are.
-    Rectangle<int> area = synthesis_interface_ ? synthesis_interface_->getBounds() : getLocalBounds();
-    if (synthesis_interface_)
-      synthesis_interface_->setVisible(false);
-    Rectangle<int> popup = area.reduced(area.getWidth() / 10, area.getHeight() / 10);
-    osc_curve_editors_[oscillator]->setBounds(popup);
-    osc_spectral_settings_[oscillator]->setBounds(popup);
-    osc_distort_settings_[oscillator]->setBounds(popup);
-    if (kind < 3)
-      osc_curve_editors_[oscillator]->showCurve(0, kind);
-    else if (kind == 3)
-      osc_spectral_settings_[oscillator]->setVisible(true);
-    else
-      osc_distort_settings_[oscillator]->setVisible(true);
+    // The pencils and cogs next to the knobs: a window of its own, always on top, like the skin editor.
+    SynthGuiInterface* main = findParentComponentOfClass<SynthGuiInterface>();
+    if (main == nullptr || engine_ == nullptr)
+      return;
+
+    auto* content = new OscillatorPopupInterface(main, engine_, oscillator, kind, mono_modulations_,
+                                                 poly_modulations_, current_skin_);
+    Rectangle<int> size = OscillatorPopupInterface::defaultSize(kind);
+    content->setSize(size.getWidth(), size.getHeight());
+    auto* window = new OscillatorPopupWindow(OscillatorPopupInterface::titleFor(oscillator, kind), content);
+    Component::SafePointer<OscillatorPopupWindow> safe(window);
+    content->setCloseCallback([safe]() {
+      MessageManager::callAsync([safe]() { if (safe != nullptr) delete safe.getComponent(); });
+    });
+
+    // Pinned near the top of the plugin window, centred.
+    Rectangle<int> main_bounds = getScreenBounds();
+    int x = main_bounds.getCentreX() - size.getWidth() / 2;
+    int y = main_bounds.getY() + 30;
+    window->setTopLeftPosition(x, y);
+    window->setVisible(true);
+    osc_popup_window_ = window;
   }
   else if (kind == 5 || kind == 6)
     showWavetableEditSection(vital::FxTables::oscSlot(oscillator, kind == 5));
-  switching_oscillator_popup_ = false;
-  redoBackground();   // the cached background still holds the panel that was just hidden
-}
-
-void FullInterface::oscillatorPopupVisibilityChanged(bool visible) {
-  if (!visible && !switching_oscillator_popup_ && synthesis_interface_) {
-    ScopedLock lock(open_gl_critical_section_);
-    synthesis_interface_->setVisible(true);
-    synthesis_interface_->repaintBackground();
-    redoBackground();   // the popup's pixels are part of the cached background until it is redone
-  }
 }
 
 std::string FullInterface::getLastBrowsedWavetable(int index) {

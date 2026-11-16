@@ -43,10 +43,12 @@ class FxVoiceInterface : public SynthSection {
 #include "bin_highlight.h"
 #include "glow_pass.h"
 #include "shaders.h"
+#include "skin.h"
 #include "synth_section.h"
 #include "update_check_section.h"
 #include "wavetable_creator.h"
 
+namespace vital { class SoundEngine; }
 class TableSettingsEditor;
 class SpectralWarpEditor;
 class AboutSection;
@@ -149,7 +151,6 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     // Opens an oscillator's mode editor: kind 0-2 the Spectral Filter / Phaser / Flanger drawing, 3 / 4 the Spectral
     // Table / Distort Table settings menu (the gear), 5 / 6 the Spectral Table / Distort Table wavetable editor.
     void showOscillatorWarpEditor(int oscillator, int kind);
-    void oscillatorPopupVisibilityChanged(bool visible);
     std::string getLastBrowsedWavetable(int index);
     std::string getWavetableName(int index);
     std::string getSignedInName();
@@ -202,7 +203,7 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     void toggleFilter1Zoom();
     void toggleFilter2Zoom();
 
-  private:
+  protected:
     bool wavetableEditorsInitialized() {
       for (int i = 0; i < vital::kNumOscillators; ++i) {
         if (wavetable_edits_[i] == nullptr)
@@ -232,15 +233,11 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     std::unique_ptr<SynthesisInterface> synthesis_interface_;
     std::unique_ptr<FxVoiceInterface> fx_voice_interface_;
     bool effects_hidden_by_editor_ = false;
-    bool switching_oscillator_popup_ = false;
     std::unique_ptr<MasterControlsInterface> master_controls_interface_;
     std::unique_ptr<ModulationInterface> modulation_interface_;
     std::unique_ptr<ExtraModSection> extra_mod_section_;
     std::unique_ptr<EffectsInterface> effects_interface_;
     std::unique_ptr<WavetableEditSection> wavetable_edits_[vital::kNumWavetableSlots];
-    std::unique_ptr<SpectralWarpEditor> osc_curve_editors_[vital::kNumOscillators];
-    std::unique_ptr<TableSettingsEditor> osc_spectral_settings_[vital::kNumOscillators];
-    std::unique_ptr<TableSettingsEditor> osc_distort_settings_[vital::kNumOscillators];
     std::unique_ptr<KeyboardInterface> keyboard_interface_;
     std::unique_ptr<BendSection> bend_section_;
     std::unique_ptr<PortamentoSection> portamento_section_;
@@ -257,6 +254,12 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     std::unique_ptr<DownloadSection> download_section_;
     std::unique_ptr<ExpiredSection> expired_section_;
     SynthSection* full_screen_section_;
+
+    vital::SoundEngine* engine_ = nullptr;
+    vital::output_map mono_modulations_;
+    vital::output_map poly_modulations_;
+    Skin current_skin_;
+    Component::SafePointer<Component> osc_popup_window_;
 
     int width_;
     int resized_width_;
