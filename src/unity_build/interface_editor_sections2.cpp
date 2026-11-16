@@ -32,6 +32,7 @@
 #include "keyboard_interface.cpp"
 #include "header_section.cpp"
 #include "full_interface.cpp"
+#include "oscillator_popup.cpp"
 #include "delete_section.cpp"
 #include "download_section.cpp"
 #include "expired_section.cpp"
