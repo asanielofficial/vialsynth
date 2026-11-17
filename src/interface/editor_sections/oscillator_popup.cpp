@@ -463,7 +463,7 @@ void PopupModulationOverlay::renderOpenGlComponents(OpenGlWrapper& open_gl, bool
   int num_voices = 1;
   SynthGuiInterface* gui = findParentComponentOfClass<SynthGuiInterface>();
   if (gui && gui->getSynth()) {
-    const vital::Output* readout = gui->getSynth()->getStatusOutput("num_voices");
+    const auto* readout = gui->getSynth()->getStatusOutput("num_voices");
     if (readout)
       num_voices = std::max<float>(0.0f, readout->value()[0]);
   }
