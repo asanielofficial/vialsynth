@@ -262,6 +262,7 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     vital::output_map mono_modulations_;
     vital::output_map poly_modulations_;
     Skin current_skin_;
+    std::unique_ptr<SynthSection> modulation_proxies_;
     std::map<int, Component::SafePointer<Component>> osc_popup_windows_;   // by oscillator * 10 + kind
 
     int width_;

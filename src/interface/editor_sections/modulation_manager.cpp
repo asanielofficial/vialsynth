@@ -21,6 +21,7 @@
 #include "modulation_connection_processor.h"
 #include "modulation_matrix.h"
 #include "modulation_meter.h"
+#include "oscillator_popup.h"
 #include "shaders.h"
 #include "synth_gui_interface.h"
 
@@ -885,6 +886,16 @@ void ModulationManager::modulationDragged(const MouseEvent& e) {
   
   mouse_drag_position_ = getLocalPoint(current_source_, e.getPosition());
   Component* component = getComponentAt(mouse_drag_position_.x, mouse_drag_position_.y);
+
+  // A popup window of an oscillator over the cursor takes the drop (it sits on top of the main window).
+  bool over_popup = false;
+  SynthSlider* popup_slider = OscillatorPopupInterface::sliderAtScreenPoint(e.getScreenPosition(), over_popup);
+  if (over_popup) {
+    component = nullptr;
+    if (popup_slider && destination_lookup_.count(popup_slider->getName().toStdString()))
+      component = destination_lookup_[popup_slider->getName().toStdString()];
+  }
+
   ModulationAmountKnob* hover_knob = nullptr;
   for (int i = 0; i < vital::kMaxModulationConnections; ++i) {
     if (modulation_amount_sliders_[i].get() == component)

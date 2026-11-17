@@ -8,6 +8,7 @@
 
 #include "full_interface.h"
 #include "synth_gui_interface.h"
+#include "synth_slider.h"
 
 class OscillatorPopupInterface : public FullInterface, public SynthGuiInterface, private Timer {
   public:
@@ -18,6 +19,10 @@ class OscillatorPopupInterface : public FullInterface, public SynthGuiInterface,
     ~OscillatorPopupInterface() override;
 
     static String titleFor(int oscillator, int kind);
+
+    // Modulation drags that end over a popup window: the slider of a popup under a screen point. over_popup says the
+    // point is over one of these windows at all (even if no slider is there).
+    static SynthSlider* sliderAtScreenPoint(Point<int> screen_point, bool& over_popup);
     static Rectangle<int> defaultSize(int kind);
 
     void setCloseCallback(std::function<void()> callback) { close_callback_ = callback; }
@@ -52,4 +57,18 @@ class OscillatorPopupWindow : public DocumentWindow {
     ~OscillatorPopupWindow() override = default;
 
     void closeButtonPressed() override { delete this; }
+};
+
+// The sliders that only the popup windows have (the details of the oscillators' spectral modes and table settings),
+// as hidden stand-ins in the main window. The modulation manager only knows the sliders of the main window; with
+// these it can map a source to them when it is dropped on the real slider in a popup.
+class ModulationProxySection : public SynthSection {
+  public:
+    ModulationProxySection(const vital::output_map& mono_modulations,
+                           const std::map<std::string, SynthSlider*>& existing);
+
+    void resized() override;
+
+  private:
+    std::vector<std::unique_ptr<SynthSlider>> proxies_;
 };

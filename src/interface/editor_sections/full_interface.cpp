@@ -180,6 +180,8 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
   point_mod_targets_ = std::make_unique<PointModTargets>();
   addSubSection(point_mod_targets_.get());
 #endif
+  modulation_proxies_ = std::make_unique<ModulationProxySection>(synth_data->mono_modulations, getAllSliders());
+  addSubSection(modulation_proxies_.get());
   createModulationSliders(synth_data->mono_modulations, synth_data->poly_modulations);
 #if VITAL_FX
   modulation_manager_->on_drag_started = [this]() { point_mod_targets_->beginDrag(); };
@@ -715,6 +717,7 @@ void FullInterface::resized() {
   bank_exporter_->setBounds(browse_bounds);
   SynthSection::resized();
 
+  modulation_proxies_->setBounds(-60, -60, 24, 24);   // off to the side, nothing to see
   modulation_manager_->setBounds(bounds);
 #if VITAL_FX
   point_mod_targets_->setBounds(bounds);

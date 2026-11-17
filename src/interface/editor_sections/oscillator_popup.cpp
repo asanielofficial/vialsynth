@@ -264,3 +264,48 @@ OscillatorPopupWindow::OscillatorPopupWindow(const String& title, OscillatorPopu
   setResizable(true, false);
   setResizeLimits(420, 320, 2000, 1600);
 }
+
+SynthSlider* OscillatorPopupInterface::sliderAtScreenPoint(Point<int> screen_point, bool& over_popup) {
+  over_popup = false;
+  Component* component = Desktop::getInstance().findComponentAt(screen_point);
+  if (component == nullptr)
+    return nullptr;
+
+  if (dynamic_cast<OscillatorPopupInterface*>(component) == nullptr &&
+      component->findParentComponentOfClass<OscillatorPopupInterface>() == nullptr)
+    return nullptr;
+
+  over_popup = true;
+  for (Component* parent = component; parent != nullptr; parent = parent->getParentComponent()) {
+    if (auto* slider = dynamic_cast<SynthSlider*>(parent))
+      return slider;
+  }
+  return nullptr;
+}
+
+ModulationProxySection::ModulationProxySection(const vital::output_map& mono_modulations,
+                                               const std::map<std::string, SynthSlider*>& existing) :
+    SynthSection("Modulation proxies") {
+  static const char* kNames[] = { "spectral_position", "spectral_gain", "spectral_density", "spectral_resonance",
+                                  "spectral_depth", "spectral_phase", "table_position", "table_gain",
+                                  "table_resonance", "spectral_table_mix", "distortion_bias", "distortion_smooth",
+                                  "distortion_drive", "distortion_mix" };
+  for (int osc = 1; osc <= vital::kNumOscillators; ++osc) {
+    for (const char* name : kNames) {
+      std::string full_name = "osc_" + std::to_string(osc) + "_" + name;
+      if (existing.count(full_name) || !mono_modulations.count(full_name))
+        continue;
+
+      auto slider = std::make_unique<SynthSlider>(full_name);
+      addSlider(slider.get());
+      slider->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+      slider->setVisible(false);
+      proxies_.push_back(std::move(slider));
+    }
+  }
+}
+
+void ModulationProxySection::resized() {
+  for (auto& slider : proxies_)
+    slider->setBounds(0, 0, getWidth(), getHeight());
+}
