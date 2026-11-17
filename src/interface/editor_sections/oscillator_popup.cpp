@@ -20,6 +20,7 @@ OscillatorPopupInterface::OscillatorPopupInterface(SynthGuiInterface* main, vita
                                                    const vital::output_map& mono_modulations,
                                                    const vital::output_map& poly_modulations, const Skin& skin) :
     FullInterface(), SynthGuiInterface(main->getSynth(), false), main_(main), kind_(kind) {
+  setModulationForward(main);
   setOpaque(true);
   setSkinValues(skin, true);
 
