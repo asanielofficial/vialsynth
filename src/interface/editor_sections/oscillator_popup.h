@@ -91,6 +91,8 @@ class PopupModulationOverlay : public SynthSection, private Timer {
     ~PopupModulationOverlay() override;
 
     void resized() override;
+    void paint(Graphics&) override { }
+    void paintBackground(Graphics&) override { }
     void initOpenGlComponents(OpenGlWrapper& open_gl) override;
     void renderOpenGlComponents(OpenGlWrapper& open_gl, bool animate) override;
     void destroyOpenGlComponents(OpenGlWrapper& open_gl) override;
