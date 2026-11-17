@@ -234,6 +234,17 @@ class Wavetable3d : public OpenGlComponent, public AudioFileDropSource {
     RenderType last_render_type_;
     bool active_;
     int size_;
+
+    // The oscillator's own warp settings (curves, table, details, random pattern, distort table), read from the
+    // synth so the display shows the same waveform the voices make.
+    float updateWarpContext();
+    float warpParameter(const std::string& name, float fallback);
+    vital::OscillatorWarpContext warp_context_;
+    const vital::Wavetable::WavetableData* distort_table_data_ = nullptr;
+    float distort_bias_ = 0.0f, distort_smooth_ = 0.0f, distort_drive_ = 0.0f, distort_mix_ = 1.0f;
+    float distort_phase_ = 0.5f;
+    bool distort_dc_filter_ = true;
+    float warp_signature_ = 0.0f;
     int index_;
     vital::Wavetable* wavetable_;
 

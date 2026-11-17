@@ -23,6 +23,9 @@
 #include "skin.h"
 #include "synth_constants.h"
 #include "synth_gui_interface.h"
+#include "sound_engine.h"
+#include "synth_base.h"
+#include "fx_tables.h"
 #include "synth_oscillator.h"
 #include "utils.h"
 
@@ -331,6 +334,80 @@ void Wavetable3d::mouseExit(const MouseEvent& e) {
     frame_slider_->hidePopup(true);
 }
 
+float Wavetable3d::warpParameter(const std::string& name, float fallback) {
+  SynthGuiInterface* gui = findParentComponentOfClass<SynthGuiInterface>();
+  if (gui == nullptr || gui->getSynth() == nullptr)
+    return fallback;
+
+  vital::control_map& controls = gui->getSynth()->getControls();
+  auto control = controls.find("osc_" + std::to_string(index_ + 1) + "_" + name);
+  return control == controls.end() || !control->second ? fallback : control->second->value();
+}
+
+// Reads the oscillator's warp settings into the context used for the display. Returns a number that changes when
+// anything the display depends on changes.
+float Wavetable3d::updateWarpContext() {
+  SynthGuiInterface* gui = findParentComponentOfClass<SynthGuiInterface>();
+  if (table_mode_ || index_ < 0 || index_ >= vital::kNumOscillators || gui == nullptr || gui->getSynth() == nullptr ||
+      gui->getSynth()->getEngine() == nullptr)
+    return 0.0f;
+
+  vital::SoundEngine* engine = gui->getSynth()->getEngine();
+  auto clamp01 = [](float v) { return std::max(0.0f, std::min(v, 1.0f)); };
+  warp_context_.position = clamp01(warpParameter("spectral_position", 0.5f));
+  warp_context_.table_shift = clamp01(warpParameter("table_position", 0.5f));
+  warp_context_.table_gain = clamp01(warpParameter("table_gain", 0.5f));
+  warp_context_.table_resonance = clamp01(warpParameter("table_resonance", 0.5f));
+  warp_context_.table_mix = clamp01(warpParameter("spectral_table_mix", 1.0f));
+  warp_context_.gain = clamp01(warpParameter("spectral_gain", 0.5f));
+  warp_context_.density = clamp01(warpParameter("spectral_density", 0.5f));
+  warp_context_.resonance = clamp01(warpParameter("spectral_resonance", 0.5f));
+  warp_context_.depth = clamp01(warpParameter("spectral_depth", 0.5f));
+  warp_context_.comb_phase = clamp01(warpParameter("spectral_phase", 0.0f));
+  float shuffle = warpParameter("random_shuffle", 0.0f);
+  int seed = static_cast<int>(warpParameter("random_seed", 0.0f) + 0.5f);
+  warp_context_.updateRandom(seed, shuffle);
+
+  int lane = vital::SoundEngine::oscLane(index_);
+  float curve_sum = 0.0f;
+  for (int i = 0; i < 3; ++i) {
+    const LineGenerator* curve = engine->getSpectralCurve(lane, i);
+    warp_context_.curves[i] = curve;
+    if (curve == nullptr)
+      continue;
+    const float* buffer = curve->getBuffer();
+    for (int k = 0; k < curve->resolution(); k += 5)
+      curve_sum += buffer[k] * (1.0f + 0.37f * ((k / 5) % 11) + 3.1f * i);
+  }
+
+  vital::Wavetable* spectral = engine->getWavetable(vital::FxTables::oscSlot(index_, true));
+  vital::Wavetable* distort = engine->getWavetable(vital::FxTables::oscSlot(index_, false));
+  warp_context_.spectral_table = spectral ? spectral->getAllData() : nullptr;
+  distort_table_data_ = distort ? distort->getAllData() : nullptr;
+  distort_bias_ = std::max(-1.0f, std::min(warpParameter("distortion_bias", 0.0f), 1.0f));
+  distort_smooth_ = clamp01(warpParameter("distortion_smooth", 0.0f));
+  distort_drive_ = clamp01(warpParameter("distortion_drive", 0.0f));
+  distort_mix_ = clamp01(warpParameter("distortion_mix", 1.0f));
+  distort_phase_ = clamp01(warpParameter("distortion_phase", 0.5f));
+  distort_dc_filter_ = warpParameter("distortion_dc_filter", 1.0f) > 0.5f;
+
+  float signature = curve_sum;
+  float parameters[] = { warp_context_.position, warp_context_.table_shift, warp_context_.table_gain,
+                         warp_context_.table_resonance, warp_context_.table_mix, warp_context_.gain,
+                         warp_context_.density, warp_context_.resonance, warp_context_.depth,
+                         warp_context_.comb_phase, shuffle, static_cast<float>(seed), distort_bias_,
+                         distort_smooth_, distort_drive_, distort_mix_, distort_phase_,
+                         distort_dc_filter_ ? 1.0f : 0.0f };
+  float weight = 1.0f;
+  for (float value : parameters) {
+    weight += 0.173f;
+    signature += value * weight;
+  }
+  signature += reinterpret_cast<uintptr_t>(warp_context_.spectral_table) % 1009 +
+               reinterpret_cast<uintptr_t>(distort_table_data_) % 997;
+  return signature;
+}
+
 bool Wavetable3d::updateRenderValues() {
   bool new_morph = last_spectral_morph_type_ != spectral_morph_type_ ||
                    last_distortion_type_ != distortion_type_ ||
@@ -344,6 +421,9 @@ bool Wavetable3d::updateRenderValues() {
   vital::poly_float spectral_morph_value = getSpectralMorphValue();
   vital::poly_float distortion_value = getDistortionValue();
   vital::poly_int distortion_phase = getDistortionPhaseValue();
+  float warp_signature = updateWarpContext();
+  bool warp_changed = warp_signature != warp_signature_;
+  warp_signature_ = warp_signature;
 
   vital::poly_mask equal = vital::constants::kFullMask;
   equal = equal & vital::poly_float::equal(wave_frame_, wave_frame);
@@ -356,7 +436,7 @@ bool Wavetable3d::updateRenderValues() {
   distortion_value_ = distortion_value;
   distortion_phase_ = distortion_phase;
 
-  return !loading_wavetable_ && ((~equal).anyMask() || new_morph);
+  return !loading_wavetable_ && ((~equal).anyMask() || new_morph || warp_changed);
 }
 
 void Wavetable3d::loadWaveData(int index) {
@@ -806,8 +886,10 @@ void Wavetable3d::warpSpectrumToWave(int index) {
   vital::SynthOscillator::SpectralMorph morph_type = (vital::SynthOscillator::SpectralMorph)spectral_morph_type_;
 
   memset(process_wave_data_, 0, vital::SynthOscillator::kSpectralBufferSize * sizeof(vital::poly_float));
+  bool oscillator_view = !table_mode_ && index_ >= 0 && index_ < vital::kNumOscillators;
   vital::SynthOscillator::runSpectralMorph(morph_type, morph, current_wavetable_data_, wavetable_index_,
-                                           process_wave_data_, &transform_);
+                                           process_wave_data_, &transform_,
+                                           oscillator_view ? &warp_context_ : nullptr);
 }
 
 void Wavetable3d::warpPhase(int index) {
@@ -830,5 +912,25 @@ void Wavetable3d::warpPhase(int index) {
     vital::poly_float value = window * vital::SynthOscillator::interpolate(buffer, adjusted_phase);
     for (int v = 0; v < vital::poly_float::kSize; ++v)
       time_domain[i + v] = value[v];
+  }
+
+  // Distort Table: the wave goes through the transfer curve, as in the voices (the DC filter is the mean here).
+  if (!table_mode_ && distortion_type_ == vital::SynthOscillator::kDistortTable && distort_table_data_ != nullptr) {
+    float drive_gain = std::exp2(4.0f * distort_drive_);
+    float phase = distort_phase_ - 0.5f;
+    float mean = 0.0f;
+    float shaped[kResolution + 8];
+    int resolution = kResolution;
+    int count = std::min(size_, resolution);
+    for (int i = 0; i < count; ++i) {
+      float x = time_domain[i];
+      float y = vital::FxTables::distort(distort_table_data_, drive_gain * x + distort_bias_, distortion, phase,
+                                         distort_smooth_);
+      shaped[i] = x + (y - x) * distort_mix_;
+      mean += shaped[i];
+    }
+    mean = distort_dc_filter_ ? mean / std::max(1, count) : 0.0f;
+    for (int i = 0; i < count; ++i)
+      time_domain[i] = shaped[i] - mean;
   }
 }
