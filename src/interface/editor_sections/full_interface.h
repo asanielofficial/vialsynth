@@ -197,6 +197,8 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     }
 
     float getResizingScale() const { return width_ * 1.0f / resized_width_; }
+    // Windows of their own measure how many pixels they really draw per unit; 0 means use the context's scale.
+    float getForcedRenderScale() const { return forced_render_scale_; }
     float getPixelScaling() const override { return display_scale_; }
     int getPixelMultiple() const override { return pixel_multiple_; }
     void toggleOscillatorZoom(int index);
@@ -255,6 +257,7 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     std::unique_ptr<ExpiredSection> expired_section_;
     SynthSection* full_screen_section_;
 
+    float forced_render_scale_ = 0.0f;
     vital::SoundEngine* engine_ = nullptr;
     vital::output_map mono_modulations_;
     vital::output_map poly_modulations_;

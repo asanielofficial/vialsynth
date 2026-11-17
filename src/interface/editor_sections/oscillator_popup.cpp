@@ -168,8 +168,10 @@ void OscillatorPopupInterface::redoPopupBackground() {
 
   ScopedLock lock(open_gl_critical_section_);
   background_.lock();
-  background_image_ = Image(Image::RGB, width, height, true);
+  float scale = forced_render_scale_ > 0.0f ? forced_render_scale_ : 1.0f;
+  background_image_ = Image(Image::RGB, std::ceil(width * scale), std::ceil(height * scale), true);
   Graphics g(background_image_);
+  g.addTransform(AffineTransform::scale(scale));
   paintBackground(g);
   background_.updateBackgroundImage(background_image_);
   background_.unlock();
@@ -188,6 +190,22 @@ void OscillatorPopupInterface::newOpenGLContextCreated() {
 void OscillatorPopupInterface::renderOpenGL() {
   if (open_gl_.shaders == nullptr)
     return;
+
+  // How many pixels this window really draws per unit: the viewport JUCE has just set covers the whole window.
+  GLint viewport[4] = { 0, 0, 0, 0 };
+  glGetIntegerv(GL_VIEWPORT, viewport);
+  if (viewport[2] > 0 && getWidth() > 0) {
+    float scale = viewport[2] * 1.0f / getWidth();
+    if (std::abs(scale - forced_render_scale_) > 0.001f) {
+      forced_render_scale_ = scale;
+      // The cached background is drawn at this scale too.
+      Component::SafePointer<Component> safe(this);
+      MessageManager::callAsync([safe]() mutable {
+        if (auto* popup = dynamic_cast<OscillatorPopupInterface*>(safe.getComponent()))
+          popup->refreshLayout();
+      });
+    }
+  }
 
   ScopedLock lock(open_gl_critical_section_);
   open_gl_.display_scale = 1.0f;
