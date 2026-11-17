@@ -333,7 +333,9 @@ FullInterface::FullInterface() : SynthSection("EMPTY"), width_(0), resized_width
 }
 
 FullInterface::~FullInterface() {
-  osc_popup_window_.deleteAndZero();
+  for (auto& window : osc_popup_windows_)
+    window.second.deleteAndZero();
+  osc_popup_windows_.clear();
   UpdateMemory::getInstance()->decrementChecker();
 
   open_gl_context_.detach();
@@ -1074,7 +1076,6 @@ void FullInterface::showWavetableEditSection(int index) {
 }
 
 void FullInterface::showOscillatorWarpEditor(int oscillator, int kind) {
-  osc_popup_window_.deleteAndZero();
   if (oscillator < 0 || oscillator >= vital::kNumOscillators)
     return;
 
@@ -1083,6 +1084,17 @@ void FullInterface::showOscillatorWarpEditor(int oscillator, int kind) {
     SynthGuiInterface* main = findParentComponentOfClass<SynthGuiInterface>();
     if (main == nullptr || engine_ == nullptr)
       return;
+
+    // Any number of these windows can be open at once (both panels of an oscillator, other oscillators); asking for
+    // one that is already open brings it forward.
+    int key = oscillator * 10 + kind;
+    auto existing = osc_popup_windows_.find(key);
+    if (existing != osc_popup_windows_.end() && existing->second != nullptr) {
+      existing->second->toFront(true);
+      return;
+    }
+    for (auto it = osc_popup_windows_.begin(); it != osc_popup_windows_.end();)
+      it = it->second == nullptr ? osc_popup_windows_.erase(it) : std::next(it);
 
     auto* content = new OscillatorPopupInterface(main, engine_, oscillator, kind, mono_modulations_,
                                                  poly_modulations_, current_skin_);
@@ -1096,11 +1108,12 @@ void FullInterface::showOscillatorWarpEditor(int oscillator, int kind) {
 
     // Pinned near the top of the plugin window, centred.
     Rectangle<int> main_bounds = getScreenBounds();
-    int x = main_bounds.getCentreX() - size.getWidth() / 2;
-    int y = main_bounds.getY() + 30;
+    int open_windows = static_cast<int>(osc_popup_windows_.size());
+    int x = main_bounds.getCentreX() - size.getWidth() / 2 + 40 * open_windows;
+    int y = main_bounds.getY() + 30 + 30 * open_windows;
     window->setTopLeftPosition(x, y);
     window->setVisible(true);
-    osc_popup_window_ = window;
+    osc_popup_windows_[key] = window;
     content->refreshLayout();
     Component::SafePointer<OscillatorPopupInterface> safe_content(content);
     Timer::callAfterDelay(250, [safe_content]() mutable { if (safe_content != nullptr) safe_content->refreshLayout(); });

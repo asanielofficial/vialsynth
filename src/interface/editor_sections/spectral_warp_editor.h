@@ -192,7 +192,7 @@ class SpectralWarpEditor : public SynthSection, public PresetSelector::Listener,
       // The detail bar under the position slider: gain, and up to three controls whose meaning depends on the mode.
       // Each is a modulation target (parameters <lane>_spectral_gain / _density / _resonance / _spread).
       static const char* kDetailParameters[kNumDetails] = { "gain", "density", "resonance", "spread", "depth", "phase" };
-      for (int i = 0; i < (lean_ ? 0 : kNumDetails); ++i) {
+      for (int i = 0; i < kNumDetails; ++i) {
         detail_[i] = std::make_unique<SynthSlider>(prefix_ + "_spectral_" + kDetailParameters[i]);
         SynthSlider* slider = detail_[i].get();
         addSlider(slider);
@@ -202,7 +202,7 @@ class SpectralWarpEditor : public SynthSection, public PresetSelector::Listener,
         slider->setDoubleClickReturnValue(true, i == 5 ? 0.0 : 0.5);
         slider->setVisible(false);
       }
-      for (int i = 0; i < (lean_ ? 0 : kNumDetails); ++i) {
+      for (int i = 0; i < kNumDetails; ++i) {
         detail_labels_[i] = std::make_unique<PlainTextComponent>("Detail", "");
         addOpenGlComponent(detail_labels_[i].get());
         detail_labels_[i]->setFontType(PlainTextComponent::kLight);
@@ -242,9 +242,11 @@ class SpectralWarpEditor : public SynthSection, public PresetSelector::Listener,
         { "Gain", "Notches", "Resonance", "", "", "" },
         { "Gain", "Taps", "Resonance", "Spread", "Depth", "Phase" }
       };
-      for (int i = 0; i < (lean_ ? 0 : kNumDetails); ++i) {
-        detail_labels_[i]->setText(kDetailNames[curve_][i]);
-        detail_[i]->setVisible(kDetailNames[curve_][i][0] != '\0');
+      for (int i = 0; i < kNumDetails; ++i) {
+        // An oscillator has no stereo field to spread.
+        const char* name = lean_ && std::string(kDetailNames[curve_][i]) == "Spread" ? "" : kDetailNames[curve_][i];
+        detail_labels_[i]->setText(name);
+        detail_[i]->setVisible(name[0] != '\0');
         detail_[i]->setPopupPrefix(std::string(kDetailNames[curve_][i]) + ": ");
       }
 
@@ -326,7 +328,7 @@ class SpectralWarpEditor : public SynthSection, public PresetSelector::Listener,
       // The drawing well fills the width, with the position slider flush underneath (like the LFO's phase bar).
       // The flanger has six detail controls: they are layered in two rows of three so each keeps room for its name
       // even in a half-width (split) panel; the other modes use one row.
-      int num_details = lean_ ? 0 : (curve_ == kNumCurves - 1 ? kNumDetails : 3);
+      int num_details = curve_ == kNumCurves - 1 ? (lean_ ? 5 : kNumDetails) : 3;
       int num_rows = num_details > 3 ? 2 : (num_details > 0 ? 1 : 0);
       int per_row = std::max(1, (num_details + num_rows - 1) / std::max(1, num_rows));
       int row_gap = margin / 2;
@@ -336,7 +338,7 @@ class SpectralWarpEditor : public SynthSection, public PresetSelector::Listener,
 
       int cell_width = (getWidth() - 2 * margin) / per_row;
       int label_width = std::min<int>(size_ratio_ * 70, cell_width / 2);
-      for (int i = 0; i < (lean_ ? 0 : kNumDetails); ++i) {
+      for (int i = 0; i < kNumDetails; ++i) {
         int row = i / per_row;
         int cell_x = margin + (i % per_row) * cell_width;
         int detail_y = detail_top + row * (slider_height + row_gap);

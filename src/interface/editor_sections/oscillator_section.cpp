@@ -169,7 +169,8 @@ namespace {
   }
 
   bool isSpectralMenuSeparator(int index) {
-    return index == (vital::SynthOscillator::kNoSpectralMorph + 1) || index == vital::SynthOscillator::kSpectralGate;
+    return index == (vital::SynthOscillator::kNoSpectralMorph + 1) || index == vital::SynthOscillator::kSpectralFilter ||
+           index == vital::SynthOscillator::kSpectralTable;
   }
 
   bool isDistortionMenuSeparator(int index) {

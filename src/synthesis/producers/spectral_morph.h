@@ -509,6 +509,11 @@ namespace vital {
     float table_gain = 0.5f;
     float table_resonance = 0.5f;
     float table_mix = 1.0f;
+    float gain = 0.5f;          // the detail controls of Spectral Filter, Phaser and Flanger (as in the Morph effect)
+    float density = 0.5f;
+    float resonance = 0.5f;
+    float depth = 0.5f;
+    float comb_phase = 0.0f;
     float random_a[kRandomSize];
     float random_b[kRandomSize];
     float random_blend = 0.0f;
@@ -589,7 +594,9 @@ namespace vital {
     float morph = std::max(0.0f, std::min(shift, 1.0f));
     float centre_octave = std::log2(120.0f) * context->position + std::log2(5.0f);   // 100 Hz .. 12 kHz over 20 Hz
     float shift_octaves = (context->position - 0.5f) * 8.0f;
-    const float width = 0.3f, peak_db = 24.0f;
+    const float width = 0.3f * std::pow(2.0f, (context->density - 0.5f) * 4.0f);
+    const float peak_db = 48.0f * context->resonance;
+    const float out_gain = 2.0f * context->gain;
     harmonicGainMorph(wavetable_data, wavetable_index, dest, transform, last_harmonic,
                       [&](int i, float amplitude, float& re, float& im) {
       float x = OscillatorWarpContext::harmonicPosition(i);
@@ -599,7 +606,7 @@ namespace vital {
       float drawn_x = (octave - shift_octaves) / OscillatorWarpContext::kOctaves;
       float drawn = (context->curveAt(0, drawn_x, 0.5f) - 0.5f) * 96.0f;
       float db = automatic + (drawn - automatic) * morph;
-      re = std::min(std::pow(10.0f, db / 20.0f), 64.0f);
+      re = std::min(std::pow(10.0f, db / 20.0f), 64.0f) * out_gain;
     });
   }
 
@@ -630,8 +637,9 @@ namespace vital {
                                   float shift, int last_harmonic, const poly_float* data_buffer) {
     const OscillatorWarpContext* context = warpContext(data_buffer);
     float morph = std::max(0.0f, std::min(shift, 1.0f));
-    const float turns = 6.0f, feedback = 0.7f;
-    const float norm = std::sqrt((1.0f - feedback * feedback) * 0.5f);
+    const float turns = 6.0f * std::pow(2.0f, (context->density - 0.5f) * 4.0f);
+    const float feedback = std::min(0.95f, 1.4f * context->resonance);
+    const float norm = std::sqrt((1.0f - feedback * feedback) * 0.5f) * 2.0f * context->gain;
     harmonicGainMorph(wavetable_data, wavetable_index, dest, transform, last_harmonic,
                       [&](int i, float amplitude, float& re, float& im) {
       float x = OscillatorWarpContext::harmonicPosition(i);
@@ -655,17 +663,21 @@ namespace vital {
                                    float shift, int last_harmonic, const poly_float* data_buffer) {
     const OscillatorWarpContext* context = warpContext(data_buffer);
     float morph = std::max(0.0f, std::min(shift, 1.0f));
-    const float depth = 0.8f, resonance = 0.64f;
+    const float depth = std::min(1.0f, 1.6f * context->depth);
+    const float resonance = std::min(0.95f, 1.6f * context->resonance) * depth;
+    const int taps = 1 + std::min(3, static_cast<int>(context->density * 4.0f));
+    const float theta_offset = 2.0f * kPi * context->comb_phase;
+    const float out_gain = 2.0f * context->gain;
     const float stage_norm = std::sqrt((1.0f - resonance * resonance) / (1.0f + depth * depth));
-    static const float kTapRatio[3] = { 1.0f, 1.37f, 1.83f };
+    static const float kTapRatio[4] = { 1.0f, 1.37f, 1.83f, 2.41f };
     const float base_delay = 0.0033f * std::pow(150.0f, context->position);   // in cycles per harmonic
     harmonicGainMorph(wavetable_data, wavetable_index, dest, transform, last_harmonic,
                       [&](int i, float amplitude, float& re, float& im) {
       float x = OscillatorWarpContext::harmonicPosition(i);
       float delay = base_delay * std::exp2((context->curveAt(2, x, 0.5f) - 0.5f) * 4.0f * morph);
-      float h_re = 1.0f, h_im = 0.0f;
-      for (int tap = 0; tap < 3; ++tap) {
-        float angle = -2.0f * kPi * i * delay * kTapRatio[tap];
+      float h_re = out_gain, h_im = 0.0f;
+      for (int tap = 0; tap < taps; ++tap) {
+        float angle = -2.0f * kPi * i * delay * kTapRatio[tap] + theta_offset;
         float cs = std::cos(angle), sn = std::sin(angle);
         float num_re = 1.0f + depth * cs, num_im = depth * sn;
         float den_re = 1.0f - resonance * cs, den_im = -resonance * sn;

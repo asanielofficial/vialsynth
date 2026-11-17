@@ -65,6 +65,12 @@ namespace vital {
     Output* random_shuffle = createPolyModControl(prefix_ + "_random_shuffle");
     Value* random_seed = createBaseControl(prefix_ + "_random_seed");
     Output* spectral_table_mix = createMonoModControl(prefix_ + "_spectral_table_mix");
+    Output* spectral_gain = createMonoModControl(prefix_ + "_spectral_gain");
+    Output* spectral_density = createMonoModControl(prefix_ + "_spectral_density");
+    Output* spectral_resonance = createMonoModControl(prefix_ + "_spectral_resonance");
+    Output* spectral_depth = createMonoModControl(prefix_ + "_spectral_depth");
+    Output* spectral_phase = createMonoModControl(prefix_ + "_spectral_phase");
+    Output* spectral_spread = createMonoModControl(prefix_ + "_spectral_spread");
     Output* table_position = createMonoModControl(prefix_ + "_table_position");
     Output* table_gain = createMonoModControl(prefix_ + "_table_gain");
     Output* table_resonance = createMonoModControl(prefix_ + "_table_resonance");
@@ -108,6 +114,12 @@ namespace vital {
     oscillator_->plug(random_shuffle, SynthOscillator::kRandomShuffle);
     oscillator_->plug(random_seed, SynthOscillator::kRandomSeed);
     oscillator_->plug(spectral_table_mix, SynthOscillator::kSpectralTableMix);
+    oscillator_->plug(spectral_gain, SynthOscillator::kSpectralGain);
+    oscillator_->plug(spectral_density, SynthOscillator::kSpectralDensity);
+    oscillator_->plug(spectral_resonance, SynthOscillator::kSpectralResonance);
+    oscillator_->plug(spectral_depth, SynthOscillator::kSpectralDepth);
+    oscillator_->plug(spectral_phase, SynthOscillator::kSpectralPhase);
+    oscillator_->plug(spectral_spread, SynthOscillator::kSpectralSpread);
     oscillator_->plug(table_position, SynthOscillator::kTablePosition);
     oscillator_->plug(table_gain, SynthOscillator::kTableGain);
     oscillator_->plug(table_resonance, SynthOscillator::kTableResonance);

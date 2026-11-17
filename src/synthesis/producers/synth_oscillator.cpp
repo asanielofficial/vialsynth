@@ -1254,6 +1254,11 @@ namespace vital {
     warp_context_.table_gain = utils::clamp(input(kTableGain)->at(0)[0], 0.0f, 1.0f);
     warp_context_.table_resonance = utils::clamp(input(kTableResonance)->at(0)[0], 0.0f, 1.0f);
     warp_context_.table_mix = utils::clamp(input(kSpectralTableMix)->at(0)[0], 0.0f, 1.0f);
+    warp_context_.gain = utils::clamp(input(kSpectralGain)->at(0)[0], 0.0f, 1.0f);
+    warp_context_.density = utils::clamp(input(kSpectralDensity)->at(0)[0], 0.0f, 1.0f);
+    warp_context_.resonance = utils::clamp(input(kSpectralResonance)->at(0)[0], 0.0f, 1.0f);
+    warp_context_.depth = utils::clamp(input(kSpectralDepth)->at(0)[0], 0.0f, 1.0f);
+    warp_context_.comb_phase = utils::clamp(input(kSpectralPhase)->at(0)[0], 0.0f, 1.0f);
     if (spectral_morph == kRandomAmplitudes)
       warp_context_.updateRandom(static_cast<int>(input(kRandomSeed)->at(0)[0] + 0.5f),
                                  input(kRandomShuffle)->at(0)[0]);
