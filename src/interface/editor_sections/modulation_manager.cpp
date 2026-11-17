@@ -684,6 +684,7 @@ void ModulationManager::startModulationMap(ModulationButton* source, const Mouse
   mouse_drag_position_ = getLocalPoint(source, e.getPosition());
   current_source_ = source;
   dragging_ = true;
+  OscillatorPopupInterface::setModulationDragActive(true);
   Rectangle<int> global_bounds = getLocalArea(current_source_, current_source_->getLocalBounds());
   Point<int> global_start = global_bounds.getCentre();
   mouse_drag_start_ = global_start;
@@ -943,6 +944,7 @@ void ModulationManager::endModulationMap() {
   temporarily_set_synth_slider_ = nullptr;
   temporarily_set_hover_slider_ = nullptr;
   dragging_ = false;
+  OscillatorPopupInterface::setModulationDragActive(false);
 
   setModulationAmounts();
   positionModulationAmountSliders();

@@ -7,6 +7,9 @@
 #include "synth_slider.h"
 #include "table_settings_editor.h"
 #include "fx_tables.h"
+#include "modulation_meter.h"
+#include "open_gl_multi_quad.h"
+#include "shaders.h"
 
 namespace {
   constexpr int kBottomStrip = 24;
@@ -19,33 +22,6 @@ OscillatorPopupInterface::OscillatorPopupInterface(SynthGuiInterface* main, vita
     FullInterface(), SynthGuiInterface(main->getSynth(), false), main_(main), kind_(kind) {
   setOpaque(true);
   setSkinValues(skin, true);
-
-  // Menus, bubbles and the shape browser of this window.
-  popup_browser_ = std::make_unique<PopupBrowser>();
-  addSubSection(popup_browser_.get());
-  popup_browser_->setVisible(false);
-
-  popup_selector_ = std::make_unique<SinglePopupSelector>();
-  addSubSection(popup_selector_.get());
-  popup_selector_->setVisible(false);
-  popup_selector_->setAlwaysOnTop(true);
-  popup_selector_->setWantsKeyboardFocus(true);
-
-  dual_popup_selector_ = std::make_unique<DualPopupSelector>();
-  addSubSection(dual_popup_selector_.get());
-  dual_popup_selector_->setVisible(false);
-  dual_popup_selector_->setAlwaysOnTop(true);
-  dual_popup_selector_->setWantsKeyboardFocus(true);
-
-  popup_display_1_ = std::make_unique<PopupDisplay>();
-  addSubSection(popup_display_1_.get());
-  popup_display_1_->setVisible(false);
-  popup_display_1_->setAlwaysOnTop(true);
-
-  popup_display_2_ = std::make_unique<PopupDisplay>();
-  addSubSection(popup_display_2_.get());
-  popup_display_2_->setVisible(false);
-  popup_display_2_->setAlwaysOnTop(true);
 
   std::string prefix = "osc_" + std::to_string(oscillator + 1);
   std::string subtitle = "OSC " + std::to_string(oscillator + 1);
@@ -78,6 +54,41 @@ OscillatorPopupInterface::OscillatorPopupInterface(SynthGuiInterface* main, vita
     content_ = std::move(editor);
   }
 
+  // Modulation cues: the meters of modulated sliders, and the sliders a dragged source can go to.
+  {
+    std::map<std::string, SynthSlider*> sliders = getAllSliders();
+    modulation_overlay_ = std::make_unique<PopupModulationOverlay>(sliders, mono_modulations, poly_modulations);
+    addSubSection(modulation_overlay_.get());
+    modulation_overlay_->setInterceptsMouseClicks(false, false);
+  }
+
+  // Menus, bubbles and the shape browser of this window.
+  popup_browser_ = std::make_unique<PopupBrowser>();
+  addSubSection(popup_browser_.get());
+  popup_browser_->setVisible(false);
+
+  popup_selector_ = std::make_unique<SinglePopupSelector>();
+  addSubSection(popup_selector_.get());
+  popup_selector_->setVisible(false);
+  popup_selector_->setAlwaysOnTop(true);
+  popup_selector_->setWantsKeyboardFocus(true);
+
+  dual_popup_selector_ = std::make_unique<DualPopupSelector>();
+  addSubSection(dual_popup_selector_.get());
+  dual_popup_selector_->setVisible(false);
+  dual_popup_selector_->setAlwaysOnTop(true);
+  dual_popup_selector_->setWantsKeyboardFocus(true);
+
+  popup_display_1_ = std::make_unique<PopupDisplay>();
+  addSubSection(popup_display_1_.get());
+  popup_display_1_->setVisible(false);
+  popup_display_1_->setAlwaysOnTop(true);
+
+  popup_display_2_ = std::make_unique<PopupDisplay>();
+  addSubSection(popup_display_2_.get());
+  popup_display_2_->setVisible(false);
+  popup_display_2_->setAlwaysOnTop(true);
+
   // The sections added after the content draw over it.
   popup_browser_->toFront(true);
   popup_selector_->toFront(true);
@@ -97,6 +108,8 @@ OscillatorPopupInterface::OscillatorPopupInterface(SynthGuiInterface* main, vita
   setSize(defaultSize(kind).getWidth(), defaultSize(kind).getHeight());
   startTimer(100);
 }
+
+std::atomic<bool> OscillatorPopupInterface::modulation_drag_active_ { false };
 
 OscillatorPopupInterface::~OscillatorPopupInterface() {
   stopTimer();
@@ -154,6 +167,8 @@ void OscillatorPopupInterface::resized() {
   if (content_)
     content_->setBounds(content_area);
 
+  if (modulation_overlay_)
+    modulation_overlay_->setBounds(getLocalBounds());
   popup_browser_->setBounds(getLocalBounds());
   popup_selector_->setBounds(getLocalBounds());
   dual_popup_selector_->setBounds(getLocalBounds());
@@ -308,4 +323,162 @@ ModulationProxySection::ModulationProxySection(const vital::output_map& mono_mod
 void ModulationProxySection::resized() {
   for (auto& slider : proxies_)
     slider->setBounds(0, 0, getWidth(), getHeight());
+}
+
+PopupModulationOverlay::PopupModulationOverlay(const std::map<std::string, SynthSlider*>& sliders,
+                                               const vital::output_map& mono_modulations,
+                                               const vital::output_map& poly_modulations) :
+    SynthSection("Popup modulation") {
+  int num_rotary = 0, num_linear = 0;
+  for (auto& slider : sliders) {
+    auto mono = mono_modulations.find(slider.first);
+    if (mono == mono_modulations.end() || mono->second == nullptr || slider.second == nullptr)
+      continue;
+    if (slider.second->isRotary() && !slider.second->isTextOrCurve())
+      ++num_rotary;
+    else
+      ++num_linear;
+  }
+
+  rotary_meters_ = std::make_unique<OpenGlMultiQuad>(std::max(1, num_rotary), Shaders::kRotaryModulationFragment);
+  linear_meters_ = std::make_unique<OpenGlMultiQuad>(std::max(1, num_linear), Shaders::kLinearModulationFragment);
+  rotary_destinations_ = std::make_unique<OpenGlMultiQuad>(std::max(1, num_rotary), Shaders::kCircleFragment);
+  linear_destinations_ = std::make_unique<OpenGlMultiQuad>(std::max(1, num_linear),
+                                                           Shaders::kRoundedRectangleFragment);
+  for (OpenGlMultiQuad* quads : { rotary_meters_.get(), linear_meters_.get(), rotary_destinations_.get(),
+                                  linear_destinations_.get() }) {
+    quads->setTargetComponent(this);
+    quads->setScissorComponent(nullptr);
+  }
+  rotary_destinations_->setAlpha(0.0f, true);
+  linear_destinations_->setAlpha(0.0f, true);
+
+  int rotary_index = 0, linear_index = 0;
+  for (auto& slider : sliders) {
+    auto mono = mono_modulations.find(slider.first);
+    if (mono == mono_modulations.end() || mono->second == nullptr || slider.second == nullptr)
+      continue;
+
+    auto poly = poly_modulations.find(slider.first);
+    const vital::Output* poly_total = poly == poly_modulations.end() ? nullptr : poly->second;
+    bool rotary = slider.second->isRotary() && !slider.second->isTextOrCurve();
+    int index = rotary ? rotary_index++ : linear_index++;
+    Entry entry;
+    entry.slider = slider.second;
+    entry.rotary = rotary;
+    entry.index = index;
+    entry.meter = std::make_unique<ModulationMeter>(mono->second, poly_total, slider.second,
+                                                    rotary ? rotary_meters_.get() : linear_meters_.get(), index);
+    entry.meter->setName(slider.first);
+    addChildComponent(entry.meter.get());
+    entries_.push_back(std::move(entry));
+  }
+  startTimerHz(30);
+}
+
+PopupModulationOverlay::~PopupModulationOverlay() {
+  stopTimer();
+}
+
+void PopupModulationOverlay::resized() {
+  float meter_thickness = findValue(Skin::kKnobModMeterArcThickness);
+  Colour center = findColour(Skin::kModulationMeter, true);
+  Colour left = findColour(Skin::kModulationMeterLeft, true);
+  Colour right = findColour(Skin::kModulationMeterRight, true);
+  for (OpenGlMultiQuad* meters : { rotary_meters_.get(), linear_meters_.get() }) {
+    meters->setModColor(center);
+    meters->setColor(left);
+    meters->setAltColor(right);
+  }
+  rotary_meters_->setThickness(meter_thickness);
+
+  Colour lighten = findColour(Skin::kLightenScreen, true);
+  rotary_destinations_->setColor(lighten);
+  linear_destinations_->setColor(lighten);
+  linear_destinations_->setRounding(findValue(Skin::kLabelBackgroundRounding));
+  SynthSection::resized();
+  timerCallback();
+}
+
+void PopupModulationOverlay::initOpenGlComponents(OpenGlWrapper& open_gl) {
+  rotary_meters_->init(open_gl);
+  linear_meters_->init(open_gl);
+  rotary_destinations_->init(open_gl);
+  linear_destinations_->init(open_gl);
+  SynthSection::initOpenGlComponents(open_gl);
+}
+
+void PopupModulationOverlay::destroyOpenGlComponents(OpenGlWrapper& open_gl) {
+  rotary_meters_->destroy(open_gl);
+  linear_meters_->destroy(open_gl);
+  rotary_destinations_->destroy(open_gl);
+  linear_destinations_->destroy(open_gl);
+  SynthSection::destroyOpenGlComponents(open_gl);
+}
+
+// On the message thread: where each meter sits, and the highlights while a source is being dragged.
+void PopupModulationOverlay::timerCallback() {
+  SynthGuiInterface* gui = findParentComponentOfClass<SynthGuiInterface>();
+  if (gui == nullptr || gui->getSynth() == nullptr || getWidth() <= 0 || getHeight() <= 0)
+    return;
+
+  bool dragging = OscillatorPopupInterface::isModulationDragActive();
+  float width = getWidth(), height = getHeight();
+  int num_rotary = 0, num_linear = 0;
+  for (Entry& entry : entries_) {
+    int modulations = gui->getSynth()->getNumModulations(entry.slider->getName().toStdString());
+    bool showing = entry.slider->isShowing();
+    entry.meter->setModulated(modulations > 0);
+    entry.meter->setVisible(modulations > 0 && showing);
+    if (showing)
+      entry.meter->setBounds(getLocalArea(entry.slider, entry.slider->getLocalBounds()));
+
+    if (dragging && showing && entry.slider->isEnabled()) {
+      Rectangle<float> bounds = getLocalArea(entry.slider, entry.slider->getLocalBounds()).toFloat();
+      if (entry.rotary) {
+        float side = std::min(bounds.getWidth(), bounds.getHeight()) * 0.9f;
+        bounds = Rectangle<float>(side, side).withCentre(bounds.getCentre());
+      }
+      float x = 2.0f * bounds.getX() / width - 1.0f;
+      float y = 1.0f - 2.0f * bounds.getBottom() / height;
+      float w = 2.0f * bounds.getWidth() / width;
+      float h = 2.0f * bounds.getHeight() / height;
+      if (entry.rotary)
+        rotary_destinations_->setQuad(num_rotary++, x, y, w, h);
+      else
+        linear_destinations_->setQuad(num_linear++, x, y, w, h);
+    }
+  }
+
+  rotary_destinations_->setNumQuads(num_rotary);
+  linear_destinations_->setNumQuads(num_linear);
+  rotary_destinations_->setAlpha(num_rotary > 0 ? 1.0f : 0.0f);
+  linear_destinations_->setAlpha(num_linear > 0 ? 1.0f : 0.0f);
+}
+
+void PopupModulationOverlay::renderOpenGlComponents(OpenGlWrapper& open_gl, bool animate) {
+  if (!animate)
+    return;
+
+  int num_voices = 1;
+  SynthGuiInterface* gui = findParentComponentOfClass<SynthGuiInterface>();
+  if (gui && gui->getSynth()) {
+    const vital::Output* readout = gui->getSynth()->getStatusOutput("num_voices");
+    if (readout)
+      num_voices = std::max<float>(0.0f, readout->value()[0]);
+  }
+
+  for (Entry& entry : entries_) {
+    bool show = entry.meter->isModulated() && entry.slider->isShowing();
+    entry.meter->setActive(show);
+    if (show)
+      entry.meter->updateDrawing(num_voices);
+  }
+
+  OpenGlComponent::setViewPort(this, open_gl);
+  rotary_destinations_->render(open_gl, true);
+  linear_destinations_->render(open_gl, true);
+  rotary_meters_->render(open_gl, true);
+  linear_meters_->render(open_gl, true);
+  SynthSection::renderOpenGlComponents(open_gl, animate);
 }

@@ -9,6 +9,10 @@
 #include "full_interface.h"
 #include "synth_gui_interface.h"
 #include "synth_slider.h"
+#include "modulation_meter.h"
+#include "open_gl_multi_quad.h"
+
+class PopupModulationOverlay;
 
 class OscillatorPopupInterface : public FullInterface, public SynthGuiInterface, private Timer {
   public:
@@ -23,6 +27,10 @@ class OscillatorPopupInterface : public FullInterface, public SynthGuiInterface,
     // Modulation drags that end over a popup window: the slider of a popup under a screen point. over_popup says the
     // point is over one of these windows at all (even if no slider is there).
     static SynthSlider* sliderAtScreenPoint(Point<int> screen_point, bool& over_popup);
+
+    // Set by the modulation manager while a source is dragged, so the popups can mark where it can go.
+    static void setModulationDragActive(bool active) { modulation_drag_active_ = active; }
+    static bool isModulationDragActive() { return modulation_drag_active_; }
     static Rectangle<int> defaultSize(int kind);
 
     void setCloseCallback(std::function<void()> callback) { close_callback_ = callback; }
@@ -45,6 +53,8 @@ class OscillatorPopupInterface : public FullInterface, public SynthGuiInterface,
     std::function<void()> close_callback_;
     std::unique_ptr<SynthSection> content_;
     std::unique_ptr<SynthSlider> amount_slider_;
+    std::unique_ptr<PopupModulationOverlay> modulation_overlay_;
+    static std::atomic<bool> modulation_drag_active_;
     int kind_;
     std::map<std::string, float> last_values_;
 
@@ -71,4 +81,30 @@ class ModulationProxySection : public SynthSection {
 
   private:
     std::vector<std::unique_ptr<SynthSlider>> proxies_;
+};
+
+// The modulation cues of a popup window: meters on modulated sliders and highlights while a source is dragged.
+class PopupModulationOverlay : public SynthSection, private Timer {
+  public:
+    PopupModulationOverlay(const std::map<std::string, SynthSlider*>& sliders,
+                           const vital::output_map& mono_modulations, const vital::output_map& poly_modulations);
+    ~PopupModulationOverlay() override;
+
+    void resized() override;
+    void initOpenGlComponents(OpenGlWrapper& open_gl) override;
+    void renderOpenGlComponents(OpenGlWrapper& open_gl, bool animate) override;
+    void destroyOpenGlComponents(OpenGlWrapper& open_gl) override;
+
+  private:
+    struct Entry {
+      SynthSlider* slider = nullptr;
+      std::unique_ptr<ModulationMeter> meter;
+      bool rotary = true;
+      int index = 0;
+    };
+
+    void timerCallback() override;
+
+    std::vector<Entry> entries_;
+    std::unique_ptr<OpenGlMultiQuad> rotary_meters_, linear_meters_, rotary_destinations_, linear_destinations_;
 };
