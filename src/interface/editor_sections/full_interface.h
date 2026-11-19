@@ -238,13 +238,6 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     std::vector<SynthSection*> pending_gl_init_;
     std::vector<std::unique_ptr<ModulationManager>> retired_managers_;
     bool manager_rebuild_pending_ = false;
-    // Effect copies get their sections the first time they are used: the new controls need a modulation manager
-    // that knows them, and the render thread sets up their OpenGL parts.
-    void rebuildModulationManager();
-    CriticalSection pending_lock_;  // guards the two lists below; never held while taking another lock
-    std::vector<SynthSection*> pending_gl_init_;
-    std::vector<std::unique_ptr<ModulationManager>> retired_managers_;
-    bool manager_rebuild_pending_ = false;
     std::unique_ptr<ModulationMatrix> modulation_matrix_;
 
     std::unique_ptr<AboutSection> about_section_;

@@ -1401,8 +1401,10 @@ void FullInterface::rebuildModulationManager() {
   vial_debug::log("  old manager retired");
   createModulationSliders(mono_modulations_, poly_modulations_);
   vial_debug::log("  new manager created");
+#if VITAL_FX
   modulation_manager_->on_drag_started = [this]() { point_mod_targets_->beginDrag(); };
   modulation_manager_->on_drag_ended = [this]() { point_mod_targets_->endDrag(); };
+#endif
   modulation_manager_->setSizeRatio(getSizeRatio());
   modulation_manager_->setBounds(getLocalBounds());
   modulation_manager_->toFront(false);

@@ -216,9 +216,7 @@ class SynthBase : public MidiManager::Listener {
     bool expired_;
 
     std::map<std::string, String> save_info_;
-#if VITAL_FX
     String fx_bin_names_[vital::kMaxFxBins];
-#endif
     class EditTimer : public Timer {
       public:
         explicit EditTimer(SynthBase* owner) : owner_(owner) { }
