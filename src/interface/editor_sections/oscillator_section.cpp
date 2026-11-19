@@ -766,12 +766,18 @@ void OscillatorSection::resized() {
     int knob_d = static_cast<int>(findValue(Skin::kKnobArcSize) * 1.5f);
     int shuffle_d = static_cast<int>(findValue(Skin::kKnobArcSize) * 0.9f);
     int dice_size = std::max(1, std::min(static_cast<int>(knob_d * 0.4f), spectral_cell.getHeight() / 4));
-    int gap = std::max(1, widget_margin / 2);
+    int gap = std::max(1, widget_margin);
     int total = knob_d + gap + dice_size + gap + shuffle_d;
+    if (total > spectral_cell.getWidth()) {   // squeeze the gaps before the knobs touch the edges
+      gap = std::max(0, (spectral_cell.getWidth() - knob_d - dice_size - shuffle_d) / 2);
+      total = knob_d + gap + dice_size + gap + shuffle_d;
+    }
     int x = spectral_cell.getX() + (spectral_cell.getWidth() - total) / 2;
     int centre_y = spectral_cell.getCentreY();
     spectral_morph_amount_->setBounds(x, centre_y - knob_d / 2, knob_d, knob_d);
-    dice_button_->setBounds(x + knob_d + gap, centre_y - dice_size / 2, dice_size, dice_size);
+    // The knobs are drawn a little off the middle of their bounds (the skin's knob offset); the dice follows them.
+    int dice_y = centre_y + static_cast<int>(findValue(Skin::kKnobOffset)) - dice_size / 2;
+    dice_button_->setBounds(x + knob_d + gap, dice_y, dice_size, dice_size);
     shuffle_->setBounds(dice_button_->getRight() + gap, centre_y - shuffle_d / 2, shuffle_d, shuffle_d);
   }
   else {
