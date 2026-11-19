@@ -896,6 +896,29 @@ void ModulationManager::modulationDragged(const MouseEvent& e) {
   mouse_drag_position_ = getLocalPoint(current_source_, e.getPosition());
   Component* component = getComponentAt(mouse_drag_position_.x, mouse_drag_position_.y);
 
+  // Small bars are hard to hit: a linear destination within a few pixels of the cursor takes the drop.
+  if (modulation_destinations_ &&
+      !dynamic_cast<ModulationDestination*>(component)) {
+    Point<int> point = modulation_destinations_->getLocalPoint(this, mouse_drag_position_);
+    int slop = std::max(6, static_cast<int>(getHeight() * 0.012f));
+    ModulationDestination* best = nullptr;
+    int best_distance = 1 << 30;
+    for (auto& destination : all_destinations_) {
+      if (!destination->isShowing() || destination->isRotary())
+        continue;
+      Rectangle<int> bounds = destination->getBounds();
+      if (!bounds.expanded(slop).contains(point) || bounds.getWidth() > getWidth() / 3)
+        continue;
+      int distance = bounds.getCentre().getDistanceFrom(point);
+      if (distance < best_distance) {
+        best_distance = distance;
+        best = destination.get();
+      }
+    }
+    if (best)
+      component = best;
+  }
+
   // A popup window of an oscillator over the cursor takes the drop (it sits on top of the main window).
   bool over_popup = false;
   SynthSlider* popup_slider = OscillatorPopupInterface::sliderAtScreenPoint(e.getScreenPosition(), over_popup);

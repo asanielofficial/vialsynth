@@ -762,7 +762,7 @@ void OscillatorSection::resized() {
     int strip = std::max(1, std::min(spectral_cell.getWidth() / 4, static_cast<int>(spectral_cell.getHeight() * 0.5f)));
     int centre = spectral_cell.getRight() - strip / 2;
     int dice_size = std::max(1, std::min(strip - widget_margin, static_cast<int>(spectral_cell.getHeight() * 0.22f)));
-    int bar_height = std::max(14, static_cast<int>(spectral_cell.getHeight() * 0.16f));
+    int bar_height = std::max(22, static_cast<int>(spectral_cell.getHeight() * 0.24f));
     int bar_width = std::max(1, strip - widget_margin);
     int block = dice_size + widget_margin + bar_height;
     int tool_y = spectral_cell.getY() + (spectral_cell.getHeight() - block) / 2;
