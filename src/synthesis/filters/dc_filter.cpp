@@ -49,7 +49,7 @@ namespace vital {
   force_inline void DcFilter::tick(const poly_float& raw_in, poly_float& audio_out) {
     poly_float audio_in = raw_in;
     if (output_cutoff_ > 0.0f)
-      audio_in = utils::maskLoad(0.0f, audio_in, poly_float::lessThan(utils::abs(audio_in), 1.0e6f));
+      audio_in = utils::maskLoad(0.0f, audio_in, poly_float::lessThan(poly_float::abs(audio_in), 1.0e6f));
     audio_out = utils::mulAdd(audio_in - past_in_, past_out_, coefficient_);
     past_out_ = audio_out;
     past_in_ = audio_in;
