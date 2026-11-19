@@ -1063,6 +1063,107 @@ void SinglePopupSelector::setPosition(Point<int> position, Rectangle<int> bounds
   int total_width = main_width_ + sub_width;
   setBounds(x - main_x_, y, total_width, height);
   showSubmenu(-1);
+  menu_bounds_ = getBounds();
+  menu_main_x_ = main_x_;
+  menu_main_width_ = main_width_;
+  menu_main_height_ = main_height_;
+}
+
+void SinglePopupSelector::collectMatches(const PopupItems& items, const std::string& parent,
+                                         const StringArray& words, PopupItems& results) {
+  for (const PopupItems& item : items.items) {
+    if (item.size() > 0) {
+      collectMatches(item, item.name, words, results);
+      continue;
+    }
+    if (item.id < 0 || item.name.empty() || item.name == "-")
+      continue;
+
+    String haystack = String(parent + " " + item.name).toLowerCase();
+    bool all = true;
+    for (const String& word : words) {
+      if (!haystack.contains(word))
+        all = false;
+    }
+    if (all)
+      results.addItem(item.id, parent.empty() ? item.name : parent + ": " + item.name);
+  }
+}
+
+bool SinglePopupSelector::keyPressed(const KeyPress& key) {
+  juce::juce_wchar character = key.getTextCharacter();
+  if (key == KeyPress::escapeKey) {
+    if (!query_.empty()) {
+      query_ = "";
+      applyQuery();
+      return true;
+    }
+    setVisible(false);
+    if (cancel_)
+      cancel_();
+    return true;
+  }
+  if (key == KeyPress::backspaceKey) {
+    if (!query_.empty()) {
+      query_ = String(query_).dropLastCharacters(1).toStdString();
+      applyQuery();
+    }
+    return true;
+  }
+  if (key == KeyPress::returnKey) {
+    if (searching_ && popup_list_->getSelectionCount() > 1) {
+      int id = popup_list_->getSelectionItems(1).id;
+      if (id >= 0) {
+        cancel_ = nullptr;
+        callback_(id);
+        setVisible(false);
+      }
+    }
+    return true;
+  }
+  if (character >= 32 && character != 127 && !key.getModifiers().isCommandDown() &&
+      !key.getModifiers().isCtrlDown()) {
+    query_ += String::charToString(character).toStdString();
+    applyQuery();
+    return true;
+  }
+  return false;
+}
+
+void SinglePopupSelector::applyQuery() {
+  StringArray words;
+  words.addTokens(String(query_).toLowerCase(), " ", "");
+  words.removeEmptyStrings();
+
+  if (words.isEmpty()) {
+    searching_ = false;
+    popup_list_->setSelections(full_items_);
+    main_x_ = menu_main_x_;
+    main_width_ = menu_main_width_;
+    main_height_ = menu_main_height_;
+    setBounds(menu_bounds_);
+    showSubmenu(-1);
+    return;
+  }
+
+  PopupItems results;
+  results.addItem(kSearchRowId, "Search: " + query_ + "_");
+  collectMatches(full_items_, "", words, results);
+  if (results.size() == 1)
+    results.addItem(kSearchRowId, "No matches");
+  popup_list_->setSelections(results);
+  popup_list_->resetScrollPosition();
+  searching_ = true;
+
+  int rounding = findValue(Skin::kBodyRounding);
+  int rows = std::min(results.size(), kMaxSearchRows + 1);
+  main_x_ = 0;
+  main_width_ = std::max(popup_list_->getBrowseWidth() + (results.size() > rows ? 16 : 0), menu_main_width_);
+  main_height_ = rows * popup_list_->getRowHeight() + 2 * rounding;
+  sub_bounds_ = Rectangle<int>();
+  sub_list_->setVisible(false);
+  setBounds(menu_bounds_.getX() + menu_main_x_, menu_bounds_.getY(), main_width_, main_height_);
+  resized();
 }
 
 DualPopupSelector::DualPopupSelector() : SynthSection("Dual Popup Selector"),

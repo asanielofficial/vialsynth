@@ -275,6 +275,8 @@ class SinglePopupSelector : public SynthSection, public PopupList::Listener {
     void newSelection(PopupList* list, int id, int index) override {
       if (list == popup_list_.get() && index >= 0 && popup_list_->getSelectionItems(index).size() > 0)
         return;
+      if (id == kSearchRowId)
+        return;
 
       if (id >= 0) {
         cancel_ = nullptr;
@@ -298,12 +300,31 @@ class SinglePopupSelector : public SynthSection, public PopupList::Listener {
     void setCancelCallback(std::function<void()> cancel) { cancel_ = std::move(cancel); }
 
     void showSelections(const PopupItems& selections) {
+      full_items_ = selections;
+      query_ = "";
+      searching_ = false;
       popup_list_->setSelections(selections);
       showSubmenu(-1);
     }
 
+    // Typing while the menu is open filters it: every item of every submenu whose name (or submenu's name)
+    // contains all the typed words is listed, with the typed text in the first row.
+    bool keyPressed(const KeyPress& key) override;
+
   private:
+    static constexpr int kSearchRowId = -2;
+    static constexpr int kMaxSearchRows = 14;
+
     void showSubmenu(int row);
+    void applyQuery();
+    void collectMatches(const PopupItems& items, const std::string& parent, const StringArray& words,
+                        PopupItems& results);
+
+    PopupItems full_items_;
+    std::string query_;
+    bool searching_ = false;
+    Rectangle<int> menu_bounds_;
+    int menu_main_x_ = 0, menu_main_width_ = 0, menu_main_height_ = 0;
 
     OpenGlQuad body_;
     OpenGlQuad border_;

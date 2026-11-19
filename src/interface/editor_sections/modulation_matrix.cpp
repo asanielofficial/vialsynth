@@ -52,13 +52,20 @@ namespace {
     { "input_", "Input" },
     { "sidechain_", "Sidechain" },
     { "", "" },
+    { "osc_1_", "Oscillator 1", true },
+    { "osc_2_", "Oscillator 2", true },
+    { "osc_3_", "Oscillator 3", true },
+    { "sample_", "Sample", true },
+    { "", "" },
     { "filter_1_", "Filter 1", true },
     { "filter_2_", "Filter 2", true },
     { "filter_fx_", "Filter FX", true },
+    { "formant_", "Formant" },
     { "", "" },
     { "lfo_", "LFOs" },
     { "random_", "Randoms" },
     { "env_", "Envelopes" },
+    { "macro_control_", "Macros" },
     { "modulation_", "Mod Matrix" },
     { "", "" },
     { "chorus_", "Chorus" },
@@ -69,6 +76,26 @@ namespace {
     { "flanger_", "Flanger" },
     { "reverb_", "Reverb" },
     { "eq_", "Equalizer" },
+    { "comb_", "Comb" },
+    { "freq_shifter_", "Freq Shifter" },
+    { "pitch_shifter_", "Pitch Shifter" },
+    { "tremolo_", "Tremolo" },
+    { "vibrato_", "Vibrato" },
+    { "utility_", "Utility" },
+    { "morph_", "Morph" },
+    { "spectral_", "Spectral" },
+    { "", "" },
+    { "fx_bin_", "FX Bins" },
+    { "psplit_", "Parallel Splits" },
+  };
+
+  // Sources are grouped the same way; the single ones (note, velocity, wheels...) stay at the top level.
+  const SubMenu kSourceSubMenuPrefixes[] = {
+    { "lfo_", "LFOs" },
+    { "env_", "Envelopes" },
+    { "random_", "Randoms" },
+    { "macro_control_", "Macros" },
+    { "pointmod_", "Point Mods" },
   };
 
   PopupItems createSubMenuForParameterPrefix(const std::string& name, const String& prefix,
@@ -331,7 +358,7 @@ ModulationMatrixRow::ModulationMatrixRow(int index, PopupItems* source_items, Po
   source_->addListener(this);
   source_->setScrollWheelEnabled(false);
 
-  destination_ = std::make_unique<ModulationSelector>("destination", destinations, destination_items, true);
+  destination_ = std::make_unique<ModulationSelector>("destination", destinations, destination_items, false);
   addAndMakeVisible(destination_.get());
   addOpenGlComponent(destination_->getImageComponent());
   destination_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
@@ -570,8 +597,22 @@ ModulationMatrix::ModulationMatrix(const vital::output_map& sources, const vital
 
   source_popup_items_.addItem(0, "-");
   for (int i = 1; i < source_strings_.size(); ++i) {
-    std::string display_name = getMenuSourceDisplayName(source_strings_[i]).toStdString();
-    source_popup_items_.addItem(i, display_name);
+    bool grouped = false;
+    for (const auto& group : kSourceSubMenuPrefixes) {
+      if (source_strings_[i].startsWith(String(group.prefix)))
+        grouped = true;
+    }
+    if (!grouped)
+      source_popup_items_.addItem(i, getMenuSourceDisplayName(source_strings_[i]).toStdString());
+  }
+  for (const auto& group : kSourceSubMenuPrefixes) {
+    PopupItems sub_items(group.name);
+    for (int i = 1; i < source_strings_.size(); ++i) {
+      if (source_strings_[i].startsWith(String(group.prefix)))
+        sub_items.addItem(i, getMenuSourceDisplayName(source_strings_[i]).toStdString());
+    }
+    if (sub_items.size())
+      source_popup_items_.addItem(sub_items);
   }
 
   destination_popup_items_.addItem(0, kNoConnectionString);
