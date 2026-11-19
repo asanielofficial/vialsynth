@@ -430,7 +430,7 @@ OscillatorSection::OscillatorSection(Authentication* auth,
   shuffle_ = std::make_unique<SynthSlider>("osc_" + number + "_random_shuffle");
   addSlider(shuffle_.get());
   shuffle_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
-  shuffle_->setKnobSizeScale(1.5f);
+  shuffle_->setKnobSizeScale(0.9f);   // 60% of the Spectral Morph knob (1.5)
   shuffle_->setPopupPlacement(BubbleComponent::above);
   shuffle_->setModulationPlacement(BubbleComponent::above);
   shuffle_->setPopupPrefix("Shuffle: ");
@@ -762,18 +762,17 @@ void OscillatorSection::resized() {
   warp_edit_button_->setBounds(distortion_cell.getX(), distortion_cell.getY(), tool_size, tool_size);
   if (dice_button_->isVisible()) {
     // Random Amplitudes: the amount knob, the dice and a shuffle knob at 60% of its size, side by side.
-    int dice_size = std::max(1, static_cast<int>(spectral_cell.getHeight() * 0.24f));
-    int gap = widget_margin;
-    int amount_size = std::min(spectral_cell.getHeight(),
-                               static_cast<int>((spectral_cell.getWidth() - dice_size - 2 * gap) / 1.6f));
-    amount_size = std::max(1, amount_size);
-    int shuffle_size = std::max(1, static_cast<int>(amount_size * 0.6f));
-    int total = amount_size + gap + dice_size + gap + shuffle_size;
+    // The knobs keep their skin sizes (the bounds only place them): centres from the left, with the dice between.
+    int knob_d = static_cast<int>(findValue(Skin::kKnobArcSize) * 1.5f);
+    int shuffle_d = static_cast<int>(findValue(Skin::kKnobArcSize) * 0.9f);
+    int dice_size = std::max(1, std::min(static_cast<int>(knob_d * 0.4f), spectral_cell.getHeight() / 4));
+    int gap = std::max(1, widget_margin / 2);
+    int total = knob_d + gap + dice_size + gap + shuffle_d;
     int x = spectral_cell.getX() + (spectral_cell.getWidth() - total) / 2;
     int centre_y = spectral_cell.getCentreY();
-    spectral_morph_amount_->setBounds(x, centre_y - amount_size / 2, amount_size, amount_size);
-    dice_button_->setBounds(x + amount_size + gap, centre_y - dice_size / 2, dice_size, dice_size);
-    shuffle_->setBounds(dice_button_->getRight() + gap, centre_y - shuffle_size / 2, shuffle_size, shuffle_size);
+    spectral_morph_amount_->setBounds(x, centre_y - knob_d / 2, knob_d, knob_d);
+    dice_button_->setBounds(x + knob_d + gap, centre_y - dice_size / 2, dice_size, dice_size);
+    shuffle_->setBounds(dice_button_->getRight() + gap, centre_y - shuffle_d / 2, shuffle_d, shuffle_d);
   }
   else {
     dice_button_->setBounds(0, 0, 0, 0);
