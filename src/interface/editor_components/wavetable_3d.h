@@ -18,6 +18,9 @@
 
 #include "JuceHeader.h"
 
+#include <map>
+#include <string>
+
 #include "open_gl_line_renderer.h"
 #include "audio_file_drop_source.h"
 #include "common.h"
@@ -203,6 +206,7 @@ class Wavetable3d : public OpenGlComponent, public AudioFileDropSource {
     std::pair<vital::Output*, vital::Output*> frame_amount_outputs_ = { nullptr, nullptr };
     bool table_mode_ = false;
     std::pair<vital::Output*, vital::Output*> spectral_morph_outputs_;
+    std::map<std::string, std::pair<vital::Output*, vital::Output*>> warp_outputs_;
     std::pair<vital::Output*, vital::Output*> distortion_outputs_;
     std::pair<vital::Output*, vital::Output*> distortion_phase_outputs_;
 

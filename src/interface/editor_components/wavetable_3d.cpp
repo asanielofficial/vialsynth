@@ -135,6 +135,18 @@ Wavetable3d::Wavetable3d(int index, const vital::output_map& mono_modulations,
   distortion_outputs_ = lookup("osc_" + number + "_distortion_amount");
   distortion_phase_outputs_ = lookup("osc_" + number + "_distortion_phase");
 
+  // The warp settings the display follows, modulation included.
+  for (const char* name : { "spectral_position", "spectral_gain", "spectral_density", "spectral_resonance",
+                            "spectral_depth", "spectral_phase", "table_position", "table_gain", "table_resonance",
+                            "spectral_table_mix", "random_shuffle", "distortion_bias", "distortion_smooth",
+                            "distortion_drive", "distortion_mix" }) {
+    std::string full = "osc_" + number + "_" + name;
+    auto mono = mono_modulations.find(full);
+    auto poly = poly_modulations.find(full);
+    if (mono != mono_modulations.end() && mono->second)
+      warp_outputs_[name] = { mono->second, poly != poly_modulations.end() ? poly->second : nullptr };
+  }
+
   import_overlay_.setTargetComponent(this);
   import_overlay_.setQuad(0, -1.0f, -1.0f, 2.0f, 2.0f);
   wavetable_import_text_ = std::make_unique<PlainTextComponent>("wavetable", "WAVETABLE");
@@ -341,7 +353,17 @@ float Wavetable3d::warpParameter(const std::string& name, float fallback) {
 
   vital::control_map& controls = gui->getSynth()->getControls();
   auto control = controls.find("osc_" + std::to_string(index_ + 1) + "_" + name);
-  return control == controls.end() || !control->second ? fallback : control->second->value();
+  float base = control == controls.end() || !control->second ? fallback : control->second->value();
+
+  auto outputs = warp_outputs_.find(name);
+  if (outputs == warp_outputs_.end() || !animate_ || !outputs->second.first->owner->enabled())
+    return base;
+
+  float total = outputs->second.first->trigger_value[0];
+  bool voices = num_voices_readout_ != nullptr && num_voices_readout_->value()[0] > 0.0f;
+  if (voices && outputs->second.second != nullptr)
+    total += outputs->second.second->trigger_value[0];
+  return total;
 }
 
 // Reads the oscillator's warp settings into the context used for the display. Returns a number that changes when
