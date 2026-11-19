@@ -50,10 +50,13 @@ jobs:
           unzip -q -o pv.zip -d pv
           chmod +x pv/pluginval
           export LIBGL_ALWAYS_SOFTWARE=1
+          export VIALFX_DEBUG_LOG=1
+          rm -f /tmp/VialFX_debug.log
           export LD_PRELOAD=$(gcc -print-file-name=libasan.so)
           export ASAN_OPTIONS=detect_leaks=0:abort_on_error=1:detect_odr_violation=0
           xvfb-run -a -s "-screen 0 1600x1000x24" timeout 420 pv/pluginval --validate-in-process --strictness-level 5 --output-dir pvout --validate "$PWD/$VST" > run.txt 2>&1
           echo "pluginval/gdb exit: $?" >> run.txt
+          echo "--- debug log ---" >> run.txt; cat /tmp/VialFX_debug.log >> run.txt 2>/dev/null
           tail -c 60000 run.txt > run-tail.txt
 
       - name: Publish the log to the ci-logs branch

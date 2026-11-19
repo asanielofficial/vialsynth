@@ -15,6 +15,7 @@
  */
 
 #include "synth_base.h"
+#include "debug_log.h"
 
 #include "sample_source.h"
 #include "sound_engine.h"
@@ -32,7 +33,9 @@ SynthBase::SynthBase() : expired_(false) {
   self_reference_ = std::make_shared<SynthBase*>();
   *self_reference_ = this;
 
+  vial_debug::log("SynthBase: creating engine");
   engine_ = std::make_unique<vital::SoundEngine>();
+  vial_debug::log("SynthBase: engine created");
   engine_->setTuning(&tuning_);
 
   mod_connections_.reserve(vital::kMaxModulationConnections);
@@ -332,6 +335,7 @@ int SynthBase::getSampleRate() {
 }
 
 void SynthBase::initEngine() {
+  vial_debug::log("SynthBase: initEngine");
   clearModulations();
   if (getWavetableCreator(0)) {
     for (int i = 0; i < vital::kNumWavetableSlots; ++i)

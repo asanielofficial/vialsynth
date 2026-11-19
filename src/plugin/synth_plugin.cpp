@@ -21,6 +21,7 @@
 #include "load_save.h"
 
 SynthPlugin::SynthPlugin() {
+  vial_debug::log("SynthPlugin: constructing");
   last_seconds_time_ = 0.0;
 
   // The host sees bypass and a fixed set of automation slots; everything else is reached through a slot.
@@ -41,6 +42,7 @@ SynthPlugin::SynthPlugin() {
     slot_bridges_.push_back(bridge);
     addParameter(bridge);
   }
+  vial_debug::log("SynthPlugin: constructed");
 }
 
 void SynthPlugin::automationSlotsChanged() {
