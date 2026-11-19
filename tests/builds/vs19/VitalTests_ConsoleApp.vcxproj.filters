@@ -6788,7 +6788,7 @@
     <None Include="..\..\..\icons\shuffle.svg">
       <Filter>VitalTests\icons</Filter>
     </None>
-    <None Include="..\..\..\icons\VialFX.svg">
+    <None Include="..\..\..\icons\VialSynth.svg">
       <Filter>VitalTests\icons</Filter>
     </None>
     <None Include="..\..\..\third_party\JUCE\modules\juce_audio_devices\native\oboe\CMakeLists.txt">

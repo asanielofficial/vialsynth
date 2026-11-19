@@ -44,7 +44,7 @@ AboutSection::AboutSection(const String& name) : Overlay(name), body_(Shaders::k
   logo_ = std::make_unique<AppLogo>("logo");
   addOpenGlComponent(logo_.get());
 
-  name_text_ = std::make_unique<PlainTextComponent>("plugin name", "VIALFX");
+  name_text_ = std::make_unique<PlainTextComponent>("plugin name", "VIALSYNTH");
   addOpenGlComponent(name_text_.get());
   name_text_->setFontType(PlainTextComponent::kRegular);
   name_text_->setTextSize(40.0f);
@@ -89,12 +89,10 @@ AboutSection::AboutSection(const String& name) : Overlay(name), body_(Shaders::k
   check_for_updates_->addListener(this);
   addAndMakeVisible(check_for_updates_.get());
   addOpenGlComponent(check_for_updates_->getGlComponent());
-#if VITAL_FX
-  // VialFX never contacts an update server, so the option is not offered.
+  // VialSynth never contacts an update server, so the option is not offered.
   check_for_updates_text_->setVisible(false);
   check_for_updates_->setVisible(false);
   check_for_updates_->getGlComponent()->setVisible(false);
-#endif
 
   size_button_extra_small_ = std::make_unique<OpenGlToggleButton>(String(100 * kMultExtraSmall) + "%");
   size_button_extra_small_->setUiButton(false);

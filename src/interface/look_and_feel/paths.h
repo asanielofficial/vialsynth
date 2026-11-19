@@ -30,8 +30,8 @@ class Paths {
       return drawable->getOutlineAsPath();
     }
 
-    // The VialFX logo (icons/VialFX.svg) is drawn as two shapes so they can be coloured separately: the "V" mark
-    // and the "FX" lettering. Both are padded to the full artwork bounds so they scale and line up identically.
+    // The VialSynth logo (icons/VialSynth.svg) is drawn as two shapes so they can be coloured separately: the "V" mark
+    // and the "SYNTH" lettering. Both are padded to the full artwork bounds so they scale and line up identically.
     static void collectShapes(Component* component, std::vector<Path>& shapes) {
       if (auto* drawable = dynamic_cast<Drawable*>(component)) {
         if (component->getNumChildComponents() == 0) {
@@ -48,7 +48,7 @@ class Paths {
 
     static Path logoShape(int index) {
       std::unique_ptr<Drawable> drawable(Drawable::createFromImageData(
-          (const void*)BinaryData::VialFX_svg, BinaryData::VialFX_svgSize));
+          (const void*)BinaryData::VialSynth_svg, BinaryData::VialSynth_svgSize));
       std::vector<Path> shapes;
       if (drawable)
         collectShapes(drawable.get(), shapes);

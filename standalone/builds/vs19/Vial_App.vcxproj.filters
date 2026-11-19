@@ -6419,7 +6419,7 @@
     <None Include="..\..\..\icons\shuffle.svg">
       <Filter>Vial\icons</Filter>
     </None>
-    <None Include="..\..\..\icons\VialFX.svg">
+    <None Include="..\..\..\icons\VialSynth.svg">
       <Filter>Vial\icons</Filter>
     </None>
     <None Include="..\..\..\images\vital.xpm">

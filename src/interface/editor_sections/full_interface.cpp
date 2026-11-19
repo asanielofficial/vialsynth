@@ -557,7 +557,7 @@ void FullInterface::dataDirectoryChanged() {
 }
 
 void FullInterface::noDownloadNeeded() {
-  update_check_section_->startCheck();
+  // No update check: VialSynth does not contact a server for new versions.
 }
 
 void FullInterface::needsUpdate() {

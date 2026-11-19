@@ -575,7 +575,8 @@ namespace vital {
                       [&](int i, float amplitude, float& re, float& im) {
       float r = pattern_a[i] + (pattern_b[i] - pattern_a[i]) * t;
       float gain = (1.0f + a) * std::max(1.0f - a - a * r, 0.0f);
-      re = std::min(gain, OscillatorWarpContext::kMaxRandomGain);
+      const float max_gain = OscillatorWarpContext::kMaxRandomGain;
+      re = std::min(gain, max_gain);
     });
   }
 
