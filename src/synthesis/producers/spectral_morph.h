@@ -449,7 +449,7 @@ namespace vital {
   struct OscillatorWarpContext {
     static constexpr int kRandomSize = kNumHarmonics + 1;
     static constexpr float kOctaves = 9.9658f;      // log2(20000 / 20), the span of the drawings and tables
-    static constexpr float kMaxRandomGain = 8.0f;
+    static constexpr float kMaxRandomGain = 64.0f;
 
     static float harmonicPosition(int harmonic) {
       return std::max(0.0f, std::min(std::log2(std::max(1.0f, static_cast<float>(harmonic))) * 0.1f, 1.0f));
@@ -492,6 +492,7 @@ namespace vital {
       float place = std::max(0.0f, std::min(shuffle_amount, 1.0f)) * 8.0f;
       int first = std::min(static_cast<int>(place), 7);
       random_blend = place - first;
+      random_place = place;
       uint32_t seed = seedFromNumber(seed_number);
       if (!random_valid || random_seed != seed || random_first != first) {
         fillRandom(random_a, seed + static_cast<uint32_t>(first) * 0x632BE5ABu);
@@ -517,6 +518,7 @@ namespace vital {
     float random_a[kRandomSize];
     float random_b[kRandomSize];
     float random_blend = 0.0f;
+    float random_place = 0.0f;   // the shuffle control, in patterns (0..8)
     uint32_t random_seed = 0;
     int random_first = -1;
     bool random_valid = false;
@@ -557,13 +559,23 @@ namespace vital {
                                    int wavetable_index, poly_float* dest, FourierTransform* transform,
                                    float shift, int last_harmonic, const poly_float* data_buffer) {
     const OscillatorWarpContext* context = warpContext(data_buffer);
-    float a = std::max(0.0f, std::min(shift, 1.0f));
+    // The original sound: the amount runs through 15 times its range (so it soon leaves only a sparse set of
+    // harmonics standing, and those stand much louder) while it also walks through the chain of random patterns.
+    // The shuffle control moves where in the chain that walk starts.
+    float amount = std::max(0.0f, std::min(shift, 1.0f));
+    float a = amount * (kRandomAmplitudeStages - 1);
+    float position = context->random_place + a;
+    int first = static_cast<int>(position);
+    float t = position - first;
+    constexpr int kSize = OscillatorWarpContext::kRandomSize;
+    float pattern_a[kSize], pattern_b[kSize];
+    OscillatorWarpContext::fillRandom(pattern_a, context->random_seed + static_cast<uint32_t>(first) * 0x632BE5ABu);
+    OscillatorWarpContext::fillRandom(pattern_b, context->random_seed + static_cast<uint32_t>(first + 1) * 0x632BE5ABu);
     harmonicGainMorph(wavetable_data, wavetable_index, dest, transform, last_harmonic,
                       [&](int i, float amplitude, float& re, float& im) {
-      float r = context->random_a[i] + (context->random_b[i] - context->random_a[i]) * context->random_blend;
+      float r = pattern_a[i] + (pattern_b[i] - pattern_a[i]) * t;
       float gain = (1.0f + a) * std::max(1.0f - a - a * r, 0.0f);
-      const float max_gain = OscillatorWarpContext::kMaxRandomGain;
-      re = std::min(gain, max_gain);
+      re = std::min(gain, OscillatorWarpContext::kMaxRandomGain);
     });
   }
 
