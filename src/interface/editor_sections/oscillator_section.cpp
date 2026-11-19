@@ -429,7 +429,8 @@ OscillatorSection::OscillatorSection(Authentication* auth,
 
   shuffle_ = std::make_unique<SynthSlider>("osc_" + number + "_random_shuffle");
   addSlider(shuffle_.get());
-  shuffle_->setSliderStyle(Slider::LinearBar);
+  shuffle_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+  shuffle_->setKnobSizeScale(1.5f);
   shuffle_->setPopupPlacement(BubbleComponent::above);
   shuffle_->setModulationPlacement(BubbleComponent::above);
   shuffle_->setPopupPrefix("Shuffle: ");
@@ -629,8 +630,8 @@ void OscillatorSection::paintBackground(Graphics& g) {
   g.setColour(findColour(Skin::kTextComponentBackground, true));
   int label_rounding = findValue(Skin::kLabelBackgroundRounding);
   int morph_y = getHeight() - knob_section_height + widget_margin;
-  Rectangle<int> spectral_normal_bounds(spectral_morph_amount_->getX(), morph_y,
-                                        spectral_morph_amount_->getWidth(), knob_section_height - 2 * widget_margin);
+  Rectangle<int> spectral_normal_bounds(spectral_cell_.getX(), morph_y,
+                                        spectral_cell_.getWidth(), knob_section_height - 2 * widget_margin);
   g.fillRoundedRectangle(getLabelBackgroundBounds(spectral_normal_bounds, false).toFloat(), label_rounding);
   Rectangle<int> distortion_normal_bounds(distortion_amount_->getX(), morph_y,
                                           distortion_amount_->getWidth(), knob_section_height - 2 * widget_margin);
@@ -720,6 +721,7 @@ void OscillatorSection::resized() {
 
   placeKnobsInArea(Rectangle<int>(section2_x - widget_margin, knob_y, section2_width + widget_margin, big_knob_height),
                    { spectral_morph_amount_.get(), distortion_amount_.get() });
+  spectral_cell_ = spectral_morph_amount_->getBounds();
 
   int morph_y = getHeight() - knob_section_height + widget_margin;
   Rectangle<int> spectral_normal_bounds(spectral_morph_amount_->getX(), morph_y,
@@ -751,7 +753,7 @@ void OscillatorSection::resized() {
 
   // Tool buttons sit in the top corners of the knobs; Random Amplitudes keeps the dice and the shuffle bar in a strip
   // at the right of its knob.
-  Rectangle<int> spectral_cell = spectral_morph_amount_->getBounds();
+  Rectangle<int> spectral_cell = spectral_cell_;
   Rectangle<int> distortion_cell = distortion_amount_->getBounds();
   int tool_size = std::max(1, static_cast<int>(spectral_cell.getHeight() * 0.24f));
   curve_button_->setBounds(spectral_cell.getRight() - tool_size, spectral_cell.getY(), tool_size, tool_size);
@@ -759,15 +761,19 @@ void OscillatorSection::resized() {
   warp_tool_button_->setBounds(distortion_cell.getRight() - tool_size, distortion_cell.getY(), tool_size, tool_size);
   warp_edit_button_->setBounds(distortion_cell.getX(), distortion_cell.getY(), tool_size, tool_size);
   if (dice_button_->isVisible()) {
-    int strip = std::max(1, std::min(spectral_cell.getWidth() / 4, static_cast<int>(spectral_cell.getHeight() * 0.5f)));
-    int centre = spectral_cell.getRight() - strip / 2;
-    int dice_size = std::max(1, std::min(strip - widget_margin, static_cast<int>(spectral_cell.getHeight() * 0.22f)));
-    int bar_height = std::max(22, static_cast<int>(spectral_cell.getHeight() * 0.24f));
-    int bar_width = std::max(1, strip - widget_margin);
-    int block = dice_size + widget_margin + bar_height;
-    int tool_y = spectral_cell.getY() + (spectral_cell.getHeight() - block) / 2;
-    dice_button_->setBounds(centre - dice_size / 2, tool_y, dice_size, dice_size);
-    shuffle_->setBounds(centre - bar_width / 2, dice_button_->getBottom() + widget_margin, bar_width, bar_height);
+    // Random Amplitudes: the amount knob, the dice and a shuffle knob at 60% of its size, side by side.
+    int dice_size = std::max(1, static_cast<int>(spectral_cell.getHeight() * 0.24f));
+    int gap = widget_margin;
+    int amount_size = std::min(spectral_cell.getHeight(),
+                               static_cast<int>((spectral_cell.getWidth() - dice_size - 2 * gap) / 1.6f));
+    amount_size = std::max(1, amount_size);
+    int shuffle_size = std::max(1, static_cast<int>(amount_size * 0.6f));
+    int total = amount_size + gap + dice_size + gap + shuffle_size;
+    int x = spectral_cell.getX() + (spectral_cell.getWidth() - total) / 2;
+    int centre_y = spectral_cell.getCentreY();
+    spectral_morph_amount_->setBounds(x, centre_y - amount_size / 2, amount_size, amount_size);
+    dice_button_->setBounds(x + amount_size + gap, centre_y - dice_size / 2, dice_size, dice_size);
+    shuffle_->setBounds(dice_button_->getRight() + gap, centre_y - shuffle_size / 2, shuffle_size, shuffle_size);
   }
   else {
     dice_button_->setBounds(0, 0, 0, 0);
