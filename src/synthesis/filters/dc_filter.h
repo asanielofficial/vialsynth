@@ -39,12 +39,16 @@ namespace vital {
       virtual void processWithInput(const poly_float* audio_in, int num_samples) override;
 
       void setSampleRate(int sample_rate) override;
+      // A faster blocker for the output (the default one only reacts over about a second): removes anything below
+      // this many hertz, and replaces non-finite or enormous samples with silence. 0 keeps the default.
+      void setOutputCutoff(float hz) { output_cutoff_ = hz; if (getSampleRate() > 0) setSampleRate(getSampleRate()); }
       void tick(const poly_float& audio_in, poly_float& audio_out);
 
     private:
       void reset(poly_mask reset_mask) override;
 
       mono_float coefficient_;
+      float output_cutoff_ = 0.0f;
 
       // Past input and output values.
       poly_float past_in_;

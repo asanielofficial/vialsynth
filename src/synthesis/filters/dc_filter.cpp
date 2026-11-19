@@ -25,7 +25,10 @@ namespace vital {
 
   void DcFilter::setSampleRate(int sample_rate) {
     Processor::setSampleRate(sample_rate);
-    coefficient_ = 1.0f - kCoefficientToSrConstant / getSampleRate();
+    if (output_cutoff_ > 0.0f)
+      coefficient_ = 1.0f - 2.0f * 3.14159265f * output_cutoff_ / getSampleRate();
+    else
+      coefficient_ = 1.0f - kCoefficientToSrConstant / getSampleRate();
   }
 
   void DcFilter::process(int num_samples) {
@@ -43,7 +46,10 @@ namespace vital {
       tick(audio_in[i], audio_out[i]);
   }
 
-  force_inline void DcFilter::tick(const poly_float& audio_in, poly_float& audio_out) {
+  force_inline void DcFilter::tick(const poly_float& raw_in, poly_float& audio_out) {
+    poly_float audio_in = raw_in;
+    if (output_cutoff_ > 0.0f)
+      audio_in = utils::maskLoad(0.0f, audio_in, poly_float::lessThan(utils::abs(audio_in), 1.0e6f));
     audio_out = utils::mulAdd(audio_in - past_in_, past_out_, coefficient_);
     past_out_ = audio_out;
     past_in_ = audio_in;

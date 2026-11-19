@@ -20,6 +20,7 @@
 #include "flanger_module.h"
 #include "phaser_module.h"
 #include "decimator.h"
+#include "dc_filter.h"
 #include "modulation_connection_processor.h"
 #include "synth_constants.h"
 #include "synth_voice_handler.h"
@@ -159,9 +160,16 @@ namespace vital {
     decoder->plug(stereo_mode, StereoEncoder::kMode);
     addProcessor(decoder);
 
+    // Some presets (lots of multiband compression, say) leave a DC offset that eats the headroom and keeps the
+    // preset from playing; a fast blocker on the output takes it out.
+    DcFilter* output_dc_filter = new DcFilter();
+    output_dc_filter->setOutputCutoff(8.0f);
+    output_dc_filter->plug(decoder, DcFilter::kAudio);
+    addProcessor(output_dc_filter);
+
     Output* volume = createMonoModControl("volume");
     SmoothVolume* scaled_audio = new SmoothVolume();
-    scaled_audio->plug(decoder, SmoothVolume::kAudioRate);
+    scaled_audio->plug(output_dc_filter, SmoothVolume::kAudioRate);
     scaled_audio->plug(volume, SmoothVolume::kDb);
 
     peak_meter_ = new PeakMeter();
