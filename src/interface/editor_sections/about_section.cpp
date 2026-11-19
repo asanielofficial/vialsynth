@@ -32,12 +32,10 @@ namespace {
   }
 }
 
-#if VITAL_FX
 namespace {
   const char* const kVialFxVersion = "1.2";
-  const char* const kVialFxUrl = "https://github.com/asanielofficial/vialfx";
+  const char* const kVialFxUrl = "https://github.com/asanielofficial/vialsynth";
 }
-#endif
 
 AboutSection::AboutSection(const String& name) : Overlay(name), body_(Shaders::kRoundedRectangleFragment) {
   addOpenGlComponent(&body_);
@@ -60,14 +58,13 @@ AboutSection::AboutSection(const String& name) : Overlay(name), body_(Shaders::k
   version_text_->setFontType(PlainTextComponent::kLight);
   version_text_->setTextSize(12.0f);
 
-#if VITAL_FX
   // Test builds say so, in purple, under the version number.
   nightly_text_ = std::make_unique<PlainTextComponent>("nightly", "NIGHTLY");
   addOpenGlComponent(nightly_text_.get());
   nightly_text_->setFontType(PlainTextComponent::kRegular);
   nightly_text_->setTextSize(12.0f);
   nightly_text_->setColor(Colour(0xffa77bff));
-  nightly_text_->setVisible(VIALFX_NIGHTLY != 0);
+  nightly_text_->setVisible(false);
 
   // The project page, in the middle of the box (clicking it opens the page in the browser).
   link_text_ = std::make_unique<PlainTextComponent>("link", kVialFxUrl);
@@ -76,7 +73,6 @@ AboutSection::AboutSection(const String& name) : Overlay(name), body_(Shaders::k
   link_text_->setTextSize(14.0f);
   link_underline_ = std::make_unique<OpenGlQuad>(Shaders::kColorFragment);
   addOpenGlComponent(link_underline_.get());
-#endif
 
   check_for_updates_text_ = std::make_unique<PlainTextComponent>("Check for updates", String("Check for updates"));
   addOpenGlComponent(check_for_updates_text_.get());
@@ -180,7 +176,6 @@ void AboutSection::resized() {
   version_text_->setBounds(info_rect.getX() + name_x, info_rect.getY() + padding_y + 76 * size_ratio_,
                            info_rect.getWidth() - name_x - kNameRightBuffer * size_ratio_, 32 * size_ratio_);
 
-#if VITAL_FX
   {
     Colour accent = findColour(Skin::kWidgetAccent1, true);
     nightly_text_->setColor(Colour(0xffa77bff));
@@ -203,7 +198,6 @@ void AboutSection::resized() {
     link_underline_->setColor(accent);
     link_bounds_ = Rectangle<int>(underline_x - 6, link_y, underline_width + 12, link_height);
   }
-#endif
 
   int size_padding = 5 * size_ratio_;
   int size_start_x = info_rect.getX() + padding_x;
@@ -267,19 +261,15 @@ void AboutSection::resized() {
 }
 
 void AboutSection::mouseMove(const MouseEvent& e) {
-#if VITAL_FX
   setMouseCursor(link_bounds_.contains(e.getPosition()) ? MouseCursor::PointingHandCursor : MouseCursor::NormalCursor);
-#endif
   Overlay::mouseMove(e);
 }
 
 void AboutSection::mouseUp(const MouseEvent &e) {
-#if VITAL_FX
   if (link_bounds_.contains(e.getPosition())) {
     URL(kVialFxUrl).launchInDefaultBrowser();
     return;
   }
-#endif
   if (!getInfoRect().contains(e.getPosition()))
     setVisible(false);
 }
