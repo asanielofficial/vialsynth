@@ -57,6 +57,27 @@ class SynthBase : public MidiManager::Listener {
     void presetChangedThroughMidi(File preset) override;
     void valueChangedExternal(const std::string& name, vital::mono_float value);
     void valueChangedInternal(const std::string& name, vital::mono_float value);
+
+    // Parameters the host always sees (no slot needed): bypass, master volume, lane switches and levels, macros.
+    static const std::vector<std::string>& getFixedHostParameters();
+    static bool isFixedHostParameter(const std::string& name);
+
+    // Host automation slots. A parameter is automatable from the host only while it is assigned to a slot.
+    const std::string& getAutomationSlot(int slot) const { return automation_slots_[slot]; }
+    int findAutomationSlot(const std::string& name) const;
+    void setAutomationSlot(int slot, const std::string& name);
+    void clearAutomationSlot(const std::string& name);
+    json automationSlotsToJson() const;
+    void automationSlotsFromJson(const json& data);
+    virtual void automationSlotsChanged() { }
+
+    // Undo / redo of everything done in the interface: snapshots of the whole state, one per burst of edits.
+    // noteEdit() goes right before every change made from the interface.
+    void noteEdit();
+    bool canUndo();
+    bool canRedo();
+    bool undo();
+    bool redo();
     bool connectModulation(const std::string& source, const std::string& destination);
     void connectModulation(vital::ModulationConnection* connection);
     void disconnectModulation(const std::string& source, const std::string& destination);
@@ -126,6 +147,9 @@ class SynthBase : public MidiManager::Listener {
     // The effect chain: slots hold 0 or 1 + effectId (+ a "minimized" flag for the interface).
     void setEffectChain(const int* slots, int num_slots);
     int getEffectChain(int* slots) const;
+    // Names of the FX Bins (saved with the preset); an empty name means the default "FX Bin".
+    String getFxBinName(int index) const { return index >= 0 && index < vital::kMaxFxBins ? fx_bin_names_[index] : String(); }
+    void setFxBinName(int index, const String& name) { if (index >= 0 && index < vital::kMaxFxBins) fx_bin_names_[index] = name; }
     vital::ModulationConnectionBank& getModulationBank();
     void notifyOversamplingChanged();
     void checkOversampling();
@@ -192,6 +216,29 @@ class SynthBase : public MidiManager::Listener {
     bool expired_;
 
     std::map<std::string, String> save_info_;
+#if VITAL_FX
+    String fx_bin_names_[vital::kMaxFxBins];
+#endif
+    class EditTimer : public Timer {
+      public:
+        explicit EditTimer(SynthBase* owner) : owner_(owner) { }
+        void timerCallback() override { stopTimer(); owner_->commitEdits(); }
+      private:
+        SynthBase* owner_;
+    };
+
+    void commitEdits();
+    void resetHistory();
+    bool applySnapshot(const std::string& snapshot);
+
+    std::string automation_slots_[vital::kNumAutomationSlots];
+
+    std::vector<std::string> undo_stack_;
+    std::vector<std::string> redo_stack_;
+    std::string history_current_;
+    bool history_loading_ = false;
+    EditTimer edit_timer_{this};
+
     vital::control_map controls_;
     vital::CircularQueue<vital::ModulationConnection*> mod_connections_;
     moodycamel::ConcurrentQueue<vital::control_change> value_change_queue_;

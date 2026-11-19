@@ -29,6 +29,7 @@
 // modulated; adding an effect takes the first unused copy of its type.
 
 #include "JuceHeader.h"
+#include "debug_log.h"
 #include "modulation_connection_processor.h"
 
 #include "chorus_section.h"
@@ -38,6 +39,7 @@
 #include "equalizer_section.h"
 #include "filter_section.h"
 #include "flanger_section.h"
+#include "fx_container_ui.h"
 #include "fx_effect_chain.h"
 #include "phaser_section.h"
 #include "reverb_section.h"
@@ -182,11 +184,29 @@ namespace fx_ui {
   inline int instanceOf(int effect_id) { return effect_id % kMaxInstances; }
   inline std::string idOf(int effect_id) { return vital::FxEffectChain::instanceId(typeOf(effect_id), instanceOf(effect_id)); }
 
-  // Chain entries hold 1 + effect id, plus a flag for minimized effects.
+  // Chain entries hold 1 + effect id, plus a flag for minimized effects; containers are marker entries (see
+  // vital::chain_token). entryId is -1 for markers.
   constexpr int kMinimizedFlag = vital::FxEffectChain::kMinimizedFlag;
-  inline int entryId(int entry) { return ((entry - 1) & (kMinimizedFlag - 1)); }
+  inline bool isEffectEntry(int entry) { return entry > 0 && entry < vital::chain_token::kBinBegin; }
+  inline int entryId(int entry) { return isEffectEntry(entry) ? ((entry - 1) & (kMinimizedFlag - 1)) : -1; }
   inline bool entryMinimized(int entry) { return (entry & kMinimizedFlag) != 0; }
   inline int makeEntry(int effect_id, bool minimized) { return 1 + effect_id + (minimized ? kMinimizedFlag : 0); }
+  // Identifies an entry whatever its minimized flag.
+  inline int entryKey(int entry) { return entry & ~kMinimizedFlag; }
+
+  enum RowKind { kRowEffect = 0, kRowBin, kRowSplit, kRowBranch };
+
+  // One visible row of the chain list.
+  struct RowItem {
+    int kind = kRowEffect;
+    int key = 0;
+    int depth = 0;
+    bool on = false;
+    bool minimized = false;
+    bool active = false;
+    std::string title;
+    Path icon;
+  };
 
   // True if the parameter (control) belongs to copy `instance` of `type` ("chorus_dry_wet" is copy 1 of Chorus,
   // "chorus_2_dry_wet" copy 2).
@@ -349,6 +369,10 @@ class FxEffectSlot : public SynthSection, public Value::Listener {
     bool isOn() const { return section_->activator() && section_->activator()->getToggleState(); }
     bool isMinimized() const { return minimized_; }
     SynthSection* section() { return section_.get(); }
+
+    // Whether its OpenGL parts exist (a copy built after the context was made starts without them).
+    bool openGlReady() const { return gl_ready_; }
+    void setOpenGlReady(bool ready) { gl_ready_ = ready; }
     void addListener(Listener* listener) { listeners_.push_back(listener); }
 
     // The height the effect takes when minimized: its title bar.
@@ -684,6 +708,7 @@ class FxEffectSlot : public SynthSection, public Value::Listener {
     }
 
     int effect_id_;
+    bool gl_ready_ = false;
     bool minimized_;
     Time last_event_time_;
     Path icon_;
@@ -702,10 +727,10 @@ class FxEffectSlot : public SynthSection, public Value::Listener {
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FxEffectSlot)
 };
 
-// A row of the chain list (left panel).
+// A row of the chain list (left panel): an effect, an FX Bin, a Parallel Split or one of its parallels.
 class FxEffectRow : public SynthSection {
   public:
-    FxEffectRow() : SynthSection("effect_row"), effect_id_(-1), on_(false), minimized_(false), dragging_(false) {
+    FxEffectRow() : SynthSection("effect_row"), dragging_(false) {
       setInterceptsMouseClicks(false, false);
       setSkinOverride(Skin::kAllEffects);
       background_ = std::make_unique<OpenGlImageComponent>("background");
@@ -714,22 +739,21 @@ class FxEffectRow : public SynthSection {
       background_->paintEntireComponent(false);
     }
 
-    void setEffect(int effect_id, bool on, bool minimized) {
-      if (effect_id_ == effect_id && on_ == on && minimized_ == minimized)
+    void setItem(const fx_ui::RowItem& item) {
+      if (item_.kind == item.kind && item_.key == item.key && item_.on == item.on &&
+          item_.minimized == item.minimized && item_.active == item.active && item_.title == item.title &&
+          !item_.title.empty())
         return;
 
-      effect_id_ = effect_id;
-      on_ = on;
-      minimized_ = minimized;
-      if (effect_id >= 0) {
-        icon_ = fx_ui::typeIcon(fx_ui::typeOf(effect_id));
-        title_ = fx_ui::instanceTitle(fx_ui::typeOf(effect_id), fx_ui::instanceOf(effect_id));
-      }
+      bool icon_changed = item_.key != item.key || item_.kind != item.kind || item_.title.empty();
+      item_ = item;
+      if (icon_changed)
+        icon_ = item.icon;
       redraw();
     }
 
-    int effectId() const { return effect_id_; }
-    bool isMinimized() const { return minimized_; }
+    void clear() { item_ = fx_ui::RowItem(); }
+    int key() const { return item_.key; }
     void setDragging(bool dragging) { dragging_ = dragging; redraw(); }
     void setSelection(bool selecting, bool selected) {
       if (selecting_ == selecting && selected_ == selected)
@@ -745,18 +769,24 @@ class FxEffectRow : public SynthSection {
 
     void paint(Graphics& g) override {
       static constexpr float kIconSize = 0.55f;
+      bool branch = item_.kind == fx_ui::kRowBranch;
+      bool container = item_.kind == fx_ui::kRowBin || item_.kind == fx_ui::kRowSplit;
 
       g.setColour(getParentComponent() ? getParentComponent()->findColour(Skin::kBody, true) : Colours::black);
       float round_amount = findValue(Skin::kBodyRounding);
       g.fillRoundedRectangle(0.0f, 0.0f, getWidth(), getHeight(), round_amount);
 
-      g.setColour(findColour(on_ ? Skin::kPowerButtonOn : Skin::kPowerButtonOff, true));
-      g.drawRoundedRectangle(0.5f, 0.5f, getWidth() - 1.0f, getHeight() - 1.0f, round_amount, dragging_ ? 2.0f : 1.0f);
+      Colour outline = findColour(item_.on ? Skin::kPowerButtonOn : Skin::kPowerButtonOff, true);
+      if (branch && item_.active)
+        outline = findColour(Skin::kWidgetPrimary1, true);
+      g.setColour(outline);
+      float thickness = dragging_ || (branch && item_.active) ? 2.0f : 1.0f;
+      g.drawRoundedRectangle(0.5f, 0.5f, getWidth() - 1.0f, getHeight() - 1.0f, round_amount, thickness);
 
       g.setFont(Fonts::instance()->proportional_regular().withPointHeight(size_ratio_ * 12.0f));
       float margin = getHeight() * 0.3f;
       float text_x = margin;
-      if (selecting_) {
+      if (selecting_ && !branch) {
         float box = getHeight() * 0.4f;
         Rectangle<float> check_box(margin, (getHeight() - box) / 2.0f, box, box);
         Colour accent = findColour(Skin::kWidgetPrimary1, true);
@@ -774,16 +804,30 @@ class FxEffectRow : public SynthSection {
           g.drawRoundedRectangle(check_box, 3.0f, 1.5f);
         text_x = check_box.getRight() + margin * 0.6f;
       }
-      String text = String(title_).toLowerCase();
-      text = text.substring(0, 1).toUpperCase() + text.substring(1);
-      g.setColour(findColour(on_ ? Skin::kBodyText : Skin::kHeadingText, true).withMultipliedAlpha(on_ ? 1.0f : 0.6f));
+
+      String text = String(item_.title);
+      if (item_.kind == fx_ui::kRowEffect) {
+        text = text.toLowerCase();
+        text = text.substring(0, 1).toUpperCase() + text.substring(1);
+      }
+      bool bright = item_.on || branch;
+      g.setColour(findColour(bright ? Skin::kBodyText : Skin::kHeadingText, true).withMultipliedAlpha(bright ? 1.0f : 0.6f));
       g.drawText(text, text_x, 0, getWidth() - text_x - margin - getHeight(), getHeight(),
                  Justification::centredLeft, true);
 
-      float icon_width = kIconSize * getHeight();
-      Rectangle<float> icon_bounds(getWidth() - icon_width - margin, (getHeight() - icon_width) / 2.0f,
-                                   icon_width, icon_width);
-      g.fillPath(icon_, icon_.getTransformToScaleToFit(icon_bounds, true));
+      if (!branch) {
+        float icon_width = kIconSize * getHeight();
+        Rectangle<float> icon_bounds(getWidth() - icon_width - margin, (getHeight() - icon_width) / 2.0f,
+                                     icon_width, icon_width);
+        g.fillPath(icon_, icon_.getTransformToScaleToFit(icon_bounds, true));
+        if (container && item_.minimized) {
+          // A collapsed container shows a small "+" before its icon.
+          Path plus = fx_container_ui::plusShape();
+          float size = icon_width * 0.7f;
+          g.fillPath(plus, plus.getTransformToScaleToFit(Rectangle<float>(icon_bounds.getX() - size - margin * 0.4f,
+                                                                           (getHeight() - size) / 2.0f, size, size), true));
+        }
+      }
     }
 
     void resized() override {
@@ -792,10 +836,9 @@ class FxEffectRow : public SynthSection {
     }
 
   private:
-    int effect_id_;
-    bool on_, minimized_, dragging_;
+    fx_ui::RowItem item_;
+    bool dragging_;
     bool selecting_ = false, selected_ = false;
-    std::string title_;
     Path icon_;
     std::unique_ptr<OpenGlImageComponent> background_;
 };
@@ -816,15 +859,23 @@ class FxRowContainer : public SynthSection {
 // The left panel.
 class FxEffectList : public SynthSection, public ScrollBar::Listener {
   public:
+    // Where a dragged row lands relative to the row it was dropped on.
+    enum DropMode { kBefore = 0, kAfter, kFirstChild, kEnd };
+
     class Listener {
       public:
         virtual ~Listener() { }
+        // type is an effect type, or fx_ui::kNumTypes for a Parallel Split.
         virtual void addEffectRequested(int type) = 0;
-        virtual void chainReordered(const std::vector<int>& effect_ids) = 0;
-        virtual void effectSelected(int effect_id) = 0;
-        virtual void effectsDuplicateRequested(const std::vector<int>& effect_ids) = 0;
-        virtual void effectsRemoveRequested(const std::vector<int>& effect_ids) = 0;
-        virtual void effectMinimizeToggled(int effect_id) = 0;
+        // outdent: with kAfter, how many containers to leave when the row was the last one in them.
+        virtual void rowMoved(int key, int target_key, int mode, int outdent) = 0;
+        virtual void rowClicked(int key) = 0;
+        virtual void rowsDuplicateRequested(const std::vector<int>& keys) = 0;
+        virtual void rowsRemoveRequested(const std::vector<int>& keys) = 0;
+        virtual void rowMinimizeToggled(int key) = 0;
+        virtual void rowsGroupRequested(const std::vector<int>& keys) = 0;
+        virtual void rowRenameRequested(int key) = 0;
+        virtual void rowUngroupRequested(int key) = 0;
     };
 
     FxEffectList() : SynthSection("effect_chain"), dragged_(-1), mouse_down_y_(0), dragged_start_y_(0), moved_(false) {
@@ -836,7 +887,7 @@ class FxEffectList : public SynthSection, public ScrollBar::Listener {
       select_button_->useOnColors(true);
       select_button_->setShape(selectShape());
 
-      for (OpenGlToggleButton* button : { &duplicate_button_, &delete_button_ }) {
+      for (OpenGlToggleButton* button : { &duplicate_button_, &delete_button_, &group_button_ }) {
         addChildComponent(button);
         addOpenGlComponent(button->getGlComponent());
         button->addListener(this);
@@ -845,6 +896,7 @@ class FxEffectList : public SynthSection, public ScrollBar::Listener {
       }
       duplicate_button_.setText("DUPLICATE");
       delete_button_.setText("DELETE");
+      group_button_.setText("CREATE FX BIN");
 
       add_button_ = std::make_unique<OpenGlToggleButton>("add_effect");
       addAndMakeVisible(add_button_.get());
@@ -863,7 +915,7 @@ class FxEffectList : public SynthSection, public ScrollBar::Listener {
       container_->on_drag = [this](const MouseEvent& e) { rowMouseDrag(e); };
       container_->on_up = [this](const MouseEvent& e) { rowMouseUp(e); };
 
-      for (int i = 0; i < fx_ui::kPoolSize; ++i) {
+      for (int i = 0; i < vital::kMaxFxChainEntries; ++i) {
         rows_[i] = std::make_unique<FxEffectRow>();
         container_->addSubSection(rows_[i].get());
         rows_[i]->setVisible(false);
@@ -881,21 +933,22 @@ class FxEffectList : public SynthSection, public ScrollBar::Listener {
 
     void addListener(Listener* listener) { listeners_.push_back(listener); }
 
-    // The chain, in order, as effect ids; on / minimized flags per effect id.
-    void setChain(const std::vector<int>& effect_ids, const std::function<bool(int)>& is_on,
-                  const std::function<bool(int)>& is_minimized) {
-      order_ = effect_ids;
-      selected_.erase(std::remove_if(selected_.begin(), selected_.end(), [this](int id) {
-        return std::find(order_.begin(), order_.end(), id) == order_.end();
+    // The visible rows, in order.
+    void setChain(const std::vector<fx_ui::RowItem>& items) {
+      items_ = items;
+      if (static_cast<int>(items_.size()) > vital::kMaxFxChainEntries)
+        items_.resize(vital::kMaxFxChainEntries);
+      selected_.erase(std::remove_if(selected_.begin(), selected_.end(), [this](int key) {
+        return rowOfKey(key) < 0;
       }), selected_.end());
-      for (int i = 0; i < fx_ui::kPoolSize; ++i) {
-        if (i < static_cast<int>(order_.size())) {
-          rows_[i]->setEffect(order_[i], is_on(order_[i]), is_minimized(order_[i]));
-          rows_[i]->setSelection(selecting_, isSelected(order_[i]));
+      for (int i = 0; i < vital::kMaxFxChainEntries; ++i) {
+        if (i < static_cast<int>(items_.size())) {
+          rows_[i]->setItem(items_[i]);
+          rows_[i]->setSelection(selecting_, isSelected(items_[i].key));
           rows_[i]->setVisible(true);
         }
         else {
-          rows_[i]->setEffect(-1, false, false);
+          rows_[i]->clear();
           rows_[i]->setVisible(false);
         }
       }
@@ -906,7 +959,7 @@ class FxEffectList : public SynthSection, public ScrollBar::Listener {
       paintBody(g);
       paintChildrenBackgrounds(g);
 
-      if (order_.empty()) {
+      if (items_.empty()) {
         g.setColour(findColour(Skin::kBodyText, true).withMultipliedAlpha(0.45f));
         g.setFont(Fonts::instance()->proportional_light().withPointHeight(size_ratio_ * 12.0f));
         int top = add_button_->getBottom() + getWidgetMargin();
@@ -928,6 +981,8 @@ class FxEffectList : public SynthSection, public ScrollBar::Listener {
         duplicate_button_.setBounds(margin, top, half, button_height);
         delete_button_.setBounds(duplicate_button_.getRight() + margin, top, getWidth() - 3 * margin - half, button_height);
         top = duplicate_button_.getBottom() + margin;
+        group_button_.setBounds(margin, top, getWidth() - 2 * margin, button_height);
+        top = group_button_.getBottom() + margin;
       }
       int scroll_width = std::max(4, static_cast<int>(size_ratio_ * 6));
       viewport_.setBounds(margin, top, getWidth() - 2 * margin - scroll_width, std::max(1, getHeight() - top - margin));
@@ -942,24 +997,30 @@ class FxEffectList : public SynthSection, public ScrollBar::Listener {
         setSelecting(select_button_->getToggleState());
         return;
       }
-      if (clicked_button == &duplicate_button_ || clicked_button == &delete_button_) {
+      if (clicked_button == &duplicate_button_ || clicked_button == &delete_button_ || clicked_button == &group_button_) {
         duplicate_button_.setToggleState(false, dontSendNotification);
         delete_button_.setToggleState(false, dontSendNotification);
-        std::vector<int> ids;
-        for (int id : order_) {
-          if (isSelected(id))
-            ids.push_back(id);
-        }
-        if (ids.empty())
+        group_button_.setToggleState(false, dontSendNotification);
+        std::vector<int> keys = selectedKeys();
+        if (keys.empty())
           return;
+
+        if (clicked_button == &group_button_) {
+          if (keys.size() < 2)
+            return;
+          selected_.clear();
+          for (Listener* listener : listeners_)
+            listener->rowsGroupRequested(keys);
+          return;
+        }
 
         bool duplicate = clicked_button == &duplicate_button_;
         selected_.clear();
         for (Listener* listener : listeners_) {
           if (duplicate)
-            listener->effectsDuplicateRequested(ids);
+            listener->rowsDuplicateRequested(keys);
           else
-            listener->effectsRemoveRequested(ids);
+            listener->rowsRemoveRequested(keys);
         }
         return;
       }
@@ -970,6 +1031,8 @@ class FxEffectList : public SynthSection, public ScrollBar::Listener {
       PopupItems options;
       for (int type = 0; type < fx_ui::kNumTypes; ++type)
         options.addItem(type + 1, fx_ui::typeMenuName(type));
+      options.addItem(-1, "");
+      options.addItem(fx_ui::kNumTypes + 1, "Parallel Split");
       showPopupSelector(this, Point<int>(add_button_->getX(), add_button_->getBottom()), options,
                         [this](int selection) {
                           for (Listener* listener : listeners_)
@@ -1018,32 +1081,56 @@ class FxEffectList : public SynthSection, public ScrollBar::Listener {
       return path;
     }
 
-    bool isSelected(int id) const { return std::find(selected_.begin(), selected_.end(), id) != selected_.end(); }
+    static bool selectable(const fx_ui::RowItem& item) { return item.kind != fx_ui::kRowBranch; }
+
+    bool isSelected(int key) const { return std::find(selected_.begin(), selected_.end(), key) != selected_.end(); }
+
+    int rowOfKey(int key) const {
+      for (int i = 0; i < static_cast<int>(items_.size()); ++i) {
+        if (items_[i].key == key)
+          return i;
+      }
+      return -1;
+    }
+
+    std::vector<int> selectedKeys() const {
+      std::vector<int> keys;
+      for (const fx_ui::RowItem& item : items_) {
+        if (selectable(item) && isSelected(item.key))
+          keys.push_back(item.key);
+      }
+      return keys;
+    }
 
     void setSelecting(bool selecting) {
       selecting_ = selecting;
       selected_.clear();
       duplicate_button_.setVisible(selecting);
       delete_button_.setVisible(selecting);
-      for (int i = 0; i < static_cast<int>(order_.size()); ++i)
+      group_button_.setVisible(selecting);
+      for (int i = 0; i < static_cast<int>(items_.size()); ++i)
         rows_[i]->setSelection(selecting_, false);
       resized();
     }
 
     float rowHeight() const { return std::max(18.0f, size_ratio_ * 40.0f); }
     float rowPitch() const { return rowHeight() + std::max(2.0f, size_ratio_ * 5.0f); }
+    int indentWidth() const { return std::max(6, static_cast<int>(size_ratio_ * 14.0f)); }
+    int rowX(int i) const { return std::min(items_[i].depth * indentWidth(), std::max(0, viewport_.getWidth() / 2)); }
 
     void layoutRows() {
       int pitch = static_cast<int>(rowPitch());
       int height = static_cast<int>(rowHeight());
       int width = viewport_.getWidth();
-      int total = static_cast<int>(order_.size()) * pitch;
+      // One free row below the last, so a row can be dropped below everything.
+      int total = (static_cast<int>(items_.size()) + 1) * pitch;
       container_->setBounds(0, 0, width, std::max(total, viewport_.getHeight()));
-      for (int i = 0; i < static_cast<int>(order_.size()); ++i) {
+      for (int i = 0; i < static_cast<int>(items_.size()); ++i) {
+        int x = rowX(i);
         if (i != dragged_)
-          rows_[i]->setBounds(0, i * pitch, width, height);
+          rows_[i]->setBounds(x, i * pitch, std::max(1, width - x), height);
         else
-          rows_[i]->setSize(width, height);
+          rows_[i]->setSize(std::max(1, width - x), height);
       }
       updateScrollBar();
       repaintBackground();
@@ -1055,26 +1142,33 @@ class FxEffectList : public SynthSection, public ScrollBar::Listener {
     }
 
     int rowAt(int y) const {
+      if (y < 0)
+        return -1;
       int index = static_cast<int>(y / rowPitch());
-      return index >= 0 && index < static_cast<int>(order_.size()) ? index : -1;
+      return index >= 0 && index < static_cast<int>(items_.size()) ? index : -1;
+    }
+
+    int clampedRowAt(int y) const {
+      int last = static_cast<int>(items_.size()) - 1;
+      return std::max(0, std::min(last, static_cast<int>(y / rowPitch())));
     }
 
     void rowMouseDown(const MouseEvent& e) {
       moved_ = false;
+      int hit = rowAt(e.y);
       if (e.mods.isPopupMenu()) {
         // Right click: the same menu as right clicking the effect itself.
         dragged_ = -1;
-        select_down_ = -1;
-        if (!selecting_)
-          showRowMenu(rowAt(e.y), getLocalPoint(container_.get(), e.getPosition()));
+        select_anchor_ = -1;
+        if (hit >= 0)
+          showRowMenu(hit, getLocalPoint(container_.get(), e.getPosition()));
         return;
       }
-      int hit = rowAt(e.y);
       if (selecting_ || hit < 0) {
         // Selecting: a click toggles the row and dragging over more rows paints the same choice onto them. Pressing
         // the empty space below the rows starts selecting too, so a drag from there sweeps up a group.
         dragged_ = -1;
-        if (order_.empty())
+        if (items_.empty())
           return;
         if (!selecting_) {
           setSelecting(true);
@@ -1082,7 +1176,7 @@ class FxEffectList : public SynthSection, public ScrollBar::Listener {
         }
         select_base_ = selected_;
         select_anchor_ = hit >= 0 ? hit : clampedRowAt(e.y);
-        select_paint_ = hit >= 0 ? !isSelected(order_[hit]) : true;
+        select_paint_ = hit >= 0 ? !isSelected(items_[hit].key) : true;
         paintSelection(select_anchor_);
         return;
       }
@@ -1095,31 +1189,59 @@ class FxEffectList : public SynthSection, public ScrollBar::Listener {
     }
 
     void showRowMenu(int index, Point<int> position) {
-      if (index < 0 || index >= static_cast<int>(order_.size()))
+      if (index < 0 || index >= static_cast<int>(items_.size()))
         return;
 
-      int id = order_[index];
-      bool minimized = rows_[index]->isMinimized();
+      enum { kDuplicate = 1, kMinimize, kRemove, kGroup, kRename, kUngroup };
+      const fx_ui::RowItem item = items_[index];
+      std::vector<int> keys = selectedKeys();
       PopupItems options;
-      options.addItem(1, "Duplicate");
-      options.addItem(2, minimized ? "Expand" : "Minimize");
-      options.addItem(-1, "");
-      options.addItem(3, "Remove");
-      showPopupSelector(this, position, options, [this, id](int selection) {
+      if (selecting_ && keys.size() >= 2) {
+        options.addItem(kGroup, "Create FX Bin");
+        options.addItem(-1, "");
+      }
+      switch (item.kind) {
+        case fx_ui::kRowEffect:
+          options.addItem(kDuplicate, "Duplicate");
+          options.addItem(kMinimize, item.minimized ? "Expand" : "Minimize");
+          options.addItem(-1, "");
+          options.addItem(kRemove, "Remove");
+          break;
+        case fx_ui::kRowBin:
+          options.addItem(kRename, "Rename");
+          options.addItem(kMinimize, item.minimized ? "Expand" : "Collapse");
+          options.addItem(kUngroup, "Ungroup");
+          options.addItem(-1, "");
+          options.addItem(kRemove, "Remove bin and its effects");
+          break;
+        case fx_ui::kRowSplit:
+          options.addItem(kMinimize, item.minimized ? "Expand" : "Collapse");
+          options.addItem(kUngroup, "Ungroup");
+          options.addItem(-1, "");
+          options.addItem(kRemove, "Remove split and its effects");
+          break;
+        default:
+          options.addItem(kRemove, "Remove parallel");
+          break;
+      }
+
+      int key = item.key;
+      showPopupSelector(this, position, options, [this, key, keys](int selection) {
         for (Listener* listener : listeners_) {
-          if (selection == 1)
-            listener->effectsDuplicateRequested({ id });
-          else if (selection == 2)
-            listener->effectMinimizeToggled(id);
-          else if (selection == 3)
-            listener->effectsRemoveRequested({ id });
+          if (selection == kDuplicate)
+            listener->rowsDuplicateRequested({ key });
+          else if (selection == kMinimize)
+            listener->rowMinimizeToggled(key);
+          else if (selection == kRemove)
+            listener->rowsRemoveRequested({ key });
+          else if (selection == kGroup)
+            listener->rowsGroupRequested(keys);
+          else if (selection == kRename)
+            listener->rowRenameRequested(key);
+          else if (selection == kUngroup)
+            listener->rowUngroupRequested(key);
         }
       });
-    }
-
-    int clampedRowAt(int y) const {
-      int last = static_cast<int>(order_.size()) - 1;
-      return std::max(0, std::min(last, static_cast<int>(y / rowPitch())));
     }
 
     // The rows from the anchor to `current` take the painted state; the rest keep what they had before the drag.
@@ -1128,19 +1250,21 @@ class FxEffectList : public SynthSection, public ScrollBar::Listener {
       int high = std::max(select_anchor_, current);
       selected_ = select_base_;
       for (int i = low; i <= high; ++i) {
-        int id = order_[i];
-        auto found = std::find(selected_.begin(), selected_.end(), id);
+        if (!selectable(items_[i]))
+          continue;
+        int key = items_[i].key;
+        auto found = std::find(selected_.begin(), selected_.end(), key);
         if (select_paint_ && found == selected_.end())
-          selected_.push_back(id);
+          selected_.push_back(key);
         else if (!select_paint_ && found != selected_.end())
           selected_.erase(found);
       }
-      for (int i = 0; i < static_cast<int>(order_.size()); ++i)
-        rows_[i]->setSelection(true, isSelected(order_[i]));
+      for (int i = 0; i < static_cast<int>(items_.size()); ++i)
+        rows_[i]->setSelection(true, isSelected(items_[i].key));
     }
 
     void rowMouseDrag(const MouseEvent& e) {
-      if (select_anchor_ >= 0 && !order_.empty()) {
+      if (select_anchor_ >= 0 && !items_.empty()) {
         paintSelection(clampedRowAt(e.y));
         return;
       }
@@ -1148,30 +1272,11 @@ class FxEffectList : public SynthSection, public ScrollBar::Listener {
         return;
 
       int pitch = static_cast<int>(rowPitch());
-      int max_y = std::max(0, (static_cast<int>(order_.size()) - 1) * pitch);
+      int max_y = std::max(0, static_cast<int>(items_.size()) * pitch);
       int y = std::max(0, std::min(max_y, dragged_start_y_ + e.y - mouse_down_y_));
       if (std::abs(e.y - mouse_down_y_) > 3)
         moved_ = true;
-      rows_[dragged_]->setTopLeftPosition(0, y);
-
-      int target = std::max(0, std::min(static_cast<int>(order_.size()) - 1, (y + pitch / 2) / pitch));
-      if (target != dragged_) {
-        // The other rows move out of the way; the dragged row keeps following the mouse.
-        std::unique_ptr<FxEffectRow> row = std::move(rows_[dragged_]);
-        int id = order_[dragged_];
-        order_.erase(order_.begin() + dragged_);
-        order_.insert(order_.begin() + target, id);
-        for (int i = dragged_; i != target; i += (target > dragged_ ? 1 : -1))
-          rows_[i] = std::move(rows_[i + (target > dragged_ ? 1 : -1)]);
-        rows_[target] = std::move(row);
-        dragged_ = target;
-        int width = viewport_.getWidth();
-        int height = static_cast<int>(rowHeight());
-        for (int i = 0; i < static_cast<int>(order_.size()); ++i) {
-          if (i != dragged_)
-            rows_[i]->setBounds(0, i * pitch, width, height);
-        }
-      }
+      rows_[dragged_]->setTopLeftPosition(rowX(dragged_), y);
     }
 
     void rowMouseUp(const MouseEvent& e) {
@@ -1179,43 +1284,76 @@ class FxEffectList : public SynthSection, public ScrollBar::Listener {
         select_anchor_ = -1;
         return;
       }
-      if (selecting_)
-        return;
-      if (dragged_ < 0)
+      if (selecting_ || dragged_ < 0)
         return;
 
-      FxEffectRow* row = rows_[dragged_].get();
-      row->setDragging(false);
-      int id = order_[dragged_];
+      int source = dragged_;
+      int key = items_[source].key;
+      int pitch = static_cast<int>(rowPitch());
+      int center = rows_[source]->getY() + pitch / 2;
+      rows_[source]->setDragging(false);
       dragged_ = -1;
       layoutRows();
 
-      if (moved_) {
+      if (!moved_) {
         for (Listener* listener : listeners_)
-          listener->chainReordered(order_);
+          listener->rowClicked(key);
+        return;
       }
-      else {
-        for (Listener* listener : listeners_)
-          listener->effectSelected(id);
+      // A branch row only selects the parallel; it cannot be moved.
+      if (items_[source].kind == fx_ui::kRowBranch)
+        return;
+
+      int target = rowAt(center);
+      int mode = kEnd;
+      int target_key = 0;
+      int outdent = 0;
+      if (target >= 0) {
+        const fx_ui::RowItem& item = items_[target];
+        // Dragging to the left of the row it lands on leaves the containers it is the last row of.
+        int diff = rowX(target) - e.x;
+        if (diff > indentWidth() / 3)
+          outdent = (diff + indentWidth() - 1) / indentWidth();
+        if (item.key == key && outdent == 0)
+          return;
+
+        target_key = item.key;
+        float fraction = (center - target * rowPitch()) / rowPitch();
+        bool open_container = (item.kind == fx_ui::kRowBin || item.kind == fx_ui::kRowSplit) && !item.minimized;
+        if (open_container || item.kind == fx_ui::kRowBranch)
+          mode = fraction < 0.25f && item.kind != fx_ui::kRowBranch ? kBefore : kFirstChild;
+        else
+          mode = target > source ? kAfter : kBefore;
+        if (item.key == key || outdent > 0) {
+          // Only a move out of the container makes sense here.
+          if (open_container || item.kind == fx_ui::kRowBranch)
+            outdent = 0;
+          else
+            mode = kAfter;
+        }
+        if (mode != kAfter)
+          outdent = 0;
       }
+      for (Listener* listener : listeners_)
+        listener->rowMoved(key, target_key, mode, outdent);
     }
 
     std::vector<Listener*> listeners_;
     std::unique_ptr<OpenGlShapeButton> select_button_;
     OpenGlToggleButton duplicate_button_{"duplicate_selected"}, delete_button_{"delete_selected"};
+    OpenGlToggleButton group_button_{"group_selected"};
     std::unique_ptr<OpenGlToggleButton> add_button_;
     ListViewport viewport_;
     std::unique_ptr<FxRowContainer> container_;
-    std::unique_ptr<FxEffectRow> rows_[fx_ui::kPoolSize];
+    std::unique_ptr<FxEffectRow> rows_[vital::kMaxFxChainEntries];
     std::unique_ptr<OpenGlScrollBar> scroll_bar_;
-    std::vector<int> order_;
+    std::vector<fx_ui::RowItem> items_;
     CriticalSection open_gl_critical_section_;
     int dragged_;
     int mouse_down_y_;
     int dragged_start_y_;
     bool moved_;
     bool selecting_ = false;
-    int select_down_ = -1;
     int select_anchor_ = -1;       // the row a selecting drag started on
     bool select_paint_ = true;     // what the drag paints onto the rows it crosses: selected or not
     std::vector<int> select_base_; // the selection before the drag
@@ -1225,22 +1363,58 @@ class FxEffectList : public SynthSection, public ScrollBar::Listener {
 
 class EffectsContainer : public SynthSection {
   public:
+    struct Hint {
+      Rectangle<int> bounds;
+      String text;
+    };
+
     EffectsContainer(String name) : SynthSection(name) { }
+
     void paintBackground(Graphics& g) override {
       g.fillAll(findColour(Skin::kBackground, true));
       paintChildrenShadows(g);
       paintChildrenBackgrounds(g);
+
+      // A guide line down the inside of every open FX Bin and Parallel Split.
+      g.setColour(findColour(Skin::kWidgetPrimary1, true).withAlpha(0.5f));
+      for (const Rectangle<int>& guide : guides_)
+        g.fillRoundedRectangle(guide.toFloat(), 1.0f);
+
+      g.setColour(findColour(Skin::kBodyText, true).withMultipliedAlpha(0.45f));
+      g.setFont(Fonts::instance()->proportional_light().withPointHeight(size_ratio_ * 12.0f));
+      for (const Hint& hint : hints_)
+        g.drawText(hint.text, hint.bounds, Justification::centred, true);
     }
+
+    void setDecorations(const std::vector<Rectangle<int>>& guides, const std::vector<Hint>& hints) {
+      guides_ = guides;
+      hints_ = hints;
+    }
+
+    void addEditor(OpenGlTextEditor* editor) {
+      addChildComponent(editor);
+      addOpenGlComponent(editor->getImageComponent());
+    }
+
+  private:
+    std::vector<Rectangle<int>> guides_;
+    std::vector<Hint> hints_;
 };
 
 class EffectsInterface : public SynthSection, public FxEffectList::Listener, public FxEffectSlot::Listener,
+                         public fx_container_ui::Listener, public TextEditor::Listener,
                          public ScrollBar::Listener, EffectsViewport::Listener {
   public:
     class Listener {
       public:
         virtual ~Listener() { }
         virtual void effectsMoved() = 0;
+        // A copy's section was built the first time it was needed (see kBuiltCopies); its controls are registered.
+        virtual void effectSectionCreated(SynthSection* section) { }
     };
+
+    // The lock the render thread holds while it draws, taken while a section is added.
+    void setOpenGlLock(CriticalSection* lock) { gl_lock_ = lock; }
 
     EffectsInterface(const vital::output_map& mono_modulations, const vital::output_map& poly_modulations,
                      vital::SoundEngine* engine) : SynthSection("effects") {
@@ -1251,12 +1425,37 @@ class EffectsInterface : public SynthSection, public FxEffectList::Listener, pub
       viewport_.addListener(this);
       viewport_.setScrollBarsShown(false, false, true, false);
 
+      // Copies: the maps the interface is given may not outlive its construction, and copies built later need them.
+      mono_modulations_ = mono_modulations;
+      poly_modulations_ = poly_modulations;
+      engine_ = engine;
+      // The first copies of every effect exist from the start, the rest are built when they first join the chain.
       for (int id = 0; id < fx_ui::kPoolSize; ++id) {
-        slots_[id] = std::make_unique<FxEffectSlot>(id, mono_modulations, poly_modulations, engine);
-        slots_[id]->addListener(this);
-        container_->addSubSection(slots_[id].get());
-        slots_[id]->setVisible(false);
+        if (fx_ui::instanceOf(id) < kBuiltCopies)
+          createSlot(id);
       }
+
+      for (int b = 0; b < vital::kMaxFxBins; ++b) {
+        bin_panels_[b] = std::make_unique<FxContainerPanel>(false, b);
+        bin_panels_[b]->addListener(this);
+        container_->addSubSection(bin_panels_[b].get());
+        bin_panels_[b]->setVisible(false);
+      }
+      for (int s = 0; s < vital::kMaxParallelSplits; ++s) {
+        split_panels_[s] = std::make_unique<FxContainerPanel>(true, s);
+        split_panels_[s]->addListener(this);
+        container_->addSubSection(split_panels_[s].get());
+        split_panels_[s]->setVisible(false);
+        active_slot_[s] = -1;
+      }
+
+      rename_editor_ = std::make_unique<OpenGlTextEditor>("rename_fx_bin");
+      rename_editor_->addListener(this);
+      rename_editor_->setSelectAllWhenFocused(true);
+      rename_editor_->setMultiLine(false, false);
+      rename_editor_->setJustification(Justification::centredLeft);
+      container_->addEditor(rename_editor_.get());
+      rename_editor_->setVisible(false);
 
       chain_list_ = std::make_unique<FxEffectList>();
       addSubSection(chain_list_.get());
@@ -1340,10 +1539,14 @@ class EffectsInterface : public SynthSection, public FxEffectList::Listener, pub
         loadChainFromSynth();
     }
 
-    // ---- chain editing (all of it goes through applyChain) ----
+    // ---- chain editing (all of it goes through applyChain / commit) ----
 
     void addEffectRequested(int type) override {
-      if (type < 0 || type >= fx_ui::kNumTypes)
+      if (type == fx_ui::kNumTypes) {
+        addSplit();
+        return;
+      }
+      if (type < 0 || type >= fx_ui::kNumTypes || static_cast<int>(chain_.size()) >= vital::kMaxFxChainEntries)
         return;
 
       int id = firstFreeCopy(type);
@@ -1357,27 +1560,189 @@ class EffectsInterface : public SynthSection, public FxEffectList::Listener, pub
       scrollToEffect(id);
     }
 
-    void chainReordered(const std::vector<int>& effect_ids) override {
-      std::vector<int> new_chain;
-      for (int id : effect_ids) {
-        auto found = std::find_if(chain_.begin(), chain_.end(), [id](int entry) { return fx_ui::entryId(entry) == id; });
-        if (found != chain_.end())
-          new_chain.push_back(*found);
+    // A row was dropped somewhere else in the list.
+    void rowMoved(int key, int target_key, int mode, int outdent) override {
+      int s = findKey(key);
+      if (s < 0)
+        return;
+
+      int e = endOf(s);
+      std::vector<int> unit(chain_.begin() + s, chain_.begin() + e + 1);
+      std::vector<int> rest;
+      for (int i = 0; i < static_cast<int>(chain_.size()); ++i) {
+        if (i < s || i > e)
+          rest.push_back(chain_[i]);
       }
-      chain_ = new_chain;
+
+      int pos = static_cast<int>(rest.size());
+      if (mode != FxEffectList::kEnd) {
+        int t = findTargetPos(target_key);
+        if (t < 0)
+          return;
+
+        if (t >= s && t <= e) {
+          // Dropped on itself: only leaving its container counts.
+          if (target_key != key || outdent <= 0 || mode != FxEffectList::kAfter)
+            return;
+          pos = s;
+          t = -1;
+        }
+        int tr = t > e ? t - (e - s + 1) : t;
+        if (t < 0) {
+        }
+        else if (mode == FxEffectList::kBefore)
+          pos = tr;
+        else if (mode == FxEffectList::kFirstChild)
+          pos = tr + 1;
+        else {
+          int kind = vital::chain_token::kind(rest[tr]);
+          bool begins = kind == vital::chain_token::kBinBegin || kind == vital::chain_token::kSplitBegin;
+          int block_end = begins ? vital::chain_token::findEnd(rest.data(), tr, static_cast<int>(rest.size())) : tr;
+          pos = std::min(static_cast<int>(rest.size()), block_end + 1);
+        }
+
+        // Past the end markers of the containers it was the last row of.
+        for (int levels = outdent; levels > 0 && pos < static_cast<int>(rest.size()); --levels) {
+          int kind = vital::chain_token::kind(rest[pos]);
+          if (kind != vital::chain_token::kBinEnd && kind != vital::chain_token::kSplitEnd)
+            break;
+          ++pos;
+        }
+      }
+      rest.insert(rest.begin() + pos, unit.begin(), unit.end());
+      if (!commit(rest))
+        refreshList();
+    }
+
+    void rowClicked(int key) override {
+      int kind = vital::chain_token::kind(key);
+      if (kind == vital::chain_token::kBranch) {
+        int split = vital::chain_token::index(key);
+        active_slot_[split] = vital::chain_token::slot(key);
+        {
+          ScopedLock lock(open_gl_critical_section_);
+          refreshList();
+          setEffectPositions();
+        }
+        int pos = splitPos(split);
+        if (pos >= 0)
+          scrollToPanel(split_panels_[split].get());
+        return;
+      }
+      if (fx_ui::isEffectEntry(key)) {
+        scrollToEffect(fx_ui::entryId(key));
+        return;
+      }
+      int index = vital::chain_token::index(key);
+      scrollToPanel(kind == vital::chain_token::kBinBegin ? bin_panels_[index].get() : split_panels_[index].get());
+    }
+
+    void rowsDuplicateRequested(const std::vector<int>& keys) override {
+      for (int key : keys) {
+        if (fx_ui::isEffectEntry(key))
+          effectDuplicateRequested(fx_ui::entryId(key));
+      }
+    }
+
+    void rowsRemoveRequested(const std::vector<int>& keys) override {
+      for (int key : keys) {
+        if (vital::chain_token::kind(key) == vital::chain_token::kBranch)
+          removeBranch(vital::chain_token::index(key), vital::chain_token::slot(key));
+        else
+          removeUnit(key);
+      }
+    }
+
+    void rowMinimizeToggled(int key) override {
+      int pos = findKey(key);
+      if (pos < 0)
+        return;
+      chain_[pos] ^= vital::chain_token::kMinimizedFlag;
       applyChain();
     }
 
-    void effectSelected(int effect_id) override { scrollToEffect(effect_id); }
+    void rowsGroupRequested(const std::vector<int>& keys) override { createBin(keys); }
 
-    void effectsDuplicateRequested(const std::vector<int>& effect_ids) override {
-      for (int id : effect_ids)
-        effectDuplicateRequested(id);
+    void rowRenameRequested(int key) override {
+      if (vital::chain_token::kind(key) == vital::chain_token::kBinBegin)
+        startRename(vital::chain_token::index(key));
     }
 
-    void effectsRemoveRequested(const std::vector<int>& effect_ids) override {
-      for (int id : effect_ids)
-        effectRemoveRequested(id);
+    void rowUngroupRequested(int key) override { ungroup(key); }
+
+    // fx_container_ui::Listener
+    void containerAction(bool is_split, int index, int action) override {
+      int pos = containerPos(is_split, index);
+      if (pos < 0)
+        return;
+
+      int key = fx_ui::entryKey(chain_[pos]);
+      if (action == fx_container_ui::kRename)
+        startRename(index);
+      else if (action == fx_container_ui::kToggleMinimized)
+        rowMinimizeToggled(key);
+      else if (action == fx_container_ui::kUngroup)
+        ungroup(key);
+      else if (action == fx_container_ui::kRemove)
+        removeUnit(key);
+    }
+
+    void containerPowerChanged() override {
+      ScopedLock lock(open_gl_critical_section_);
+      refreshList();
+    }
+
+    void splitBranchSelected(int split, int position) override {
+      int pos = splitPos(split);
+      if (pos < 0)
+        return;
+
+      std::vector<int> slots = branchSlots(pos);
+      if (position < 0 || position >= static_cast<int>(slots.size()))
+        return;
+
+      active_slot_[split] = slots[position];
+      ScopedLock lock(open_gl_critical_section_);
+      refreshList();
+      setEffectPositions();
+    }
+
+    void splitBranchAdded(int split) override {
+      int pos = splitPos(split);
+      if (pos < 0)
+        return;
+
+      std::vector<int> slots = branchSlots(pos);
+      if (static_cast<int>(slots.size()) >= vital::kMaxParallelBranches)
+        return;
+
+      int slot = 0;
+      while (std::find(slots.begin(), slots.end(), slot) != slots.end())
+        ++slot;
+
+      resetControlsWithPrefix("psplit_" + std::to_string(split + 1) + "_b" + std::to_string(slot + 1) + "_");
+      std::vector<int> candidate = chain_;
+      candidate.insert(candidate.begin() + endOf(pos), vital::chain_token::branch(split, slot));
+      active_slot_[split] = slot;
+      commit(candidate);
+    }
+
+    void splitBranchRemoved(int split, int position) override {
+      int pos = splitPos(split);
+      if (pos < 0)
+        return;
+
+      std::vector<int> slots = branchSlots(pos);
+      if (position >= 0 && position < static_cast<int>(slots.size()))
+        removeBranch(split, slots[position]);
+    }
+
+    // TextEditor::Listener (the bin name)
+    void textEditorReturnKeyPressed(TextEditor& editor) override { finishRename(); }
+    void textEditorFocusLost(TextEditor& editor) override { finishRename(); }
+    void textEditorEscapeKeyPressed(TextEditor& editor) override {
+      renaming_bin_ = -1;
+      rename_editor_->setVisible(false);
     }
 
     void effectRemoveRequested(int effect_id) override {
@@ -1400,7 +1765,7 @@ class EffectsInterface : public SynthSection, public FxEffectList::Listener, pub
     void effectDuplicateRequested(int effect_id) override {
       int type = fx_ui::typeOf(effect_id);
       int copy = firstFreeCopy(type);
-      if (copy < 0)
+      if (copy < 0 || static_cast<int>(chain_.size()) >= vital::kMaxFxChainEntries)
         return;
 
       copySettings(effect_id, copy);
@@ -1429,16 +1794,29 @@ class EffectsInterface : public SynthSection, public FxEffectList::Listener, pub
 
     void setTableImportCallback(
         std::function<bool(int, String, InputStream*, WavetableCreator::AudioFileLoadStyle)> callback) {
-      for (auto& slot : slots_)
-        slot->setTableImportCallback(callback);
+      table_import_callback_ = callback;
+      for (auto& slot : slots_) {
+        if (slot)
+          slot->setTableImportCallback(callback);
+      }
     }
 
     void setTableEditorCallback(std::function<void(int)> callback) {
-      for (auto& slot : slots_)
-        slot->setTableEditorCallback(callback);
+      table_editor_callback_ = callback;
+      for (auto& slot : slots_) {
+        if (slot)
+          slot->setTableEditorCallback(callback);
+      }
     }
 
     void setFocus() { grabKeyboardFocus(); }
+
+    // For the automated smoke test (VIALFX_SELFTEST): adds one more copy of an effect, as the add menu would.
+    void selfTestAddCopy(int type) { addEffectRequested(type); }
+
+    bool slotBuilt(int effect_id) const {
+      return effect_id >= 0 && effect_id < fx_ui::kPoolSize && slots_[effect_id] != nullptr;
+    }
 
     // Tremolo and Vibrato have unit selectors under the knobs.
     static constexpr int kUnitSelectorExtraHeightValue = 44;
@@ -1456,38 +1834,176 @@ class EffectsInterface : public SynthSection, public FxEffectList::Listener, pub
       int effect_height = 2 * knob_section_height - widget_margin;
       // The Morph effect has one row of controls, so it is shorter.
       int morph_height = std::min(effect_height, static_cast<int>(FxMorphSection::heightInKnobSections() * knob_section_height));
+      int header = static_cast<int>(getTitleWidth() * 1.35f);
+      int indent = std::max(8, static_cast<int>(size_ratio_ * 14.0f));
+      int inner_padding = std::max(2, padding);
+      int tabs_height = std::max(14, static_cast<int>(header * 0.8f));
+      int split_height = header + inner_padding + tabs_height + inner_padding + knob_section_height +
+                         std::max(2, static_cast<int>(getWidgetMargin()));
       int y = 0;
 
       Point<int> position = viewport_.getViewPosition();
 
+      struct Frame {
+        bool is_split = false;
+        int index = 0;
+        bool minimized = false;
+        bool placed = false;
+        int cur_slot = 0;
+        int active_slot = 0;
+        int content_count = 0;
+        int guide_top = 0;
+      };
+      std::vector<Frame> stack;
+      std::vector<Rectangle<int>> guides;
+      std::vector<EffectsContainer::Hint> hints;
       std::vector<bool> shown(fx_ui::kPoolSize, false);
-      for (int entry : chain_) {
-        int id = fx_ui::entryId(entry);
-        if (id < 0 || id >= fx_ui::kPoolSize)
-          continue;
+      bool bin_shown[vital::kMaxFxBins] = {};
+      bool split_shown[vital::kMaxParallelSplits] = {};
 
-        FxEffectSlot* slot = slots_[id].get();
-        bool minimized = fx_ui::entryMinimized(entry);
-        slot->setVisible(true);
-        slot->setMinimized(minimized);
-        int type = fx_ui::typeOf(id);
-        int height = minimized ? slot->minimizedHeight()
-                               : (type == vital::constants::kMorph ? morph_height
-                                  : (type == vital::constants::kTremolo || type == vital::constants::kVibrato)
-                                      ? effect_height + static_cast<int>(kUnitSelectorExtraHeightValue * getSizeRatio())
-                                      : effect_height);
-        slot->setModuleHeight(height);
-        height += slot->attachmentsHeight(knob_section_height);
-        slot->setBounds(shadow_width, y, effect_width, height);
-        y += height + padding;
-        shown[id] = true;
+      auto frameHides = [](const Frame& f) {
+        return f.minimized || (f.is_split && f.cur_slot != f.active_slot);
+      };
+      auto hidden = [&]() {
+        for (const Frame& f : stack) {
+          if (frameHides(f))
+            return true;
+        }
+        return false;
+      };
+      auto xFor = [&](int depth) { return shadow_width + depth * indent; };
+      auto widthFor = [&](int depth) { return std::max(10, effect_width - depth * indent); };
+      auto closeContent = [&](Frame& f) {
+        if (f.content_count > 0)
+          return;
+        int depth = static_cast<int>(stack.size());
+        EffectsContainer::Hint hint;
+        hint.bounds = Rectangle<int>(xFor(depth), y, widthFor(depth), header);
+        hint.text = "Drag effects here from the list";
+        hints.push_back(hint);
+        y += header + padding;
+      };
+
+      for (int i = 0; i < static_cast<int>(chain_.size()); ++i) {
+        int token = chain_[i];
+        if (fx_ui::isEffectEntry(token)) {
+          int id = fx_ui::entryId(token);
+          if (id < 0 || id >= fx_ui::kPoolSize || hidden())
+            continue;
+
+          int depth = static_cast<int>(stack.size());
+          FxEffectSlot* slot = ensureSlot(id);
+          bool minimized = fx_ui::entryMinimized(token);
+          slot->setVisible(true);
+          slot->setMinimized(minimized);
+          int type = fx_ui::typeOf(id);
+          int height = minimized ? slot->minimizedHeight()
+                                 : (type == vital::constants::kMorph ? morph_height
+                                    : (type == vital::constants::kTremolo || type == vital::constants::kVibrato)
+                                        ? effect_height + static_cast<int>(kUnitSelectorExtraHeightValue * getSizeRatio())
+                                        : effect_height);
+          slot->setModuleHeight(height);
+          height += slot->attachmentsHeight(knob_section_height);
+          slot->setBounds(xFor(depth), y, widthFor(depth), height);
+          y += height + padding;
+          shown[id] = true;
+          if (!stack.empty())
+            stack.back().content_count++;
+          continue;
+        }
+
+        int kind = vital::chain_token::kind(token);
+        int index = vital::chain_token::index(token);
+        if (kind == vital::chain_token::kBinBegin) {
+          Frame frame;
+          frame.index = index;
+          frame.minimized = vital::chain_token::minimized(token);
+          if (!hidden() && index < vital::kMaxFxBins) {
+            int depth = static_cast<int>(stack.size());
+            FxContainerPanel* panel = bin_panels_[index].get();
+            panel->setVisible(true);
+            panel->setHeaderHeight(header);
+            panel->setMinimized(frame.minimized);
+            panel->setTitle(binName(index));
+            panel->setBounds(xFor(depth), y, widthFor(depth), header);
+            bin_shown[index] = true;
+            y += header + padding;
+            frame.placed = true;
+            frame.guide_top = y;
+            if (!stack.empty())
+              stack.back().content_count++;
+          }
+          stack.push_back(frame);
+        }
+        else if (kind == vital::chain_token::kSplitBegin) {
+          Frame frame;
+          frame.is_split = true;
+          frame.index = index;
+          frame.minimized = vital::chain_token::minimized(token);
+          frame.cur_slot = vital::chain_token::slot(token);
+          std::vector<int> slots = branchSlots(i);
+          frame.active_slot = resolveActive(index, slots);
+          if (!hidden() && index < vital::kMaxParallelSplits) {
+            int depth = static_cast<int>(stack.size());
+            FxContainerPanel* panel = split_panels_[index].get();
+            int height = frame.minimized ? header : split_height;
+            panel->setVisible(true);
+            panel->setHeaderHeight(header);
+            panel->setMinimized(frame.minimized);
+            panel->setBounds(xFor(depth), y, widthFor(depth), height);
+            int selected = static_cast<int>(std::find(slots.begin(), slots.end(), frame.active_slot) - slots.begin());
+            panel->setBranches(slots, selected);
+            split_shown[index] = true;
+            y += height + padding;
+            frame.placed = true;
+            frame.guide_top = y;
+            if (!stack.empty())
+              stack.back().content_count++;
+          }
+          stack.push_back(frame);
+        }
+        else if (kind == vital::chain_token::kBranch) {
+          if (!stack.empty() && stack.back().is_split) {
+            Frame& frame = stack.back();
+            bool was_visible = frame.placed && !frame.minimized && frame.cur_slot == frame.active_slot;
+            if (was_visible)
+              closeContent(frame);
+            frame.cur_slot = vital::chain_token::slot(token);
+            frame.content_count = 0;
+          }
+        }
+        else if (kind == vital::chain_token::kBinEnd || kind == vital::chain_token::kSplitEnd) {
+          if (stack.empty())
+            continue;
+
+          Frame frame = stack.back();
+          bool content_visible = frame.placed && !frame.minimized && (!frame.is_split || frame.cur_slot == frame.active_slot);
+          if (content_visible) {
+            stack.back().content_count = frame.content_count;
+            closeContent(stack.back());
+            int depth = static_cast<int>(stack.size()) - 1;
+            int guide_height = y - padding - frame.guide_top;
+            if (guide_height > 0)
+              guides.push_back(Rectangle<int>(xFor(depth) + indent / 2 - 1, frame.guide_top, 2, guide_height));
+          }
+          stack.pop_back();
+        }
       }
 
       for (int id = 0; id < fx_ui::kPoolSize; ++id) {
-        if (!shown[id])
+        if (!shown[id] && slots_[id])
           slots_[id]->setVisible(false);
       }
+      for (int b = 0; b < vital::kMaxFxBins; ++b) {
+        if (!bin_shown[b])
+          bin_panels_[b]->setVisible(false);
+      }
+      for (int s = 0; s < vital::kMaxParallelSplits; ++s) {
+        if (!split_shown[s])
+          split_panels_[s]->setVisible(false);
+      }
 
+      container_->setDecorations(guides, hints);
       container_->setBounds(0, 0, viewport_.getWidth(), std::max(0, y - padding));
       viewport_.setViewPosition(position);
 
@@ -1502,10 +2018,23 @@ class EffectsInterface : public SynthSection, public FxEffectList::Listener, pub
     void initOpenGlComponents(OpenGlWrapper& open_gl) override {
       background_.init(open_gl);
       SynthSection::initOpenGlComponents(open_gl);
+      for (auto& slot : slots_) {
+        if (slot)
+          slot->setOpenGlReady(true);
+      }
     }
 
     void renderOpenGlComponents(OpenGlWrapper& open_gl, bool animate) override {
       ScopedLock lock(open_gl_critical_section_);
+
+      // A copy built after the context was made gets its OpenGL parts here, under the lock it was built with, so it
+      // is never drawn before they exist.
+      for (auto& slot : slots_) {
+        if (slot && !slot->openGlReady()) {
+          slot->initOpenGlComponents(open_gl);
+          slot->setOpenGlReady(true);
+        }
+      }
 
       OpenGlComponent::setViewPort(&viewport_, open_gl);
 
@@ -1529,6 +2058,10 @@ class EffectsInterface : public SynthSection, public FxEffectList::Listener, pub
     void destroyOpenGlComponents(OpenGlWrapper& open_gl) override {
       background_.destroy(open_gl);
       SynthSection::destroyOpenGlComponents(open_gl);
+      for (auto& slot : slots_) {
+        if (slot)
+          slot->setOpenGlReady(false);
+      }
     }
 
     void scrollBarMoved(ScrollBar* scroll_bar, double range_start) override {
@@ -1550,6 +2083,340 @@ class EffectsInterface : public SynthSection, public FxEffectList::Listener, pub
     }
 
   private:
+    // ---- the chain as tokens ----
+
+    int findKey(int key) const {
+      for (int i = 0; i < static_cast<int>(chain_.size()); ++i) {
+        if (fx_ui::entryKey(chain_[i]) == key)
+          return i;
+      }
+      return -1;
+    }
+
+    // The first parallel of a split has no marker of its own: its row targets the split's begin marker.
+    int findTargetPos(int key) const {
+      int pos = findKey(key);
+      if (pos >= 0 || vital::chain_token::kind(key) != vital::chain_token::kBranch)
+        return pos;
+      return splitPos(vital::chain_token::index(key));
+    }
+
+    int containerPos(bool is_split, int index) const {
+      int wanted = is_split ? vital::chain_token::kSplitBegin : vital::chain_token::kBinBegin;
+      for (int i = 0; i < static_cast<int>(chain_.size()); ++i) {
+        if (vital::chain_token::kind(chain_[i]) == wanted && vital::chain_token::index(chain_[i]) == index)
+          return i;
+      }
+      return -1;
+    }
+
+    int splitPos(int split) const { return containerPos(true, split); }
+
+    // The last entry of the unit that starts at pos: itself, or the end marker of a container.
+    int endOf(int pos) const {
+      int kind = vital::chain_token::kind(chain_[pos]);
+      if (kind == vital::chain_token::kBinBegin || kind == vital::chain_token::kSplitBegin)
+        return std::min(static_cast<int>(chain_.size()) - 1,
+                        vital::chain_token::findEnd(chain_.data(), pos, static_cast<int>(chain_.size())));
+      return pos;
+    }
+
+    // The branch slots of the split that begins at pos, in order.
+    std::vector<int> branchSlots(int pos) const {
+      std::vector<int> slots;
+      int split = vital::chain_token::index(chain_[pos]);
+      slots.push_back(vital::chain_token::slot(chain_[pos]));
+      int end = endOf(pos);
+      int nesting = 0;
+      for (int i = pos + 1; i < end; ++i) {
+        int kind = vital::chain_token::kind(chain_[i]);
+        if (kind == vital::chain_token::kBinBegin || kind == vital::chain_token::kSplitBegin)
+          ++nesting;
+        else if (kind == vital::chain_token::kBinEnd || kind == vital::chain_token::kSplitEnd)
+          --nesting;
+        else if (kind == vital::chain_token::kBranch && nesting == 0 && vital::chain_token::index(chain_[i]) == split)
+          slots.push_back(vital::chain_token::slot(chain_[i]));
+      }
+      return slots;
+    }
+
+    // The branch shown for a split: the remembered one if it still exists, else the first.
+    int resolveActive(int split, const std::vector<int>& slots) {
+      if (split < 0 || split >= vital::kMaxParallelSplits || slots.empty())
+        return 0;
+      if (std::find(slots.begin(), slots.end(), active_slot_[split]) == slots.end())
+        active_slot_[split] = slots[0];
+      return active_slot_[split];
+    }
+
+    int firstFreeContainer(bool is_split) const {
+      int count = is_split ? vital::kMaxParallelSplits : vital::kMaxFxBins;
+      for (int i = 0; i < count; ++i) {
+        if (containerPos(is_split, i) < 0)
+          return i;
+      }
+      return -1;
+    }
+
+    // Takes a new chain only if every entry survives the engine's well-formedness check.
+    bool commit(const std::vector<int>& candidate) {
+      if (static_cast<int>(candidate.size()) > vital::kMaxFxChainEntries)
+        return false;
+
+      int cleaned[vital::kMaxFxChainEntries + 8];
+      int count = vital::chain_token::sanitize(candidate.data(), static_cast<int>(candidate.size()), cleaned,
+                                               fx_ui::kPoolSize);
+      if (count != static_cast<int>(candidate.size()))
+        return false;
+
+      chain_ = candidate;
+      applyChain();
+      return true;
+    }
+
+    String binName(int index) {
+      SynthGuiInterface* parent = gui();
+      String name = parent ? parent->getSynth()->getFxBinName(index) : String();
+      if (name.isNotEmpty())
+        return name;
+      return index == 0 ? String("FX Bin") : "FX Bin " + String(index + 1);
+    }
+
+    void resetControlsWithPrefix(const std::string& prefix) {
+      SynthGuiInterface* parent = gui();
+      if (parent == nullptr)
+        return;
+
+      std::vector<std::string> names;
+      for (auto& control : parent->getSynth()->getControls()) {
+        if (control.first.compare(0, prefix.size(), prefix) == 0)
+          names.push_back(control.first);
+      }
+      for (const std::string& name : names) {
+        for (vital::ModulationConnection* connection : parent->getSynth()->getDestinationConnections(name))
+          parent->disconnectModulation(connection);
+        setControl(name, vital::Parameters::getDetails(name).default_value);
+      }
+    }
+
+    void resetContainer(bool is_split, int index) {
+      resetControlsWithPrefix(std::string(is_split ? "psplit_" : "fx_bin_") + std::to_string(index + 1) + "_");
+      if (!is_split) {
+        SynthGuiInterface* parent = gui();
+        if (parent)
+          parent->getSynth()->setFxBinName(index, String());
+      }
+      else if (index >= 0 && index < vital::kMaxParallelSplits)
+        active_slot_[index] = -1;
+    }
+
+    // Everything in the entries [from, to] goes back to the pool.
+    void resetEntries(int from, int to) {
+      for (int i = from; i <= to && i < static_cast<int>(chain_.size()); ++i) {
+        int token = chain_[i];
+        int kind = vital::chain_token::kind(token);
+        if (fx_ui::isEffectEntry(token))
+          resetEffect(fx_ui::entryId(token));
+        else if (kind == vital::chain_token::kBinBegin)
+          resetContainer(false, vital::chain_token::index(token));
+        else if (kind == vital::chain_token::kSplitBegin)
+          resetContainer(true, vital::chain_token::index(token));
+      }
+    }
+
+    void removeUnit(int key) {
+      int s = findKey(key);
+      if (s < 0)
+        return;
+
+      int e = endOf(s);
+      resetEntries(s, e);
+      chain_.erase(chain_.begin() + s, chain_.begin() + e + 1);
+      applyChain();
+    }
+
+    // The container's markers go; what was inside stays, in order.
+    void ungroup(int key) {
+      int s = findKey(key);
+      if (s < 0)
+        return;
+
+      int e = endOf(s);
+      int kind = vital::chain_token::kind(chain_[s]);
+      int index = vital::chain_token::index(chain_[s]);
+      bool is_split = kind == vital::chain_token::kSplitBegin;
+      std::vector<int> candidate;
+      for (int i = 0; i < static_cast<int>(chain_.size()); ++i) {
+        if (i == s || i == e)
+          continue;
+        if (is_split && vital::chain_token::kind(chain_[i]) == vital::chain_token::kBranch &&
+            vital::chain_token::index(chain_[i]) == index && i > s && i < e)
+          continue;
+        candidate.push_back(chain_[i]);
+      }
+      if (commit(candidate))
+        resetContainer(is_split, index);
+    }
+
+    void removeBranch(int split, int slot) {
+      int pos = splitPos(split);
+      if (pos < 0)
+        return;
+
+      std::vector<int> slots = branchSlots(pos);
+      if (slots.size() <= 1)
+        return;  // the last parallel stays; remove the split instead
+
+      int end = endOf(pos);
+      // The branch starts at its marker (or at the split's begin marker) and runs to the next branch's marker.
+      int first = -1, next = end;
+      int nesting = 0;
+      bool first_branch = vital::chain_token::slot(chain_[pos]) == slot;
+      if (first_branch)
+        first = pos;
+      for (int i = pos + 1; i < end; ++i) {
+        int kind = vital::chain_token::kind(chain_[i]);
+        if (kind == vital::chain_token::kBinBegin || kind == vital::chain_token::kSplitBegin)
+          ++nesting;
+        else if (kind == vital::chain_token::kBinEnd || kind == vital::chain_token::kSplitEnd)
+          --nesting;
+        else if (kind == vital::chain_token::kBranch && nesting == 0 && vital::chain_token::index(chain_[i]) == split) {
+          if (first >= 0) {
+            next = i;
+            break;
+          }
+          if (vital::chain_token::slot(chain_[i]) == slot)
+            first = i;
+        }
+      }
+      if (first < 0)
+        return;
+
+      resetEntries(first, next - 1);
+      std::vector<int> candidate = chain_;
+      if (first_branch) {
+        // The next parallel becomes the first: its marker turns into the split's begin marker.
+        bool minimized = vital::chain_token::minimized(chain_[pos]);
+        int next_slot = vital::chain_token::slot(chain_[next]);
+        candidate.erase(candidate.begin() + first, candidate.begin() + next + 1);
+        candidate.insert(candidate.begin() + first, vital::chain_token::splitBegin(split, next_slot, minimized));
+      }
+      else
+        candidate.erase(candidate.begin() + first, candidate.begin() + next);
+
+      resetControlsWithPrefix("psplit_" + std::to_string(split + 1) + "_b" + std::to_string(slot + 1) + "_");
+      active_slot_[split] = -1;
+      commit(candidate);
+    }
+
+    void addSplit() {
+      int split = firstFreeContainer(true);
+      if (split < 0 || static_cast<int>(chain_.size()) + 3 > vital::kMaxFxChainEntries)
+        return;
+
+      resetContainer(true, split);
+      std::vector<int> candidate = chain_;
+      candidate.push_back(vital::chain_token::splitBegin(split, 0));
+      candidate.push_back(vital::chain_token::branch(split, 1));
+      candidate.push_back(vital::chain_token::splitEnd(split));
+      active_slot_[split] = 0;
+      bool committed = commit(candidate);
+      if (committed)
+        scrollToPanel(split_panels_[split].get());
+    }
+
+    // The selected units are moved into a new bin at the place of the first of them, keeping their order.
+    void createBin(const std::vector<int>& keys) {
+      std::vector<int> positions;
+      for (int key : keys) {
+        int pos = findKey(key);
+        if (pos >= 0)
+          positions.push_back(pos);
+      }
+      std::sort(positions.begin(), positions.end());
+
+      std::vector<std::pair<int, int>> ranges;
+      for (int pos : positions) {
+        if (!ranges.empty() && pos <= ranges.back().second)
+          continue;  // inside a unit that is already selected
+        ranges.push_back({ pos, endOf(pos) });
+      }
+      int bin = firstFreeContainer(false);
+      if (ranges.empty() || bin < 0)
+        return;
+
+      std::vector<int> unit, rest;
+      for (int i = 0; i < static_cast<int>(chain_.size()); ++i) {
+        bool inside = false;
+        for (const auto& range : ranges) {
+          if (i >= range.first && i <= range.second) {
+            inside = true;
+            break;
+          }
+        }
+        (inside ? unit : rest).push_back(chain_[i]);
+      }
+      std::vector<int> bin_tokens;
+      bin_tokens.push_back(vital::chain_token::binBegin(bin));
+      bin_tokens.insert(bin_tokens.end(), unit.begin(), unit.end());
+      bin_tokens.push_back(vital::chain_token::binEnd(bin));
+      rest.insert(rest.begin() + ranges[0].first, bin_tokens.begin(), bin_tokens.end());
+
+      resetContainer(false, bin);
+      if (commit(rest))
+        scrollToPanel(bin_panels_[bin].get());
+    }
+
+    // ---- renaming a bin ----
+
+    void startRename(int bin) {
+      if (bin < 0 || bin >= vital::kMaxFxBins || !bin_panels_[bin]->isVisible())
+        return;
+
+      FxContainerPanel* panel = bin_panels_[bin].get();
+      scrollToPanel(panel);
+      Rectangle<int> hit = panel->titleHitBounds();
+      int width = std::max(hit.getWidth(), static_cast<int>(size_ratio_ * 160.0f));
+      renaming_bin_ = bin;
+      rename_editor_->setBounds(panel->getX() + hit.getX(), panel->getY() + hit.getY(), width, hit.getHeight());
+      rename_editor_->setColour(CaretComponent::caretColourId, findColour(Skin::kTextEditorCaret, true));
+      rename_editor_->setColour(TextEditor::textColourId, findColour(Skin::kBodyText, true));
+      rename_editor_->setColour(TextEditor::highlightedTextColourId, findColour(Skin::kBodyText, true));
+      rename_editor_->setColour(TextEditor::highlightColourId, findColour(Skin::kTextEditorSelection, true));
+      rename_editor_->setText(binName(bin), dontSendNotification);
+      rename_editor_->setVisible(true);
+      rename_editor_->toFront(false);
+      rename_editor_->grabKeyboardFocus();
+      rename_editor_->selectAll();
+    }
+
+    void finishRename() {
+      if (renaming_bin_ < 0)
+        return;
+
+      int bin = renaming_bin_;
+      renaming_bin_ = -1;
+      String text = rename_editor_->getText().trim();
+      rename_editor_->setVisible(false);
+      SynthGuiInterface* parent = gui();
+      if (parent == nullptr)
+        return;
+
+      String fallback = bin == 0 ? String("FX Bin") : "FX Bin " + String(bin + 1);
+      parent->getSynth()->setFxBinName(bin, text == fallback ? String() : text);
+      bin_panels_[bin]->setTitle(binName(bin));
+      ScopedLock lock(open_gl_critical_section_);
+      refreshList();
+    }
+
+    void scrollToPanel(FxContainerPanel* panel) {
+      if (panel == nullptr || !panel->isVisible())
+        return;
+
+      int max_y = std::max(0, container_->getHeight() - viewport_.getHeight());
+      viewport_.setViewPosition(0, std::max(0, std::min(max_y, panel->getY())));
+    }
+
     bool inChain(int id) const {
       for (int entry : chain_) {
         if (fx_ui::entryId(entry) == id)
@@ -1570,6 +2437,56 @@ class EffectsInterface : public SynthSection, public FxEffectList::Listener, pub
 
     SynthGuiInterface* gui() { return findParentComponentOfClass<SynthGuiInterface>(); }
 
+    FxEffectSlot* createSlot(int id) {
+      slots_[id] = std::make_unique<FxEffectSlot>(id, mono_modulations_, poly_modulations_, engine_);
+      slots_[id]->addListener(this);
+      container_->addSubSection(slots_[id].get());
+      slots_[id]->setVisible(false);
+      // Copies built later take the same callbacks the first ones were given.
+      if (table_import_callback_)
+        slots_[id]->setTableImportCallback(table_import_callback_);
+      if (table_editor_callback_)
+        slots_[id]->setTableEditorCallback(table_editor_callback_);
+      return slots_[id].get();
+    }
+
+    // The slot of a copy, built now if it is the first time it is needed.
+    FxEffectSlot* ensureSlot(int id) {
+      if (id < 0 || id >= fx_ui::kPoolSize)
+        return nullptr;
+      if (slots_[id])
+        return slots_[id].get();
+
+      vial_debug::log("effect section for id " + String(id));
+      // The render thread must not see a half built section.
+      // This lock, not the whole interface's: callers already hold it, and the render thread takes the interface's
+      // lock before this one, so taking that one here could deadlock.
+      ScopedLock lock(open_gl_critical_section_);
+      vial_debug::log("  lock taken");
+      FxEffectSlot* slot = createSlot(id);
+      vial_debug::log("  slot created");
+      slot->setSizeRatio(getSizeRatio());
+      vial_debug::log("  size ratio set");
+      container_->registerSubSectionControls(slot);
+      vial_debug::log("  controls registered");
+
+      SynthGuiInterface* parent = gui();
+      if (parent)
+        slot->setAllValues(parent->getSynth()->getControls());
+      vial_debug::log("  values set");
+      for (Listener* listener : listeners_)
+        listener->effectSectionCreated(slot);
+      vial_debug::log("effect section built");
+      return slot;
+    }
+
+    void ensureChainSlots() {
+      for (int token : chain_) {
+        if (fx_ui::isEffectEntry(token))
+          ensureSlot(fx_ui::entryId(token));
+      }
+    }
+
     void setControl(const std::string& name, vital::mono_float value) {
       SynthGuiInterface* parent = gui();
       if (parent == nullptr)
@@ -1586,7 +2503,7 @@ class EffectsInterface : public SynthSection, public FxEffectList::Listener, pub
 
     // Setting a control from here does not notify the effect's section, which greys itself when off.
     void syncActive(int id) {
-      SynthSection* section = slots_[id]->section();
+      SynthSection* section = slots_[id] ? slots_[id]->section() : nullptr;
       if (section && section->activator())
         section->setActive(section->activator()->getToggleState());
     }
@@ -1632,6 +2549,12 @@ class EffectsInterface : public SynthSection, public FxEffectList::Listener, pub
           setControl(target, control.second->value());
       }
       copyModulations(from, to, controls);
+
+      // Selector-style widgets (the filter's model and style) keep their own state, refresh it from the values.
+      FxEffectSlot* to_slot = ensureSlot(to);
+      SynthSection* section = to_slot ? to_slot->section() : nullptr;
+      if (section)
+        section->setAllValues(controls);
       syncActive(to);
     }
 
@@ -1699,12 +2622,11 @@ class EffectsInterface : public SynthSection, public FxEffectList::Listener, pub
       chain_loaded_ = true;
       int entries[vital::FxEffectChain::kMaxChain];
       int count = parent->getSynth()->getEffectChain(entries);
-      chain_.clear();
-      for (int i = 0; i < count; ++i) {
-        int id = fx_ui::entryId(entries[i]);
-        if (id >= 0 && id < fx_ui::kPoolSize && !inChain(id))
-          chain_.push_back(entries[i]);
-      }
+      int cleaned[vital::FxEffectChain::kMaxChain + 8];
+      count = vital::chain_token::sanitize(entries, count, cleaned, fx_ui::kPoolSize);
+      chain_.assign(cleaned, cleaned + count);
+      for (int& slot : active_slot_)
+        slot = -1;
 
       ScopedLock lock(open_gl_critical_section_);
       refreshList();
@@ -1714,31 +2636,113 @@ class EffectsInterface : public SynthSection, public FxEffectList::Listener, pub
     // The chain went to the engine and to the interface.
     void applyChain() {
       SynthGuiInterface* parent = gui();
-      if (parent)
+      if (parent) {
+        parent->getSynth()->noteEdit();
         parent->getSynth()->setEffectChain(chain_.data(), static_cast<int>(chain_.size()));
+      }
 
       ScopedLock lock(open_gl_critical_section_);
       refreshList();
       setEffectPositions();
     }
 
+    // The rows of the list: everything except what is inside a collapsed container.
     void refreshList() {
-      std::vector<int> ids;
-      for (int entry : chain_)
-        ids.push_back(fx_ui::entryId(entry));
+      namespace ct = vital::chain_token;
+      std::vector<fx_ui::RowItem> items;
+      int depth = 0;
+      int skip = 0;
+      for (int i = 0; i < static_cast<int>(chain_.size()); ++i) {
+        int token = chain_[i];
+        int kind = ct::kind(token);
+        bool is_begin = kind == ct::kBinBegin || kind == ct::kSplitBegin;
+        bool is_end = kind == ct::kBinEnd || kind == ct::kSplitEnd;
+        if (skip > 0) {
+          if (is_begin)
+            ++skip;
+          else if (is_end)
+            --skip;
+          continue;
+        }
 
-      chain_list_->setChain(ids, [this](int id) { return slots_[id]->isOn(); },
-                            [this](int id) {
-                              for (int entry : chain_) {
-                                if (fx_ui::entryId(entry) == id)
-                                  return fx_ui::entryMinimized(entry);
-                              }
-                              return false;
-                            });
+        fx_ui::RowItem item;
+        item.key = fx_ui::entryKey(token);
+        item.depth = depth;
+        item.minimized = fx_ui::entryMinimized(token);
+        if (fx_ui::isEffectEntry(token)) {
+          int id = fx_ui::entryId(token);
+          if (id < 0 || id >= fx_ui::kPoolSize)
+            continue;
+          item.kind = fx_ui::kRowEffect;
+          ensureSlot(id);
+          item.on = slots_[id] ? slots_[id]->isOn() : true;
+          item.title = fx_ui::instanceTitle(fx_ui::typeOf(id), fx_ui::instanceOf(id));
+          item.icon = fx_ui::typeIcon(fx_ui::typeOf(id));
+          items.push_back(item);
+        }
+        else if (kind == ct::kBinBegin) {
+          int index = ct::index(token);
+          item.kind = fx_ui::kRowBin;
+          item.on = index < vital::kMaxFxBins && bin_panels_[index]->isOn();
+          item.title = binName(index).toStdString();
+          item.icon = fx_container_ui::folderShape();
+          items.push_back(item);
+          if (item.minimized)
+            skip = 1;
+          else
+            ++depth;
+        }
+        else if (kind == ct::kSplitBegin) {
+          int index = ct::index(token);
+          bool on = index < vital::kMaxParallelSplits && split_panels_[index]->isOn();
+          item.kind = fx_ui::kRowSplit;
+          item.on = on;
+          item.title = "Parallel Split";
+          item.icon = fx_container_ui::parallelShape();
+          items.push_back(item);
+          if (item.minimized) {
+            skip = 1;
+            continue;
+          }
+
+          std::vector<int> slots = branchSlots(i);
+          int active = resolveActive(index, slots);
+          fx_ui::RowItem branch;
+          branch.kind = fx_ui::kRowBranch;
+          branch.key = ct::branch(index, ct::slot(token));
+          branch.depth = depth + 1;
+          branch.on = on;
+          branch.active = ct::slot(token) == active;
+          branch.title = "Parallel 1";
+          items.push_back(branch);
+          depth += 2;
+        }
+        else if (kind == ct::kBranch) {
+          int index = ct::index(token);
+          int split = splitPos(index);
+          if (split < 0)
+            continue;
+
+          std::vector<int> slots = branchSlots(split);
+          int position = static_cast<int>(std::find(slots.begin(), slots.end(), ct::slot(token)) - slots.begin());
+          fx_ui::RowItem branch;
+          branch.kind = fx_ui::kRowBranch;
+          branch.key = fx_ui::entryKey(token);
+          branch.depth = std::max(0, depth - 1);
+          branch.on = index < vital::kMaxParallelSplits && split_panels_[index]->isOn();
+          branch.active = ct::slot(token) == resolveActive(index, slots);
+          branch.title = "Parallel " + std::to_string(position + 1);
+          items.push_back(branch);
+        }
+        else if (is_end) {
+          depth = std::max(0, depth - (kind == ct::kBinEnd ? 1 : 2));
+        }
+      }
+      chain_list_->setChain(items);
     }
 
     void scrollToEffect(int effect_id) {
-      if (effect_id < 0 || effect_id >= fx_ui::kPoolSize || !slots_[effect_id]->isVisible())
+      if (effect_id < 0 || effect_id >= fx_ui::kPoolSize || !slots_[effect_id] || !slots_[effect_id]->isVisible())
         return;
 
       int y = slots_[effect_id]->getY();
@@ -1752,7 +2756,19 @@ class EffectsInterface : public SynthSection, public FxEffectList::Listener, pub
     OpenGlImage background_;
     CriticalSection open_gl_critical_section_;
 
+    std::function<bool(int, String, InputStream*, WavetableCreator::AudioFileLoadStyle)> table_import_callback_;
+    std::function<void(int)> table_editor_callback_;
+    static constexpr int kBuiltCopies = 8;
+    vital::output_map mono_modulations_;
+    vital::output_map poly_modulations_;
+    vital::SoundEngine* engine_ = nullptr;
+    CriticalSection* gl_lock_ = nullptr;
     std::unique_ptr<FxEffectSlot> slots_[fx_ui::kPoolSize];
+    std::unique_ptr<FxContainerPanel> bin_panels_[vital::kMaxFxBins];
+    std::unique_ptr<FxContainerPanel> split_panels_[vital::kMaxParallelSplits];
+    std::unique_ptr<OpenGlTextEditor> rename_editor_;
+    int renaming_bin_ = -1;
+    int active_slot_[vital::kMaxParallelSplits];
     std::unique_ptr<FxEffectList> chain_list_;
     std::unique_ptr<OpenGlScrollBar> scroll_bar_;
     std::vector<int> chain_;

@@ -16,6 +16,8 @@
 
 #include "full_interface.h"
 
+#include "debug_log.h"
+
 #include "about_section.h"
 #include "bank_exporter.h"
 #include "bend_section.h"
@@ -84,7 +86,9 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
 
     // The Morph effects' table editors (slots after the oscillators').
     for (int i = vital::kNumOscillators + 1; i < vital::kNumWavetableSlots; ++i) {
-      if (synth_data->wavetable_creators[i] == nullptr)
+      wavetable_creators_[i] = synth_data->wavetable_creators[i];
+      // The later Morph copies' editors are made when the copy is first used (see createWavetableEdits).
+      if (synth_data->wavetable_creators[i] == nullptr || isLateMorphTable(i))
         continue;
       wavetable_edits_[i] = std::make_unique<WavetableEditSection>(i, synth_data->wavetable_creators[i]);
       addSubSection(wavetable_edits_[i].get());
@@ -104,7 +108,9 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
     // The table modes' wavetable editors, one per slot (input / sidechain Distort Table, input / sidechain Spectral
     // Table), opened from the pencil next to the mode's knob.
     for (int i = 0; i < vital::kNumWavetableSlots; ++i) {
-      if (synth_data->wavetable_creators[i] == nullptr)
+      wavetable_creators_[i] = synth_data->wavetable_creators[i];
+      // Four slots for the voice panel, two for each Morph copy; the later copies' are made when needed.
+      if (synth_data->wavetable_creators[i] == nullptr || i >= 4 + 2 * kBuiltEffectCopies)
         continue;
       wavetable_edits_[i] = std::make_unique<WavetableEditSection>(i, synth_data->wavetable_creators[i]);
       addSubSection(wavetable_edits_[i].get());
@@ -128,6 +134,7 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
   addSubSection(effects_interface_.get());
   effects_interface_->setVisible(false);
   effects_interface_->addListener(this);
+  effects_interface_->setOpenGlLock(&open_gl_critical_section_);
   // The Morph effects' table menus open the same wavetable editors as the voice panel's.
   effects_interface_->setTableEditorCallback([this](int index) { showWavetableEditSection(index); });
   effects_interface_->setTableImportCallback(
@@ -158,6 +165,7 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
   addSubSection(modulation_interface_.get());
 
   extra_mod_section_ = std::make_unique<ExtraModSection>("extra_mod_section", synth_data);
+  extra_mod_section_->addListener(this);
   addSubSection(extra_mod_section_.get());
 
   keyboard_interface_ = std::make_unique<KeyboardInterface>(synth_data->synth->getKeyboardState());
@@ -301,12 +309,47 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
   bin_highlight_ = std::make_unique<BinHighlight>();
   addSubSection(bin_highlight_.get());
 
+  vial_debug::log("FullInterface: setAllValues");
   setAllValues(synth_data->controls);
+  vial_debug::log("FullInterface: setAllValues done");
   setOpaque(true);
   setSkinValues(default_skin, true);
 
   needs_download_ = UpdateMemory::getInstance()->incrementChecker();
 
+  vial_debug::log("FullInterface: constructed");
+#if VITAL_FX
+  if (SystemStats::getEnvironmentVariable("VIALFX_SELFTEST", "").isNotEmpty()) {
+    struct SelfTest : public Timer {
+      FullInterface* interface = nullptr;
+      int tick = 0;
+      void timerCallback() override {
+        ++tick;
+        vial_debug::log("selftest tick " + String(tick));
+        if (tick == 1)
+          interface->tabSelected(1);
+        // Types: 0 chorus, 2 delay, 9 morph.
+        const int types[3] = { 0, 2, 9 };
+        if (tick >= 2 && tick <= 13) {
+          for (int type : types)
+            interface->effects_interface_->selfTestAddCopy(type);
+        }
+        if (tick == 16)
+          interface->showWavetableEditSection(4 + 2 * 9);
+        if (tick == 20) {
+          interface->showWavetableEditSection(-1);
+          vial_debug::log("selftest done");
+          stopTimer();
+          JUCEApplicationBase::quit();
+        }
+      }
+    };
+    auto test = std::make_unique<SelfTest>();
+    test->interface = this;
+    test->startTimer(400);
+    self_test_ = std::move(test);
+  }
+#endif
   open_gl_context_.setContinuousRepainting(true);
   open_gl_context_.setOpenGLVersionRequired(OpenGLContext::openGL3_2);
   open_gl_context_.setSwapInterval(0);
@@ -651,7 +694,8 @@ void FullInterface::resized() {
 
   int padding = getPadding();
   int voice_padding = findValue(Skin::kLargePadding);
-  int extra_mod_width = findValue(Skin::kModulationButtonWidth);
+  int extra_mod_column = findValue(Skin::kModulationButtonWidth);
+  int extra_mod_width = extra_mod_section_->getTotalWidth(extra_mod_column);
   int main_x = left + extra_mod_width + 2 * voice_padding;
   int top_height = kTopHeight * ratio;
 
@@ -692,9 +736,10 @@ void FullInterface::resized() {
   voice_section_->setBounds(modulation_interface_->getX(), voice_y, voice_width, knob_section_height);
 
   bend_section_->setBounds(left + voice_padding, top + height - knob_section_height - padding,
-                           extra_mod_width, knob_section_height);
+                           extra_mod_width - ExtraModSection::getToggleWidth(extra_mod_column), knob_section_height);
 
   int extra_mod_height = height - top_height - knob_section_height - padding - 1;
+  extra_mod_section_->setColumnWidth(extra_mod_column);
   extra_mod_section_->setBounds(left + voice_padding, top + top_height, extra_mod_width, extra_mod_height);
 
   int keyboard_height = std::max(0, keyboard_section_height - voice_padding - padding);
@@ -837,8 +882,16 @@ void FullInterface::newOpenGLContextCreated() {
   open_gl_.display_scale = display_scale_;
   last_render_scale_ = display_scale_;
 
+  vial_debug::log("OpenGL context created");
+  ScopedLock lock(open_gl_critical_section_);
   background_.init(open_gl_);
   initOpenGlComponents(open_gl_);
+  vial_debug::log("OpenGL components initialised");
+  {
+    ScopedLock pending_lock(pending_lock_);
+    pending_gl_init_.clear();
+    retired_managers_.clear();
+  }
 }
 
 void FullInterface::renderOpenGL() {
@@ -853,6 +906,21 @@ void FullInterface::renderOpenGL() {
 
   ScopedLock lock(open_gl_critical_section_);
   open_gl_.display_scale = display_scale_;
+
+  // Parts that came into being after the context did.
+  std::vector<std::unique_ptr<ModulationManager>> retired;
+  std::vector<SynthSection*> pending;
+  {
+    ScopedLock pending_lock(pending_lock_);
+    retired.swap(retired_managers_);
+    pending.swap(pending_gl_init_);
+  }
+  for (auto& manager : retired)
+    manager->destroyOpenGlComponents(open_gl_);
+  retired.clear();
+  for (SynthSection* section : pending)
+    section->initOpenGlComponents(open_gl_);
+
   background_.render(open_gl_);
   modulation_manager_->renderMeters(open_gl_, animate_);
   renderOpenGlComponents(open_gl_, animate_);
@@ -1029,6 +1097,8 @@ void FullInterface::showFullScreenSection(SynthSection* full_screen) {
 
 void FullInterface::showWavetableEditSection(int index) {
   if (!wavetableEditorsInitialized())
+    return;
+  if (index >= 0 && index < vital::kNumWavetableSlots && wavetable_edits_[index] == nullptr)
     return;
 
   ScopedLock lock(open_gl_critical_section_);
@@ -1261,6 +1331,92 @@ void FullInterface::popupDisplay(Component* source, const std::string& text,
     placement = BubbleComponent::above;
   display->setContent(text, source_bounds, placement);
   display->setVisible(true);
+}
+
+void FullInterface::effectSectionCreated(SynthSection* section) {
+  // (The effects screen sets the new section's OpenGL parts up itself, just before drawing it.)
+  if (manager_rebuild_pending_)
+    return;
+
+  manager_rebuild_pending_ = true;
+  Component::SafePointer<FullInterface> safe(this);
+  MessageManager::callAsync([safe]() mutable {
+    if (safe != nullptr)
+      safe->rebuildModulationManager();
+  });
+}
+
+// The modulation manager builds its rings and meters for the knobs that exist when it is made, so it is made again
+// once new effect sections have joined.
+void FullInterface::createWavetableEdits() {
+  for (int i = 4 + 2 * kBuiltEffectCopies; i < vital::kNumWavetableSlots; ++i) {
+    if (!isLateMorphTable(i) || wavetable_edits_[i] || wavetable_creators_[i] == nullptr)
+      continue;
+
+    int morph_id = vital::FxEffectChain::effectId(vital::constants::kMorph, (i - 4) / 2);
+    if (!effects_interface_->slotBuilt(morph_id))
+      continue;
+
+    ScopedLock lock(open_gl_critical_section_);
+    wavetable_edits_[i] = std::make_unique<WavetableEditSection>(i, wavetable_creators_[i]);
+    addSubSection(wavetable_edits_[i].get());
+    wavetable_edits_[i]->setVisible(false);
+    wavetable_edits_[i]->setSizeRatio(getSizeRatio());
+    if (open_gl_.shaders) {
+      ScopedLock pending_lock(pending_lock_);
+      pending_gl_init_.push_back(wavetable_edits_[i].get());
+    }
+  }
+  resized();
+}
+
+void FullInterface::rebuildModulationManager() {
+  createWavetableEdits();
+  vial_debug::log("rebuild modulation manager");
+  manager_rebuild_pending_ = false;
+  if (modulation_manager_ == nullptr)
+    return;
+
+  ScopedLock lock(open_gl_critical_section_);
+  bool visible = modulation_manager_->isVisible();
+  modulation_manager_->detach();
+  vial_debug::log("  detached");
+  removeSubSection(modulation_manager_.get());
+  removeChildComponent(modulation_manager_.get());
+  // One whose OpenGL parts were never set up has nothing to tear down on the render thread.
+  bool was_pending = false;
+  {
+    ScopedLock pending_lock(pending_lock_);
+    auto pending = std::find(pending_gl_init_.begin(), pending_gl_init_.end(), modulation_manager_.get());
+    if (pending != pending_gl_init_.end()) {
+      pending_gl_init_.erase(pending);
+      was_pending = true;
+    }
+    if (open_gl_.shaders && !was_pending)
+      retired_managers_.push_back(std::move(modulation_manager_));
+  }
+  if (modulation_manager_ != nullptr)
+    modulation_manager_ = nullptr;
+
+  vial_debug::log("  old manager retired");
+  createModulationSliders(mono_modulations_, poly_modulations_);
+  vial_debug::log("  new manager created");
+  modulation_manager_->on_drag_started = [this]() { point_mod_targets_->beginDrag(); };
+  modulation_manager_->on_drag_ended = [this]() { point_mod_targets_->endDrag(); };
+  modulation_manager_->setSizeRatio(getSizeRatio());
+  modulation_manager_->setBounds(getLocalBounds());
+  modulation_manager_->toFront(false);
+  modulation_manager_->setVisible(visible);
+  if (open_gl_.shaders) {
+    ScopedLock pending_lock(pending_lock_);
+    pending_gl_init_.push_back(modulation_manager_.get());
+  }
+
+  modulation_manager_->reset();
+  modulation_manager_->updateModulationMeterLocations();
+  modulation_manager_->setVisibleMeterBounds();
+  modulation_manager_->hideUnusedHoverModulations();
+  vial_debug::log("rebuild modulation manager done");
 }
 
 // A section moved or resized knobs after the layout pass (a mode changed a knob's width, say): the modulation

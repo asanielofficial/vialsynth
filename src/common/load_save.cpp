@@ -176,12 +176,18 @@ json LoadSave::stateToJson(SynthBase* synth, const CriticalSection& critical_sec
 
   {
     // The effect chain: effect ids in order (+ a flag for minimized effects); see FxEffectChain.
-    int chain[vital::kMaxEffectInstances * vital::constants::kNumEffects];
+    int chain[vital::kMaxFxChainEntries];
     int count = synth->getEffectChain(chain);
     json effect_chain = json::array();
     for (int i = 0; i < count; ++i)
       effect_chain.push_back(chain[i]);
     settings_data["effect_chain"] = effect_chain;
+    settings_data["effect_chain_format"] = vital::chain_token::kFormat;
+
+    json bin_names = json::array();
+    for (int i = 0; i < vital::kMaxFxBins; ++i)
+      bin_names.push_back(synth->getFxBinName(i).toStdString());
+    settings_data["fx_bin_names"] = bin_names;
   }
 
   json data;
@@ -281,6 +287,15 @@ void LoadSave::loadLfos(SynthBase* synth, const json& lfos) {
     lfo_source->jsonToState(lfo);
     lfo_source->render();
     i++;
+    if (i >= vital::kNumLfos)
+      break;
+  }
+
+  // Presets saved with fewer LFOs leave the others at their default shape.
+  for (; i < vital::kNumLfos; ++i) {
+    LineGenerator* lfo_source = synth->getLfoSource(i);
+    lfo_source->initTriangle();
+    lfo_source->render();
   }
 }
 
@@ -376,7 +391,7 @@ json LoadSave::updateFromOldVersion(json state) {
   if (compareVersionStrings(version, "0.2.1") < 0) {
     std::string env_start = "env_";
 
-    for (int i = 0; i < vital::kNumEnvelopes; ++i) {
+    for (int i = 0; i < vital::kLegacyNumEnvelopes; ++i) {
       std::string number = std::to_string(i + 1);
       std::string attack_string = env_start + number + "_attack";
       std::string decay_string = env_start + number + "_decay";
@@ -406,7 +421,7 @@ json LoadSave::updateFromOldVersion(json state) {
   if (compareVersionStrings(version, "0.2.5") < 0) {
     std::string env_start = "env_";
 
-    for (int i = 0; i < vital::kNumEnvelopes; ++i) {
+    for (int i = 0; i < vital::kLegacyNumEnvelopes; ++i) {
       std::string number = std::to_string(i + 1);
       std::string attack_string = env_start + number + "_attack";
       std::string decay_string = env_start + number + "_decay";
@@ -424,7 +439,7 @@ json LoadSave::updateFromOldVersion(json state) {
   if (compareVersionStrings(version, "0.2.6") < 0) {
     std::string lfo_start = "lfo_";
 
-    for (int i = 0; i < vital::kNumLfos; ++i) {
+    for (int i = 0; i < vital::kLegacyNumLfos; ++i) {
       std::string number = std::to_string(i + 1);
       std::string fade_string = lfo_start + number + "_fade_time";
       std::string delay_string = lfo_start + number + "_delay_time";
@@ -514,7 +529,7 @@ json LoadSave::updateFromOldVersion(json state) {
   if (compareVersionStrings(version, "0.3.6") < 0) {
     std::string lfo_start = "lfo_";
 
-    for (int i = 0; i < vital::kNumLfos; ++i) {
+    for (int i = 0; i < vital::kLegacyNumLfos; ++i) {
       std::string sync_type_string = lfo_start + std::to_string(i + 1) + "_sync_type";
       if (settings.count(sync_type_string)) {
         float value = settings[sync_type_string];
@@ -864,7 +879,7 @@ json LoadSave::updateFromOldVersion(json state) {
     settings["delay_tempo"] = delay_tempo + 1.0f;
 
     std::string lfo_start = "lfo_";
-    for (int i = 0; i < vital::kNumLfos; ++i) {
+    for (int i = 0; i < vital::kLegacyNumLfos; ++i) {
       std::string tempo_string = lfo_start + std::to_string(i + 1) + "_tempo";
       if (settings.count(tempo_string)) {
         float tempo = settings[tempo_string];
@@ -873,7 +888,7 @@ json LoadSave::updateFromOldVersion(json state) {
     }
 
     std::string random_start = "random_";
-    for (int i = 0; i < vital::kNumRandomLfos; ++i) {
+    for (int i = 0; i < vital::kLegacyNumRandomLfos; ++i) {
       std::string tempo_string = random_start + std::to_string(i + 1) + "_tempo";
       if (settings.count(tempo_string)) {
         float tempo = settings[tempo_string];
@@ -1042,7 +1057,7 @@ json LoadSave::updateFromOldVersion(json state) {
   }
 
   if (compareVersionStrings(version, "0.8.1") < 0) {
-    for (int i = 0; i < vital::kNumLfos; ++i) {
+    for (int i = 0; i < vital::kLegacyNumLfos; ++i) {
       std::string name = "lfo_" + std::to_string(i) + "_smooth_mode";
       settings[name] = 0.0f;
     }
@@ -1141,10 +1156,14 @@ bool LoadSave::jsonToState(SynthBase* synth, std::map<std::string, String>& save
   {
     // The chain. Presets from before the effects list had a fixed set of effects in a permuted order.
     std::vector<int> chain;
+    bool current_format = settings.count("effect_chain_format") && settings["effect_chain_format"].is_number_integer() &&
+                          settings["effect_chain_format"].get<int>() >= vital::chain_token::kFormat;
     if (settings.count("effect_chain") && settings["effect_chain"].is_array()) {
       for (const json& value : settings["effect_chain"]) {
-        if (value.is_number_integer())
-          chain.push_back(value.get<int>());
+        if (value.is_number_integer()) {
+          int token = value.get<int>();
+          chain.push_back(current_format ? token : vital::chain_token::fromLegacy(token));
+        }
       }
     }
     else {
@@ -1164,6 +1183,17 @@ bool LoadSave::jsonToState(SynthBase* synth, std::map<std::string, String>& save
       }
     }
     synth->setEffectChain(chain.data(), static_cast<int>(chain.size()));
+
+    for (int i = 0; i < vital::kMaxFxBins; ++i)
+      synth->setFxBinName(i, "");
+    if (settings.count("fx_bin_names") && settings["fx_bin_names"].is_array()) {
+      int i = 0;
+      for (const json& name : settings["fx_bin_names"]) {
+        if (i < vital::kMaxFxBins && name.is_string())
+          synth->setFxBinName(i, String(name.get<std::string>()));
+        ++i;
+      }
+    }
   }
   loadSaveState(save_info, data);
   synth->checkOversampling();

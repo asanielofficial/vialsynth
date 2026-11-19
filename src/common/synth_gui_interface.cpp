@@ -105,6 +105,7 @@ void SynthGuiInterface::notifyModulationValueChanged(int index) {
 }
 
 void SynthGuiInterface::connectModulation(std::string source, std::string destination) {
+  synth_->noteEdit();
   bool created = synth_->connectModulation(source, destination);
   if (created)
     initModulationValues(source, destination);
@@ -112,6 +113,7 @@ void SynthGuiInterface::connectModulation(std::string source, std::string destin
 }
 
 void SynthGuiInterface::connectModulation(vital::ModulationConnection* connection) {
+  synth_->noteEdit();
   synth_->connectModulation(connection);
   notifyModulationsChanged();
 }
@@ -132,6 +134,7 @@ void SynthGuiInterface::initModulationValues(const std::string& source, const st
 
 void SynthGuiInterface::setModulationValues(const std::string& source, const std::string& destination,
                                             vital::mono_float amount, bool bipolar, bool stereo, bool bypass) {
+  synth_->noteEdit();
   int connection_index = synth_->getConnectionIndex(source, destination);
   if (connection_index < 0)
     return;
@@ -157,11 +160,13 @@ void SynthGuiInterface::setModulationValues(const std::string& source, const std
 }
 
 void SynthGuiInterface::disconnectModulation(std::string source, std::string destination) {
+  synth_->noteEdit();
   synth_->disconnectModulation(source, destination);
   notifyModulationsChanged();
 }
 
 void SynthGuiInterface::disconnectModulation(vital::ModulationConnection* connection) {
+  synth_->noteEdit();
   synth_->disconnectModulation(connection);
   notifyModulationsChanged();
 }

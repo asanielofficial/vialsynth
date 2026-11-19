@@ -56,7 +56,7 @@ class BankExporter;
 class BendSection;
 class DeleteSection;
 class ExpiredSection;
-class ExtraModSection;
+#include "extra_mod_section.h"
 class HeaderSection;
 class KeyboardInterface;
 class MasterControlsInterface;
@@ -76,7 +76,7 @@ class VoiceSection;
 class FullInterface : public SynthSection, public AuthenticationSection::Listener, public HeaderSection::Listener,
                       public DownloadSection::Listener, public UpdateCheckSection::Listener,
                       public EffectsInterface::Listener, public ModulationMatrix::Listener,
-                      public OpenGLRenderer, DragAndDropContainer {
+                      public ExtraModSection::Listener, public OpenGLRenderer, DragAndDropContainer {
   public:
     static constexpr double kMinOpenGlVersion = 1.4;
 
@@ -113,6 +113,10 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
       checkShouldReposition();
     }
     virtual void resized() override;
+    void extraModExpansionChanged(bool expanded) override {
+      resized();
+      repaintBackground();
+    }
     void animate(bool animate) override;
     void reset() override;
     void setAllValues(vital::control_map& controls) override;
@@ -140,6 +144,7 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     void bankImported() override;
 
     void effectsMoved() override;
+    void effectSectionCreated(SynthSection* section) override;
     void modulationsScrolled() override;
 
     void setFocus();
@@ -206,6 +211,11 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     void toggleFilter2Zoom();
 
   protected:
+    // Copies of Morph past this many get their editors (and effect sections) when first used.
+    static constexpr int kBuiltEffectCopies = 8;
+    // A table slot of a Morph copy past the first kBuiltEffectCopies.
+    static bool isLateMorphTable(int slot) { return slot >= 4 + 2 * kBuiltEffectCopies && slot < 4 + 2 * vital::kMaxEffectInstances; }
+
     bool wavetableEditorsInitialized() {
       for (int i = 0; i < vital::kNumOscillators; ++i) {
         if (wavetable_edits_[i] == nullptr)
@@ -221,6 +231,20 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     std::unique_ptr<PointModTargets> point_mod_targets_;
 #endif
     std::unique_ptr<ModulationManager> modulation_manager_;
+    // Effect copies get their sections the first time they are used: the new controls need a modulation manager
+    // that knows them, and the render thread sets up their OpenGL parts.
+    void rebuildModulationManager();
+    CriticalSection pending_lock_;  // guards the two lists below; never held while taking another lock
+    std::vector<SynthSection*> pending_gl_init_;
+    std::vector<std::unique_ptr<ModulationManager>> retired_managers_;
+    bool manager_rebuild_pending_ = false;
+    // Effect copies get their sections the first time they are used: the new controls need a modulation manager
+    // that knows them, and the render thread sets up their OpenGL parts.
+    void rebuildModulationManager();
+    CriticalSection pending_lock_;  // guards the two lists below; never held while taking another lock
+    std::vector<SynthSection*> pending_gl_init_;
+    std::vector<std::unique_ptr<ModulationManager>> retired_managers_;
+    bool manager_rebuild_pending_ = false;
     std::unique_ptr<ModulationMatrix> modulation_matrix_;
 
     std::unique_ptr<AboutSection> about_section_;
@@ -240,6 +264,11 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     std::unique_ptr<ExtraModSection> extra_mod_section_;
     std::unique_ptr<EffectsInterface> effects_interface_;
     std::unique_ptr<WavetableEditSection> wavetable_edits_[vital::kNumWavetableSlots];
+    // The editors of the Morph copies after the first few are built once their effect section exists.
+    WavetableCreator* wavetable_creators_[vital::kNumWavetableSlots] = {};
+    void createWavetableEdits();
+    // Set VIALFX_SELFTEST in the environment and the interface adds many effect copies by itself, for CI.
+    std::unique_ptr<Timer> self_test_;
     std::unique_ptr<KeyboardInterface> keyboard_interface_;
     std::unique_ptr<BendSection> bend_section_;
     std::unique_ptr<PortamentoSection> portamento_section_;

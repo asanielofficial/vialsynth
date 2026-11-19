@@ -22,18 +22,25 @@
 
 namespace vital {
 
-  constexpr int kNumLfos = 8;
+  constexpr int kNumLfos = 32;
   constexpr int kNumOscillators = 3;
   // The effect build's four wavetables: 0 input warp table, 1 sidechain warp table, 2 input spectral table,
   // 3 sidechain spectral table.
-  // The Morph effect adds two more for each of its copies (kMaxEffectInstances = 8): slot 4 + 2n is the Distort Table
-  // and slot 5 + 2n the Spectral Table of copy n.
-  constexpr int kNumFxTables = 4 + 2 * 8 + 2 * 3;
+  // The effect build can run several copies of each effect (kMaxEffectInstances per type, in any order). Copy 1 of an
+  // effect keeps the plain parameter names ("chorus_dry_wet"), copy n is named "chorus_n_dry_wet".
+  constexpr int kMaxEffectInstances = 32;
+  // The Morph effect adds two more for each of its copies: slot 4 + 2n is the Distort Table and slot 5 + 2n the
+  // Spectral Table of copy n. The three oscillators' tables follow.
+  constexpr int kNumFxTables = 4 + 2 * kMaxEffectInstances + 2 * 3;
   constexpr int kNumWavetableSlots = kNumFxTables;
   constexpr int kNumOscillatorWaveFrames = 257;
-  constexpr int kNumEnvelopes = 6;
-  constexpr int kNumRandomLfos = 4;
-  constexpr int kNumMacros = 4;
+  constexpr int kNumEnvelopes = 32;
+  constexpr int kNumRandomLfos = 16;
+  // How many of each modulator old presets were saved with (version migrations only touch these).
+  constexpr int kLegacyNumLfos = 8;
+  constexpr int kLegacyNumEnvelopes = 6;
+  constexpr int kLegacyNumRandomLfos = 4;
+  constexpr int kNumMacros = 8;
   constexpr int kNumFilters = 2;
   constexpr int kNumFormants = 4;
   constexpr int kNumChannels = 2;
@@ -41,9 +48,18 @@ namespace vital {
   constexpr int kMaxActivePolyphony = 32;
   constexpr int kLfoDataResolution = 2048;
   constexpr int kMaxModulationConnections = 64;
-  // The effect build can run several copies of each effect (kMaxEffectInstances per type, in any order). Copy 1 of an
-  // effect keeps the plain parameter names ("chorus_dry_wet"), copy n is named "chorus_n_dry_wet".
-  constexpr int kMaxEffectInstances = 8;
+  // Host automation slots: the only parameters exposed to the host (besides bypass), assigned by the user.
+  constexpr int kNumAutomationSlots = 64;
+  // FX Bins group effects (power + mix for the whole group); Parallel Splits run the same input through several
+  // parallel effect chains (each with level, pan, mute and solo) and sum them. Their controls are real, automatable
+  // parameters: "fx_bin_<n>_on|mix", "psplit_<n>_on|mix" and "psplit_<n>_b<k>_level|pan|mute|solo".
+  constexpr int kMaxFxBins = 16;
+  constexpr int kMaxParallelSplits = 8;
+  constexpr int kMaxParallelBranches = 16;
+  constexpr int kMaxFxNesting = 8;
+  // Entries of the effect chain: one per effect (15 types x kMaxEffectInstances) plus the begin/end/branch markers.
+  constexpr int kMaxFxChainEntries = 15 * kMaxEffectInstances + 2 * kMaxFxBins +
+                                     kMaxParallelSplits * (2 + kMaxParallelBranches);
 
   constexpr int kOscilloscopeMemorySampleRate = 22000;
   constexpr int kOscilloscopeMemoryResolution = 512;

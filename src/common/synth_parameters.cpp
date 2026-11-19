@@ -446,6 +446,14 @@ namespace vital {
       ValueDetails::kLinear, false, "", "Macro 3", nullptr },
     { "macro_control_4", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
       ValueDetails::kLinear, false, "", "Macro 4", nullptr },
+    { "macro_control_5", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Macro 5", nullptr },
+    { "macro_control_6", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Macro 6", nullptr },
+    { "macro_control_7", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Macro 7", nullptr },
+    { "macro_control_8", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Macro 8", nullptr },
     { "pitch_bend_range", 0x000000, 0.0, 48.0, 2.0, 0.0, 1.0,
       ValueDetails::kIndexed, false, " semitones", "Pitch Bend Range", nullptr },
     { "polyphony", 0x000000, 1.0, kMaxPolyphony - 1, 8.0, 0.0, 1.0,
@@ -984,6 +992,49 @@ namespace vital {
             details_lookup_[details.name] = details;
             details_list_.push_back(&details_lookup_[details.name]);
           }
+        }
+      }
+    }
+
+    // FX Bins and Parallel Splits: controls of the containers that group effects in the chain.
+    {
+      auto add = [this](const std::string& name, mono_float min, mono_float max, mono_float default_value,
+                        mono_float display_multiply, ValueDetails::ValueScale scale, const std::string& units,
+                        const std::string& display_name, const std::string* lookup) {
+        ValueDetails details;
+        details.name = name;
+        details.min = min;
+        details.max = max;
+        details.default_value = default_value;
+        details.display_multiply = display_multiply;
+        details.value_scale = scale;
+        details.display_units = units;
+        details.display_name = display_name;
+        details.local_description = display_name;
+        details.string_lookup = lookup;
+        details_lookup_[name] = details;
+        details_list_.push_back(&details_lookup_[name]);
+      };
+
+      for (int bin = 1; bin <= kMaxFxBins; ++bin) {
+        std::string id = "fx_bin_" + std::to_string(bin);
+        std::string title = "FX Bin " + std::to_string(bin);
+        add(id + "_on", 0.0, 1.0, 1.0, 1.0, ValueDetails::kIndexed, "", title + " Switch", strings::kOffOnNames);
+        add(id + "_mix", 0.0, 1.0, 1.0, 100.0, ValueDetails::kLinear, "%", title + " Mix", nullptr);
+      }
+
+      for (int split = 1; split <= kMaxParallelSplits; ++split) {
+        std::string id = "psplit_" + std::to_string(split);
+        std::string title = "Parallel Split " + std::to_string(split);
+        add(id + "_on", 0.0, 1.0, 1.0, 1.0, ValueDetails::kIndexed, "", title + " Switch", strings::kOffOnNames);
+        add(id + "_mix", 0.0, 1.0, 1.0, 100.0, ValueDetails::kLinear, "%", title + " Mix", nullptr);
+        for (int branch = 1; branch <= kMaxParallelBranches; ++branch) {
+          std::string bid = id + "_b" + std::to_string(branch);
+          std::string btitle = title + " Parallel " + std::to_string(branch);
+          add(bid + "_level", 0.0, 2.0, 1.0, 100.0, ValueDetails::kLinear, "%", btitle + " Level", nullptr);
+          add(bid + "_pan", -1.0, 1.0, 0.0, 100.0, ValueDetails::kLinear, "%", btitle + " Pan", nullptr);
+          add(bid + "_mute", 0.0, 1.0, 0.0, 1.0, ValueDetails::kIndexed, "", btitle + " Mute", strings::kOffOnNames);
+          add(bid + "_solo", 0.0, 1.0, 0.0, 1.0, ValueDetails::kIndexed, "", btitle + " Solo", strings::kOffOnNames);
         }
       }
     }

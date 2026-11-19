@@ -20,10 +20,80 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <cstring>
+#include <memory>
+
+// (Windows' own allocator already hands out big blocks as untouched zero pages, so only the Unix ones go direct.)
+#if !defined(_WIN32) && (defined(__unix__) || defined(__APPLE__))
+  #include <sys/mman.h>
+  #define VITAL_LAZY_MMAP 1
+#endif
 
 #include "poly_utils.h"
 
 namespace vital {
+  // Arrays that start out as zeros the operating system hands over lazily: until something writes to a page it costs
+  // address space, not memory. For the big buffers of effects that may never be used. Big blocks come straight from
+  // the system (a malloc that reuses freed memory would zero, and so touch, every page), small ones from calloc.
+  namespace lazy_memory {
+    constexpr size_t kHeader = 64;
+    constexpr size_t kSystemThreshold = 128 * 1024;
+
+    inline void* allocate(size_t bytes) {
+      size_t total = bytes + kHeader;
+      void* base = nullptr;
+      bool system = total >= kSystemThreshold;
+#if VITAL_LAZY_MMAP
+      if (system) {
+        base = mmap(nullptr, total, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (base == MAP_FAILED)
+          base = nullptr;
+      }
+#else
+      system = false;
+#endif
+      if (base == nullptr) {
+        system = false;
+        base = std::calloc(1, total);
+        if (base == nullptr)
+          return nullptr;
+      }
+
+      size_t* header = static_cast<size_t*>(base);
+      header[0] = total;
+      header[1] = system ? 1 : 0;
+      return static_cast<char*>(base) + kHeader;
+    }
+
+    inline void release(void* memory) {
+      if (memory == nullptr)
+        return;
+
+      void* base = static_cast<char*>(memory) - kHeader;
+      size_t* header = static_cast<size_t*>(base);
+      size_t total = header[0];
+      bool system = header[1] != 0;
+#if VITAL_LAZY_MMAP
+      if (system) {
+        munmap(base, total);
+        return;
+      }
+#endif
+      (void)total;
+      std::free(base);
+    }
+  }
+
+  struct LazyFree {
+    void operator()(void* memory) const { lazy_memory::release(memory); }
+  };
+  template<class T>
+  using LazyArray = std::unique_ptr<T[], LazyFree>;
+  template<class T>
+  LazyArray<T> makeLazyArray(size_t size) {
+    return LazyArray<T>(static_cast<T*>(lazy_memory::allocate(size * sizeof(T))));
+  }
 
   template<size_t kChannels>
   class MemoryTemplate {
@@ -34,17 +104,12 @@ namespace vital {
       MemoryTemplate(int size) : offset_(0) {
         size_ = utils::nextPowerOfTwo(size);
         bitmask_ = size_ - 1;
-        for (int i = 0; i < kChannels; ++i) {
-          memories_[i] = std::make_unique<mono_float[]>(2 * size_);
-          buffers_[i] = memories_[i].get();
-        }
+        allocate();
       }
 
       MemoryTemplate(const MemoryTemplate& other) {
-        for (int i = 0; i < poly_float::kSize; ++i) {
-          memories_[i] = std::make_unique<mono_float[]>(2 * other.size_);
-          buffers_[i] = memories_[i].get();
-        }
+        size_ = other.size_;
+        allocate();
 
         size_ = other.size_;
         bitmask_ = other.bitmask_;
@@ -54,6 +119,7 @@ namespace vital {
       virtual ~MemoryTemplate() { }
 
       void push(poly_float sample) {
+        dirty_ = true;
         offset_ = (offset_ + 1) & bitmask_;
         for (int i = 0; i < kChannels; ++i) {
           mono_float val = sample[i];
@@ -82,6 +148,11 @@ namespace vital {
       }
 
       void clearAll() {
+        // Memory that was never written is still the zeros it was allocated with (and its pages were never touched).
+        if (!dirty_)
+          return;
+
+        dirty_ = false;
         for (int c = 0; c < kChannels; ++c)
           memset(buffers_[c], 0, 2 * size_ * sizeof(mono_float));
       }
@@ -107,7 +178,17 @@ namespace vital {
       }
 
     protected:
-      std::unique_ptr<mono_float[]> memories_[poly_float::kSize];
+      // Zeroed by the operating system, which hands out untouched pages lazily: an effect that is never used costs
+      // address space, not memory.
+      void allocate() {
+        for (int i = 0; i < kChannels; ++i) {
+          memories_[i] = makeLazyArray<mono_float>(2 * static_cast<size_t>(size_));
+          buffers_[i] = memories_[i].get();
+        }
+      }
+
+      LazyArray<mono_float> memories_[poly_float::kSize];
+      bool dirty_ = false;
       mono_float* buffers_[poly_float::kSize];
       unsigned int size_;
       unsigned int bitmask_;
