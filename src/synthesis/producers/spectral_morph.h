@@ -449,7 +449,7 @@ namespace vital {
   struct OscillatorWarpContext {
     static constexpr int kRandomSize = kNumHarmonics + 1;
     static constexpr float kOctaves = 9.9658f;      // log2(20000 / 20), the span of the drawings and tables
-    static constexpr float kMaxRandomGain = 64.0f;
+    static constexpr float kMaxRandomGain = 12.0f;
 
     static float harmonicPosition(int harmonic) {
       return std::max(0.0f, std::min(std::log2(std::max(1.0f, static_cast<float>(harmonic))) * 0.1f, 1.0f));
@@ -559,12 +559,12 @@ namespace vital {
                                    int wavetable_index, poly_float* dest, FourierTransform* transform,
                                    float shift, int last_harmonic, const poly_float* data_buffer) {
     const OscillatorWarpContext* context = warpContext(data_buffer);
-    // The original sound: the amount runs through 15 times its range (so it soon leaves only a sparse set of
-    // harmonics standing, and those stand much louder) while it also walks through the chain of random patterns.
-    // The shuffle control moves where in the chain that walk starts.
+    // Stronger than the plain Vital curve, but usable: the amount runs through 4 times its range (so the top of the
+    // range leaves about an eighth of the harmonics standing, louder), and the pattern holds still while it moves,
+    // so the shuffle control is what changes the pattern.
     float amount = std::max(0.0f, std::min(shift, 1.0f));
-    float a = amount * (kRandomAmplitudeStages - 1);
-    float position = context->random_place + a;
+    float a = amount * 4.0f;
+    float position = context->random_place;
     int first = static_cast<int>(position);
     float t = position - first;
     constexpr int kSize = OscillatorWarpContext::kRandomSize;
