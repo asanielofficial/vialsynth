@@ -588,7 +588,7 @@ OscillatorSection::OscillatorSection(Authentication* auth,
   // Developer aid for CI screenshots: switch the first oscillator to Random Amplitudes after start-up.
   if (index == 0 && std::getenv("VIALSYNTH_SHOT") != nullptr) {
     Component::SafePointer<OscillatorSection> safe(this);
-    Timer::callAfterDelay(4000, [safe]() {
+    Timer::callAfterDelay(4000, [safe]() mutable {
       if (safe == nullptr)
         return;
       SynthGuiInterface* parent = safe->findParentComponentOfClass<SynthGuiInterface>();
