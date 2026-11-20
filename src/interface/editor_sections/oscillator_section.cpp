@@ -816,9 +816,9 @@ void OscillatorSection::resized() {
     // scale is fitted to the room left above the mode selector, and the modulation rings follow it (they read it).
     int cell_w = spectral_cell.getWidth();
     int pill_gap = std::max(1, widget_margin / 2);
-    int strip_h = std::max(1, static_cast<int>(label_height * 0.62f));
+    int strip_h = std::max(1, static_cast<int>(label_height * 0.72f));
 
-    random_font_size_ = label_text_height * 0.72f;
+    random_font_size_ = label_text_height * 0.82f;
     int pad = std::max(2, widget_margin / 2);
     int mix_w = 0, shuffle_w = 0;
     for (;;) {
@@ -836,7 +836,7 @@ void OscillatorSection::resized() {
 
     // The knobs and the pills right under them are centred as one block in the room above the mode selector.
     float area_h = static_cast<float>(selector_top - spectral_cell.getY());
-    float mix_footprint = std::min(area_h - strip_h - pill_gap, (cell_w - dice_size - 4.0f * pill_gap) * 0.5f);
+    float mix_footprint = std::min(area_h - strip_h - pill_gap, (cell_w - dice_size - 4.0f * pill_gap) * 0.5f * 0.88f);
     float mix_scale = std::max(0.3f, mix_footprint / footprint_size);
     float shuffle_scale = mix_scale;   // both knobs are the same size
     int mix_d = static_cast<int>(footprint_size * mix_scale);
@@ -857,7 +857,7 @@ void OscillatorSection::resized() {
     int dice_bounds_y = bounds_centre_y - dice_size / 2;
     dice_slider_->setKnobSizeScale(dice_size / findValue(Skin::kKnobArcSize));
     dice_slider_->setBounds(x, dice_bounds_y, dice_size, dice_size);
-    int die = std::max(1, static_cast<int>(dice_size * 0.62f));
+    int die = std::max(1, static_cast<int>(dice_size * 0.72f));
     dice_button_->setBounds(x + (dice_size - die) / 2, static_cast<int>(draw_centre_y) - die / 2, die, die);
     x += dice_size + space;
     shuffle_->setBounds(x, bounds_centre_y - shuffle_d / 2, shuffle_d, shuffle_d);
