@@ -833,7 +833,7 @@ void OscillatorSection::resized() {
     int pill_gap = std::max(1, widget_margin / 2);
     int strip_h = std::max(1, static_cast<int>(label_height * 0.72f));
 
-    random_font_size_ = label_text_height * 0.82f;
+    random_font_size_ = label_text_height * 0.95f;
     int pad = std::max(2, widget_margin / 2);
     int mix_w = 0, shuffle_w = 0;
     for (;;) {
@@ -851,7 +851,7 @@ void OscillatorSection::resized() {
 
     // The knobs and the pills right under them are centred as one block in the room above the mode selector.
     float area_h = static_cast<float>(selector_top - spectral_cell.getY());
-    float mix_footprint = std::min(area_h - strip_h - pill_gap, (cell_w - dice_size - 4.0f * pill_gap) * 0.5f * 0.88f);
+    float mix_footprint = std::min(area_h - strip_h - pill_gap, (cell_w - dice_size - 4.0f * pill_gap) * 0.5f * 0.96f);
     float mix_scale = std::max(0.3f, mix_footprint / footprint_size);
     float shuffle_scale = mix_scale;   // both knobs are the same size
     int mix_d = static_cast<int>(footprint_size * mix_scale);
@@ -867,15 +867,18 @@ void OscillatorSection::resized() {
     int space = std::max(0, (cell_w - mix_d - dice_size - shuffle_d) / 4);
     int x = spectral_cell.getX() + space;
     int bounds_centre_y = static_cast<int>(draw_centre_y - findValue(Skin::kKnobOffset));
-    spectral_morph_amount_->setBounds(x, bounds_centre_y - mix_d / 2, mix_d, mix_d);
+    // The knob is drawn above the middle of its bounds (the knob offset), so the bounds get that much extra
+    // height; otherwise the top of the knob body is cut off.
+    int pad = static_cast<int>(std::abs(findValue(Skin::kKnobOffset))) + 2;
+    spectral_morph_amount_->setBounds(x, bounds_centre_y - mix_d / 2 - pad, mix_d, mix_d + 2 * pad);
     x += mix_d + space;
-    int dice_bounds_y = bounds_centre_y - dice_size / 2;
+    int dice_bounds_y = bounds_centre_y - dice_size / 2 - pad;
     dice_slider_->setKnobSizeScale(dice_size / findValue(Skin::kKnobArcSize));
-    dice_slider_->setBounds(x, dice_bounds_y, dice_size, dice_size);
+    dice_slider_->setBounds(x, dice_bounds_y, dice_size, dice_size + 2 * pad);
     int die = std::max(1, static_cast<int>(dice_size * 0.72f));
     dice_button_->setBounds(x + (dice_size - die) / 2, static_cast<int>(draw_centre_y) - die / 2, die, die);
     x += dice_size + space;
-    shuffle_->setBounds(x, bounds_centre_y - shuffle_d / 2, shuffle_d, shuffle_d);
+    shuffle_->setBounds(x, bounds_centre_y - shuffle_d / 2 - pad, shuffle_d, shuffle_d + 2 * pad);
 
     // Pills hang right below their knobs; SHUFFLE is kept inside the cell and clear of MIX.
     int strip_y = static_cast<int>(knob_top) + mix_d + pill_gap;
