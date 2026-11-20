@@ -1,0 +1,46 @@
+name: Editor screenshot (Linux)
+on:
+  push:
+    branches: [ci-dev]
+    paths: [".github/workflows/shot.yml"]
+  workflow_dispatch:
+
+jobs:
+  shot:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config xvfb imagemagick x11-apps libgl1-mesa-dri libglx-mesa0 mesa-utils \
+            libasound2-dev libfreetype6-dev libgl1-mesa-dev libcurl4-openssl-dev \
+            libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev \
+            libsecret-1-dev libglib2.0-dev
+      - name: Build the standalone
+        run: |
+          set +e
+          make -k -j"$(nproc)" -C standalone/builds/linux CONFIG=Debug AR=gcc-ar \
+            SIMDFLAGS="-msse2" GLFLAGS="" BUILD_DATE="$(date +'%Y %m %d %H %M')" > build.log 2>&1
+          echo "make exit: $?"; grep -E "error:" build.log | head -20; ls standalone/builds/linux/build
+      - name: Run it and take screenshots
+        run: |
+          set +e
+          mkdir -p shots
+          export LIBGL_ALWAYS_SOFTWARE=1 VIALSYNTH_SHOT=1
+          xvfb-run -a -s "-screen 0 1600x1000x24" bash -c '
+            standalone/builds/linux/build/vial > app.log 2>&1 &
+            APP=$!
+            for i in $(seq 1 14); do sleep 8; import -window root shots/$i.png 2>/dev/null; done
+            kill $APP' 
+          tail -20 app.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shots
+          path: |
+            shots
+            app.log
+            build.log
