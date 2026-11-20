@@ -45,7 +45,7 @@ jobs:
           set +e
           VST=$(ls -d plugin/builds/linux_vst/build/VialSynth.vst3 2>/dev/null)
           if [ -z "$VST" ]; then echo "no VST3 built" > run.txt; exit 0; fi
-          sudo apt-get install -y --no-install-recommends xvfb gdb unzip libgl1-mesa-dri libglx-mesa0 mesa-utils >/dev/null 2>&1
+          sudo apt-get install -y --no-install-recommends xvfb gdb unzip imagemagick x11-apps libgl1-mesa-dri libglx-mesa0 mesa-utils >/dev/null 2>&1
           curl -sL -o pv.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Linux.zip
           unzip -q -o pv.zip -d pv
           chmod +x pv/pluginval
@@ -54,7 +54,9 @@ jobs:
           rm -f /tmp/VialFX_debug.log
           export LD_PRELOAD=$(gcc -print-file-name=libasan.so)
           export ASAN_OPTIONS=detect_leaks=0:abort_on_error=1:detect_odr_violation=0
-          xvfb-run -a -s "-screen 0 1600x1000x24" timeout 420 pv/pluginval --validate-in-process --strictness-level 5 --output-dir pvout --validate "$PWD/$VST" > run.txt 2>&1
+          export VIALSYNTH_SHOT=1
+          mkdir -p shots
+          xvfb-run -a -s "-screen 0 1600x1000x24" bash -c '(while true; do sleep 6; LD_PRELOAD= import -window root "shots/$(date +%s).png" 2>/dev/null; done) & SH=$!; timeout 420 pv/pluginval --validate-in-process --strictness-level 5 --output-dir pvout --validate "'"$PWD/$VST"'" > run.txt 2>&1; kill $SH' # pv/pluginval --validate-in-process --strictness-level 5 --output-dir pvout --validate "$PWD/$VST" > run.txt 2>&1
           echo "pluginval/gdb exit: $?" >> run.txt
           echo "--- debug log ---" >> run.txt; cat /tmp/VialFX_debug.log >> run.txt 2>/dev/null
           tail -c 60000 run.txt > run-tail.txt
@@ -66,6 +68,7 @@ jobs:
           mkdir ci-logs-out
           cp status.txt ci-logs-out/ 2>/dev/null
           cp run-tail.txt ci-logs-out/run.txt 2>/dev/null
+          mkdir -p ci-logs-out/shots; ls -t shots/*.png 2>/dev/null | head -40 | xargs -r -I{} cp {} ci-logs-out/shots/
           echo "commit: ${GITHUB_SHA}" > ci-logs-out/commit.txt
           # every error with some context, de-duplicated by the line that names it
           grep -E -B2 -A6 "error:|fatal error:|undefined reference" build.log | cut -c1-400 | head -4000 > ci-logs-out/errors.txt

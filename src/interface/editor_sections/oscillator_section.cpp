@@ -585,6 +585,21 @@ OscillatorSection::OscillatorSection(Authentication* auth,
 
   setSkinOverride(Skin::kOscillator);
 
+  // Developer aid for CI screenshots: switch the first oscillator to Random Amplitudes after start-up.
+  if (index == 0 && std::getenv("VIALSYNTH_SHOT") != nullptr) {
+    Component::SafePointer<OscillatorSection> safe(this);
+    Timer::callAfterDelay(4000, [safe]() {
+      if (safe == nullptr)
+        return;
+      SynthGuiInterface* parent = safe->findParentComponentOfClass<SynthGuiInterface>();
+      if (parent == nullptr || parent->getSynth() == nullptr)
+        return;
+      parent->getSynth()->valueChangedInternal("osc_1_spectral_morph_type",
+                                               static_cast<float>(vital::SynthOscillator::kRandomAmplitudes));
+      safe->setSpectralMorphSelected(vital::SynthOscillator::kRandomAmplitudes);
+    });
+  }
+
   unison_viewer_ = std::make_unique<UnisonViewer>(index, mono_modulations, poly_modulations);
   addOpenGlComponent(unison_viewer_.get());
   unison_viewer_->setVoicesSlider(unison_voices_.get());
