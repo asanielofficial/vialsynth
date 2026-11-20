@@ -56,10 +56,13 @@ namespace vital {
       std::string prefix_;
       std::shared_ptr<Wavetable> wavetable_;
       std::shared_ptr<bool> was_on_;
+      std::shared_ptr<float> last_dice_;
 
       Value* on_;
       SynthOscillator* oscillator_;
       Value* distortion_type_;
+      Value* random_seed_;
+      Output* random_dice_;
 
       JUCE_LEAK_DETECTOR(OscillatorModule)
   };

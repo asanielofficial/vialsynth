@@ -863,6 +863,8 @@ namespace vital {
       ValueDetails::kLinear, false, "%", "Random Amplitudes Shuffle", nullptr },
     { "random_seed", 0x000407, 0.0, 99999.0, 0.0, 0.0, 1.0,
       ValueDetails::kLinear, false, "", "Random Amplitudes Seed", nullptr },
+    { "random_dice", 0x000407, 0.0, 1.0, 0.0, 0.0, 1.0,
+      ValueDetails::kLinear, false, "", "Random Amplitudes Dice", nullptr },
     { "spectral_gain", 0x000407, 0.0, 1.0, 0.5, 0.0, 100.0,
       ValueDetails::kLinear, false, "%", "Spectral Mode Gain", nullptr },
     { "spectral_density", 0x000407, 0.0, 1.0, 0.5, 0.0, 100.0,

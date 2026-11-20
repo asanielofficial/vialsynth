@@ -22,9 +22,10 @@
 namespace vital {
 
   OscillatorModule::OscillatorModule(std::string prefix) :
-      SynthModule(kNumInputs, kNumOutputs), prefix_(std::move(prefix)), on_(nullptr), distortion_type_(nullptr) {
+      SynthModule(kNumInputs, kNumOutputs), prefix_(std::move(prefix)), on_(nullptr), distortion_type_(nullptr), random_seed_(nullptr), random_dice_(nullptr) {
     wavetable_ = std::make_shared<Wavetable>(kNumOscillatorWaveFrames);
     was_on_ = std::make_shared<bool>(true);
+    last_dice_ = std::make_shared<float>(-1.0f);
   }
 
   void OscillatorModule::init() {
@@ -64,6 +65,9 @@ namespace vital {
     Output* spectral_position = createPolyModControl(prefix_ + "_spectral_position");
     Output* random_shuffle = createPolyModControl(prefix_ + "_random_shuffle");
     Value* random_seed = createBaseControl(prefix_ + "_random_seed");
+    random_seed_ = random_seed;
+    // The dice: whenever its value (automation or modulation included) crosses the middle, the pattern is re-rolled.
+    random_dice_ = createMonoModControl(prefix_ + "_random_dice");
     Output* spectral_table_mix = createMonoModControl(prefix_ + "_spectral_table_mix");
     Output* spectral_gain = createMonoModControl(prefix_ + "_spectral_gain");
     Output* spectral_density = createMonoModControl(prefix_ + "_spectral_density");
@@ -137,6 +141,17 @@ namespace vital {
 
   void OscillatorModule::process(int num_samples) {
     bool on = on_->value();
+
+    if (random_dice_ && random_seed_) {
+      float dice = random_dice_->buffer[0][0] >= 0.5f ? 1.0f : 0.0f;
+      if (*last_dice_ >= 0.0f && dice != *last_dice_) {
+        // A linear congruential step keeps re-rolls deterministic for a given sequence of flips.
+        uint32_t seed = static_cast<uint32_t>(random_seed_->value() + 0.5f);
+        seed = (seed * 1664525u + 1013904223u) % 100000u;
+        random_seed_->set(static_cast<float>(seed));
+      }
+      *last_dice_ = dice;
+    }
 
     if (on)
       SynthModule::process(num_samples);

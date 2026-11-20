@@ -35,6 +35,32 @@
 #include "wavetable_3d.h"
 
 namespace {
+  // The dice is a real parameter (so it can be automated, modulated and right-clicked like a knob), but it looks
+  // and acts like a button: a plain click rolls a new seed, and dragging does nothing.
+  class DiceSlider : public SynthSlider {
+    public:
+      explicit DiceSlider(String name) : SynthSlider(name) { }
+
+      void setClickCallback(std::function<void()> callback) { click_callback_ = callback; }
+
+      void mouseDown(const MouseEvent& e) override {
+        if (e.mods.isPopupMenu() || e.mods.isAltDown())
+          SynthSlider::mouseDown(e);
+      }
+      void mouseDrag(const MouseEvent&) override { }
+      void mouseDoubleClick(const MouseEvent&) override { }
+      void mouseWheelMove(const MouseEvent&, const MouseWheelDetails&) override { }
+      void mouseUp(const MouseEvent& e) override {
+        if (e.mods.isPopupMenu() || e.mods.isAltDown())
+          return;
+        if (e.mouseWasClicked() && click_callback_)
+          click_callback_();
+      }
+
+    private:
+      std::function<void()> click_callback_;
+  };
+
   // A die: a rounded square with five holes.
   Path dicePath() {
     Path path;
@@ -437,6 +463,19 @@ OscillatorSection::OscillatorSection(Authentication* auth,
   shuffle_->setDoubleClickReturnValue(true, 0.0);
   shuffle_->setVisible(false);
 
+  // The slider sits on top of the drawn die and carries the parameter; its own knob drawing is switched off.
+  dice_button_->setInterceptsMouseClicks(false, false);
+  dice_slider_ = std::make_unique<DiceSlider>("osc_" + number + "_random_dice");
+  addSlider(dice_slider_.get());
+  dice_slider_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+  dice_slider_->setPopupPlacement(BubbleComponent::above);
+  dice_slider_->setModulationPlacement(BubbleComponent::above);
+  dice_slider_->setPopupPrefix("Dice: ");
+  dice_slider_->getQuadComponent()->setVisible(false);
+  dice_slider_->getImageComponent()->setVisible(false);
+  static_cast<DiceSlider*>(dice_slider_.get())->setClickCallback([this]() { rollDice(); });
+  dice_slider_->setVisible(false);
+
   spectral_morph_type_selector_ = std::make_unique<ShapeButton>("Spectral Morph", Colour(0xff666666),
                                                                  Colour(0xffaaaaaa), Colour(0xff888888));
   addAndMakeVisible(spectral_morph_type_selector_.get());
@@ -793,7 +832,7 @@ void OscillatorSection::resized() {
 
     int selector_top = spectral_cell.getBottom() - label_height;
     float footprint_size = findValue(Skin::kKnobModAmountArcSize);
-    int dice_size = std::max(1, strip_h);
+    int dice_size = std::max(1, strip_h + 3);   // the disc around the die (the die itself is drawn a bit smaller)
 
     // The knobs and the pills right under them are centred as one block in the room above the mode selector.
     float area_h = static_cast<float>(selector_top - spectral_cell.getY());
@@ -815,7 +854,11 @@ void OscillatorSection::resized() {
     int bounds_centre_y = static_cast<int>(draw_centre_y - findValue(Skin::kKnobOffset));
     spectral_morph_amount_->setBounds(x, bounds_centre_y - mix_d / 2, mix_d, mix_d);
     x += mix_d + space;
-    dice_button_->setBounds(x, static_cast<int>(draw_centre_y) - dice_size / 2, dice_size, dice_size);
+    int dice_bounds_y = bounds_centre_y - dice_size / 2;
+    dice_slider_->setKnobSizeScale(dice_size / findValue(Skin::kKnobArcSize));
+    dice_slider_->setBounds(x, dice_bounds_y, dice_size, dice_size);
+    int die = std::max(1, static_cast<int>(dice_size * 0.62f));
+    dice_button_->setBounds(x + (dice_size - die) / 2, static_cast<int>(draw_centre_y) - die / 2, die, die);
     x += dice_size + space;
     shuffle_->setBounds(x, bounds_centre_y - shuffle_d / 2, shuffle_d, shuffle_d);
 
@@ -832,6 +875,7 @@ void OscillatorSection::resized() {
     random_mix_label_ = Rectangle<int>();
     random_shuffle_label_ = Rectangle<int>();
     dice_button_->setBounds(0, 0, 0, 0);
+    dice_slider_->setBounds(0, 0, 0, 0);
     shuffle_->setBounds(0, 0, 0, 0);
   }
 
@@ -1111,6 +1155,7 @@ void OscillatorSection::updateWarpTools() {
   warp_edit_button_->setVisible(distort_table);
   dice_button_->setVisible(random);
   shuffle_->setVisible(random);
+  dice_slider_->setVisible(random);
   resized();
   modulationLayoutChanged();   // the modulation rings follow the knob scale
   repaintBackground();
