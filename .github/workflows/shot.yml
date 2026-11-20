@@ -36,11 +36,16 @@ jobs:
             for i in $(seq 1 14); do sleep 8; import -window root shots/$i.png 2>/dev/null; done
             kill $APP' 
           tail -20 app.log
-      - uses: actions/upload-artifact@v4
+      - name: Publish the screenshots to the ci-shots branch
         if: always()
-        with:
-          name: shots
-          path: |
-            shots
-            app.log
-            build.log
+        run: |
+          set +e
+          mkdir out && cp -r shots out/ && cp app.log out/ 2>/dev/null
+          tail -300 build.log > out/build-tail.log
+          cd out
+          git init -q -b ci-shots
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "screenshots for ${GITHUB_SHA}"
+          git push -f -q "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-shots
