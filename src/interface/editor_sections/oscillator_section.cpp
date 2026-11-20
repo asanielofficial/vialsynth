@@ -869,16 +869,16 @@ void OscillatorSection::resized() {
     int bounds_centre_y = static_cast<int>(draw_centre_y - findValue(Skin::kKnobOffset));
     // The knob is drawn above the middle of its bounds (the knob offset), so the bounds get that much extra
     // height; otherwise the top of the knob body is cut off.
-    int pad = static_cast<int>(std::abs(findValue(Skin::kKnobOffset))) + 2;
-    spectral_morph_amount_->setBounds(x, bounds_centre_y - mix_d / 2 - pad, mix_d, mix_d + 2 * pad);
+    int bounds_pad = static_cast<int>(std::abs(findValue(Skin::kKnobOffset))) + 2;
+    spectral_morph_amount_->setBounds(x, bounds_centre_y - mix_d / 2 - bounds_pad, mix_d, mix_d + 2 * bounds_pad);
     x += mix_d + space;
-    int dice_bounds_y = bounds_centre_y - dice_size / 2 - pad;
+    int dice_bounds_y = bounds_centre_y - dice_size / 2 - bounds_pad;
     dice_slider_->setKnobSizeScale(dice_size / findValue(Skin::kKnobArcSize));
-    dice_slider_->setBounds(x, dice_bounds_y, dice_size, dice_size + 2 * pad);
+    dice_slider_->setBounds(x, dice_bounds_y, dice_size, dice_size + 2 * bounds_pad);
     int die = std::max(1, static_cast<int>(dice_size * 0.72f));
     dice_button_->setBounds(x + (dice_size - die) / 2, static_cast<int>(draw_centre_y) - die / 2, die, die);
     x += dice_size + space;
-    shuffle_->setBounds(x, bounds_centre_y - shuffle_d / 2 - pad, shuffle_d, shuffle_d + 2 * pad);
+    shuffle_->setBounds(x, bounds_centre_y - shuffle_d / 2 - bounds_pad, shuffle_d, shuffle_d + 2 * bounds_pad);
 
     // Pills hang right below their knobs; SHUFFLE is kept inside the cell and clear of MIX.
     int strip_y = static_cast<int>(knob_top) + mix_d + pill_gap;
