@@ -5,6 +5,9 @@ on:
     paths: [".github/workflows/shot.yml"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   shot:
     runs-on: ubuntu-22.04
@@ -18,7 +21,7 @@ jobs:
             build-essential pkg-config xvfb imagemagick x11-apps libgl1-mesa-dri libglx-mesa0 mesa-utils \
             libasound2-dev libfreetype6-dev libgl1-mesa-dev libcurl4-openssl-dev \
             libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev \
-            libsecret-1-dev libglib2.0-dev
+            libsecret-1-dev libglib2.0-dev libjack-jackd2-dev
       - name: Build the standalone
         run: |
           set +e
