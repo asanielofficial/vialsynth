@@ -33,7 +33,7 @@ namespace {
 }
 
 namespace {
-  const char* const kVialFxVersion = "1.2";
+  const char* const kVialFxVersion = "1.0";   // display version; ProjectInfo::versionString stays at the base version (compatibility checks)
   const char* const kVialFxUrl = "https://github.com/asanielofficial/vialsynth";
 }
 
@@ -47,13 +47,9 @@ AboutSection::AboutSection(const String& name) : Overlay(name), body_(Shaders::k
   name_text_->setFontType(PlainTextComponent::kRegular);
   name_text_->setTextSize(40.0f);
 
-#if VITAL_FX
-  // Display version of the FX plugin. ProjectInfo::versionString intentionally stays at the base
-  // version because preset, skin and wavetable compatibility checks compare against it.
+  // Display version of VialSynth. ProjectInfo::versionString intentionally stays at the base version because
+  // preset, skin and wavetable compatibility checks compare against it.
   version_text_ = std::make_unique<PlainTextComponent>("version", String("version  ") + kVialFxVersion);
-#else
-  version_text_ = std::make_unique<PlainTextComponent>("version", String("version  ") + ProjectInfo::versionString);
-#endif
   addOpenGlComponent(version_text_.get());
   version_text_->setFontType(PlainTextComponent::kLight);
   version_text_->setTextSize(12.0f);
