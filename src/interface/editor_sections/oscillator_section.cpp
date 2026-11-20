@@ -772,8 +772,8 @@ void OscillatorSection::resized() {
   warp_tool_button_->setBounds(distortion_cell.getRight() - tool_size, distortion_cell.getY(), tool_size, tool_size);
   warp_edit_button_->setBounds(distortion_cell.getX(), distortion_cell.getY(), tool_size, tool_size);
   if (dice_button_->isVisible()) {
-    // Random Amplitudes: label pills on top (MIX, SHUFFLE) and one row below them: the MIX knob, the dice and an
-    // equally sized SHUFFLE knob. The knobs are drawn at their scale around the centre of their bounds, so the
+    // Random Amplitudes: one row (the MIX knob, the dice and an equally sized SHUFFLE knob) with label pills right
+    // under it. The knobs are drawn at their scale around the centre of their bounds, so the
     // scale is fitted to the room left above the mode selector, and the modulation rings follow it (they read it).
     int cell_w = spectral_cell.getWidth();
     int pill_gap = std::max(1, widget_margin / 2);
@@ -792,23 +792,26 @@ void OscillatorSection::resized() {
     }
 
     int selector_top = spectral_cell.getBottom() - label_height;
-    int knob_top = spectral_cell.getY() + strip_h + pill_gap;
-    float area_h = static_cast<float>(selector_top - knob_top);
     float footprint_size = findValue(Skin::kKnobModAmountArcSize);
     int dice_size = std::max(1, strip_h);
 
-    float mix_footprint = std::min(area_h, (cell_w - dice_size - 4.0f * pill_gap) * 0.5f);
+    // The knobs and the pills right under them are centred as one block in the room above the mode selector.
+    float area_h = static_cast<float>(selector_top - spectral_cell.getY());
+    float mix_footprint = std::min(area_h - strip_h - pill_gap, (cell_w - dice_size - 4.0f * pill_gap) * 0.5f);
     float mix_scale = std::max(0.3f, mix_footprint / footprint_size);
     float shuffle_scale = mix_scale;   // both knobs are the same size
     int mix_d = static_cast<int>(footprint_size * mix_scale);
-    int shuffle_d = static_cast<int>(footprint_size * shuffle_scale);
+    int shuffle_d = mix_d;
     spectral_morph_amount_->setKnobSizeScale(mix_scale);
     shuffle_->setKnobSizeScale(shuffle_scale);
+
+    float block_h = mix_d + pill_gap + strip_h;
+    float knob_top = spectral_cell.getY() + (area_h - block_h) * 0.5f;
+    float draw_centre_y = knob_top + mix_d * 0.5f;
 
     // One row: margin, MIX, dice, SHUFFLE, margin with the leftover width shared evenly.
     int space = std::max(0, (cell_w - mix_d - dice_size - shuffle_d) / 4);
     int x = spectral_cell.getX() + space;
-    float draw_centre_y = knob_top + area_h * 0.5f;
     int bounds_centre_y = static_cast<int>(draw_centre_y - findValue(Skin::kKnobOffset));
     spectral_morph_amount_->setBounds(x, bounds_centre_y - mix_d / 2, mix_d, mix_d);
     x += mix_d + space;
@@ -816,8 +819,8 @@ void OscillatorSection::resized() {
     x += dice_size + space;
     shuffle_->setBounds(x, bounds_centre_y - shuffle_d / 2, shuffle_d, shuffle_d);
 
-    // MIX sits over its knob; SHUFFLE is pushed to the right edge so the two pills never overlap.
-    int strip_y = spectral_cell.getY();
+    // Pills hang right below their knobs; SHUFFLE is kept inside the cell and clear of MIX.
+    int strip_y = static_cast<int>(knob_top) + mix_d + pill_gap;
     int mix_x = std::max(spectral_cell.getX(), spectral_morph_amount_->getBounds().getCentreX() - mix_w / 2);
     int shuffle_x = std::min(spectral_cell.getRight() - shuffle_w, shuffle_->getBounds().getCentreX() - shuffle_w / 2);
     shuffle_x = std::max(shuffle_x, mix_x + mix_w + pill_gap);
