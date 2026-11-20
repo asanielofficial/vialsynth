@@ -47,6 +47,7 @@ namespace {
         if (e.mods.isPopupMenu() || e.mods.isAltDown())
           SynthSlider::mouseDown(e);
       }
+      void drawShadow(Graphics&) override { }   // no dark disc behind the die
       void mouseDrag(const MouseEvent&) override { }
       void mouseDoubleClick(const MouseEvent&) override { }
       void mouseWheelMove(const MouseEvent&, const MouseWheelDetails&) override { }
@@ -847,7 +848,7 @@ void OscillatorSection::resized() {
 
     int selector_top = spectral_cell.getBottom() - label_height;
     float footprint_size = findValue(Skin::kKnobModAmountArcSize);
-    int dice_size = std::max(1, strip_h + 3);   // the disc around the die (the die itself is drawn a bit smaller)
+    int dice_size = std::max(1, strip_h + 5);   // room for the die and its modulation ring
 
     // The knobs and the pills right under them are centred as one block in the room above the mode selector.
     float area_h = static_cast<float>(selector_top - spectral_cell.getY());
@@ -875,7 +876,7 @@ void OscillatorSection::resized() {
     int dice_bounds_y = bounds_centre_y - dice_size / 2 - bounds_pad;
     dice_slider_->setKnobSizeScale(dice_size / findValue(Skin::kKnobArcSize));
     dice_slider_->setBounds(x, dice_bounds_y, dice_size, dice_size + 2 * bounds_pad);
-    int die = std::max(1, static_cast<int>(dice_size * 0.72f));
+    int die = std::max(1, static_cast<int>(dice_size * 0.85f));
     dice_button_->setBounds(x + (dice_size - die) / 2, static_cast<int>(draw_centre_y) - die / 2, die, die);
     x += dice_size + space;
     shuffle_->setBounds(x, bounds_centre_y - shuffle_d / 2 - bounds_pad, shuffle_d, shuffle_d + 2 * bounds_pad);
