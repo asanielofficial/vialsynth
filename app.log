@@ -1,0 +1,221 @@
+JUCE v6.0.5
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_ChangeProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_ChangeProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_ChangeProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_ChangeProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_ChangeProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_ChangeProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_ChangeProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_ChangeProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+JUCE Assertion failure in juce_LookAndFeel.cpp:85
+Cannot connect to server socket err = No such file or directory
+Cannot connect to server request channel
+jack server is not running or cannot be started
+JackShmReadWritePtr::~JackShmReadWritePtr - Init not done for -1, skipping unlock
+JackShmReadWritePtr::~JackShmReadWritePtr - Init not done for -1, skipping unlock
+Unable to connect to JACK server
+Cannot connect to server socket err = No such file or directory
+Cannot connect to server request channel
+jack server is not running or cannot be started
+JackShmReadWritePtr::~JackShmReadWritePtr - Init not done for -1, skipping unlock
+JackShmReadWritePtr::~JackShmReadWritePtr - Init not done for -1, skipping unlock
+Unable to connect to JACK server
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
+ERROR: X returned BadAtom (invalid Atom parameter) for operation X_GetProperty
