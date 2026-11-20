@@ -157,6 +157,8 @@ class OscillatorSection : public SynthSection, public PresetSelector::Listener,
     std::unique_ptr<ShapeButton> spectral_morph_type_selector_;
     std::unique_ptr<SynthSlider> spectral_morph_amount_;
     std::unique_ptr<SynthSlider> shuffle_;
+    Rectangle<int> random_mix_label_, random_shuffle_label_;   // Random Amplitudes label pills (empty otherwise)
+    float random_font_size_ = 8.0f;
     Rectangle<int> spectral_cell_;   // the whole cell of the Spectral Morph knob (the knob itself shrinks for Random Amplitudes)
     std::unique_ptr<OpenGlShapeButton> dice_button_;
     std::unique_ptr<OpenGlShapeButton> curve_button_;

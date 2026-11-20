@@ -138,7 +138,7 @@ class ModulationDestination : public Component {
 
       if (!rectangle_ && rotary_) {
         float offset = destination_slider_->findValue(Skin::kKnobOffset);
-        float rotary_width = size_multiple_ * destination_slider_->findValue(Skin::kKnobModMeterArcSize);
+        float rotary_width = destination_slider_->getKnobSizeScale() * destination_slider_->findValue(Skin::kKnobModMeterArcSize);
         float x = (width - rotary_width) / 2.0f;
         float y = offset + (height - rotary_width) / 2.0f;
         return Rectangle<float>(x, y, rotary_width, rotary_width);
