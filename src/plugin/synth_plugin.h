@@ -30,6 +30,8 @@ class SynthPlugin : public SynthBase, public AudioProcessor, public ValueBridge:
     static constexpr int kSetProgramWaitMilliseconds = 500;
 
     SynthPlugin();
+    static AudioProcessor::BusesProperties getBusesProperties();
+    bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
     virtual ~SynthPlugin();
 
     SynthGuiInterface* getGuiInterface() override;

@@ -20,7 +20,17 @@
 #include "sound_engine.h"
 #include "load_save.h"
 
-SynthPlugin::SynthPlugin() {
+// One stereo output and nothing else, so every layout a host or validator asks for can be checked simply and the
+// default layout can always be restored.
+AudioProcessor::BusesProperties SynthPlugin::getBusesProperties() {
+  return BusesProperties().withOutput("Output", AudioChannelSet::stereo(), true);
+}
+
+bool SynthPlugin::isBusesLayoutSupported(const BusesLayout& layouts) const {
+  return layouts.getMainOutputChannelSet() == AudioChannelSet::stereo() && layouts.inputBuses.isEmpty();
+}
+
+SynthPlugin::SynthPlugin() : AudioProcessor(getBusesProperties()) {
   vial_debug::log("SynthPlugin: constructing");
   last_seconds_time_ = 0.0;
 
