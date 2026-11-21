@@ -53,7 +53,7 @@
       <FILE id="GOOCrx" name="phaser.svg" compile="0" resource="1" file="../icons/phaser.svg"/>
       <FILE id="Ntm9vs" name="reverb.svg" compile="0" resource="1" file="../icons/reverb.svg"/>
       <FILE id="SZ9gXr" name="shuffle.svg" compile="0" resource="1" file="../icons/shuffle.svg"/>
-      <FILE id="EcXAla" name="VialFX.svg" compile="0" resource="1" file="../icons/VialFX.svg"/>
+      <FILE id="EcXAla" name="VialSynth.svg" compile="0" resource="1" file="../icons/VialSynth.svg"/>
     </GROUP>
     <GROUP id="{BC980CC4-A19E-8E56-3DF1-64F880CCB688}" name="src">
       <GROUP id="{271AD04F-B604-D013-43F7-068157B28CDC}" name="common">

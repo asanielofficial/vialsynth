@@ -21,6 +21,7 @@
 #include "modulation_connection_processor.h"
 #include "modulation_matrix.h"
 #include "modulation_meter.h"
+#include "oscillator_popup.h"
 #include "shaders.h"
 #include "synth_gui_interface.h"
 
@@ -137,7 +138,7 @@ class ModulationDestination : public Component {
 
       if (!rectangle_ && rotary_) {
         float offset = destination_slider_->findValue(Skin::kKnobOffset);
-        float rotary_width = size_multiple_ * destination_slider_->findValue(Skin::kKnobModMeterArcSize);
+        float rotary_width = destination_slider_->getKnobSizeScale() * destination_slider_->findValue(Skin::kKnobModMeterArcSize);
         float x = (width - rotary_width) / 2.0f;
         float y = offset + (height - rotary_width) / 2.0f;
         return Rectangle<float>(x, y, rotary_width, rotary_width);
@@ -529,6 +530,14 @@ void ModulationManager::createModulationSlider(std::string name, SynthSlider* sl
 
 ModulationManager::~ModulationManager() { }
 
+void ModulationManager::detach() {
+  for (auto& modulation_button : modulation_buttons_)
+    modulation_button.second->removeListener(this);
+
+  for (auto& slider : slider_model_lookup_)
+    slider.second->removeSliderListener(this);
+}
+
 void ModulationManager::resized() {
   float meter_thickness = findValue(Skin::kKnobModMeterArcThickness);
   Colour meter_center_color = findColour(Skin::kModulationMeter, true);
@@ -683,6 +692,7 @@ void ModulationManager::startModulationMap(ModulationButton* source, const Mouse
   mouse_drag_position_ = getLocalPoint(source, e.getPosition());
   current_source_ = source;
   dragging_ = true;
+  OscillatorPopupInterface::setModulationDragActive(true);
   Rectangle<int> global_bounds = getLocalArea(current_source_, current_source_->getLocalBounds());
   Point<int> global_start = global_bounds.getCentre();
   mouse_drag_start_ = global_start;
@@ -885,6 +895,39 @@ void ModulationManager::modulationDragged(const MouseEvent& e) {
   
   mouse_drag_position_ = getLocalPoint(current_source_, e.getPosition());
   Component* component = getComponentAt(mouse_drag_position_.x, mouse_drag_position_.y);
+
+  // Small bars are hard to hit: a linear destination within a few pixels of the cursor takes the drop.
+  if (modulation_destinations_ &&
+      !dynamic_cast<ModulationDestination*>(component)) {
+    Point<int> point = modulation_destinations_->getLocalPoint(this, mouse_drag_position_);
+    int slop = std::max(6, static_cast<int>(getHeight() * 0.012f));
+    ModulationDestination* best = nullptr;
+    int best_distance = 1 << 30;
+    for (auto& destination : all_destinations_) {
+      if (!destination->isShowing() || destination->isRotary())
+        continue;
+      Rectangle<int> bounds = destination->getBounds();
+      if (!bounds.expanded(slop).contains(point) || bounds.getWidth() > getWidth() / 3)
+        continue;
+      int distance = bounds.getCentre().getDistanceFrom(point);
+      if (distance < best_distance) {
+        best_distance = distance;
+        best = destination.get();
+      }
+    }
+    if (best)
+      component = best;
+  }
+
+  // A popup window of an oscillator over the cursor takes the drop (it sits on top of the main window).
+  bool over_popup = false;
+  SynthSlider* popup_slider = OscillatorPopupInterface::sliderAtScreenPoint(e.getScreenPosition(), over_popup);
+  if (over_popup) {
+    component = nullptr;
+    if (popup_slider && destination_lookup_.count(popup_slider->getName().toStdString()))
+      component = destination_lookup_[popup_slider->getName().toStdString()];
+  }
+
   ModulationAmountKnob* hover_knob = nullptr;
   for (int i = 0; i < vital::kMaxModulationConnections; ++i) {
     if (modulation_amount_sliders_[i].get() == component)
@@ -932,6 +975,7 @@ void ModulationManager::endModulationMap() {
   temporarily_set_synth_slider_ = nullptr;
   temporarily_set_hover_slider_ = nullptr;
   dragging_ = false;
+  OscillatorPopupInterface::setModulationDragActive(false);
 
   setModulationAmounts();
   positionModulationAmountSliders();

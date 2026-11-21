@@ -96,6 +96,43 @@ SynthPresetSelector::SynthPresetSelector() : SynthSection("preset_selector"), ba
   save_button_->addListener(this);
 
   save_button_->setShape(Paths::save());
+
+  undo_button_ = std::make_unique<OpenGlShapeButton>("Undo");
+  addAndMakeVisible(undo_button_.get());
+  addOpenGlComponent(undo_button_->getGlComponent());
+  undo_button_->addListener(this);
+  undo_button_->setShape(Paths::undoRedo(32, false));
+  undo_button_->setEnabled(false);
+  undo_button_->setAlpha(0.35f);
+
+  redo_button_ = std::make_unique<OpenGlShapeButton>("Redo");
+  addAndMakeVisible(redo_button_.get());
+  addOpenGlComponent(redo_button_->getGlComponent());
+  redo_button_->addListener(this);
+  redo_button_->setShape(Paths::undoRedo(32, true));
+  redo_button_->setEnabled(false);
+  redo_button_->setAlpha(0.35f);
+
+  startTimerHz(10);
+}
+
+void SynthPresetSelector::timerCallback() {
+  SynthGuiInterface* parent = findParentComponentOfClass<SynthGuiInterface>();
+  if (parent == nullptr)
+    return;
+
+  bool can_undo = parent->getSynth()->canUndo();
+  bool can_redo = parent->getSynth()->canRedo();
+  if (can_undo != undo_enabled_) {
+    undo_enabled_ = can_undo;
+    undo_button_->setEnabled(can_undo);
+    undo_button_->setAlpha(can_undo ? 1.0f : 0.35f);
+  }
+  if (can_redo != redo_enabled_) {
+    redo_enabled_ = can_redo;
+    redo_button_->setEnabled(can_redo);
+    redo_button_->setAlpha(can_redo ? 1.0f : 0.35f);
+  }
 }
 
 SynthPresetSelector::~SynthPresetSelector() {
@@ -108,7 +145,11 @@ void SynthPresetSelector::resized() {
   int height = getHeight();
   selector_->setRoundAmount(height / 2.0f);
   int padding = kSelectorButtonPaddingHeightPercent * height;
-  selector_->setBounds(0, 0, getWidth() - 2 * height - padding, height);
+  selector_->setBounds(0, 0, getWidth() - 4 * height - padding, height);
+  redo_button_->setBounds(getWidth() - 3 * height, 0, height, height);
+  redo_button_->setShape(Paths::undoRedo(height, true));
+  undo_button_->setBounds(getWidth() - 4 * height, 0, height, height);
+  undo_button_->setShape(Paths::undoRedo(height, false));
   save_button_->setBounds(getWidth() - 2 * height, 0, height, height);
   save_button_->setShape(Paths::save(height));
   menu_button_->setBounds(getWidth() - height, 0, height, height);
@@ -128,6 +169,16 @@ void SynthPresetSelector::buttonClicked(Button* clicked_button) {
   }
   else if (clicked_button == save_button_.get())
     savePreset();
+  else if (clicked_button == undo_button_.get() || clicked_button == redo_button_.get()) {
+    SynthGuiInterface* parent = findParentComponentOfClass<SynthGuiInterface>();
+    if (parent == nullptr)
+      return;
+    if (clicked_button == undo_button_.get())
+      parent->getSynth()->undo();
+    else
+      parent->getSynth()->redo();
+    timerCallback();
+  }
 }
 
 void SynthPresetSelector::newPresetSelected(File preset) {
@@ -207,13 +258,6 @@ void SynthPresetSelector::showPopupMenu(Component* anchor) {
     options.addItem(kClearTuning, "Clear Tuning: " + getTuningName());
   
   options.addItem(-1, "");
-#if !VITAL_FX
-  std::string logged_in_as = loggedInName();
-  if (logged_in_as.empty())
-    options.addItem(kLogIn, "Log in");
-  else
-    options.addItem(kLogOut, "Log out - " + redactEmail(logged_in_as).toStdString());
-#endif
 
   if (LoadSave::getDefaultSkin().exists()) {
     options.addItem(-1, "");

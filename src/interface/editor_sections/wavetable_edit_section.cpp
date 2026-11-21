@@ -19,6 +19,7 @@
 #include "skin.h"
 #include "paths.h"
 #include "filter_section.h"
+#include "fx_tables.h"
 #include "full_interface.h"
 #include "bar_renderer.h"
 #include "load_save.h"
@@ -93,6 +94,8 @@ namespace {
       wavetable_edit_section->exportToWav();
     else if (result == WavetableEditSection::kResynthesizeWavetable)
       wavetable_edit_section->resynthesizeToWavetable();
+    else if (result == WavetableEditSection::kLoadDefaultTable)
+      wavetable_edit_section->loadDefaultWavetable();
   }
 }
 

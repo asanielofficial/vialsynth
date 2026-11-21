@@ -69,53 +69,95 @@ const char* Pythagorean_scl = (const char*) temp_binary_data_2;
 
 //================== default.vitalskin ==================
 static const unsigned char temp_binary_data_3[] =
-"{\"Background\":\"ff262a2d\",\"Body\":\"ff4c4f52\",\"Body Heading Background\":\"ff3e4245\",\"Body Rounding\":4.0,\"Body Text\":\"ffd3d6d6\",\"Border\":\"8ffffff\",\"Button Font Size\":11.0,\"Heading Text\":\"ffdfdfdf\",\"Icon Button Off\":\"ff848789"
-"\",\"Icon Button Off Hover\":\"ffaaacad\",\"Icon Button Off Pressed\":\"ff848789\",\"Icon Button On\":\"ffaa88ff\",\"Icon Button On Hover\":\"ffbda3ff\",\"Icon Button On Pressed\":\"ff906de9\",\"Icon Selector Icon\":\"ff848789\",\"Knob Arc Size\":32."
-"0,\"Knob Arc Thickness\":2.4000000953674316,\"Knob Body Size\":40.0,\"Knob Handle Length\":0.5,\"Knob Mod Amount Arc Size\":40.0,\"Knob Mod Amount Arc Thickness\":0.5,\"Knob Mod Meter Arc Size\":39.0,\"Knob Mod Meter Arc Thickness\":3.0,\"Knob Offset"
-"\":-7.0,\"Knob Section Height\":71.0,\"Label Background\":\"ff3e4245\",\"Label Background Height\":18.0,\"Label Connection\":\"393636\",\"Label Height\":11.0,\"Label Offset\":0.0,\"Label Rounding\":9.0,\"Large Padding\":10.0,\"Lighten Screen\":\"22ff"
-"ffff\",\"Linear Slider\":\"ff848789\",\"Linear Slider Disabled\":\"ff848686\",\"Linear Slider Thumb\":\"ffffffff\",\"Linear Slider Thumb Disabled\":\"ffffffff\",\"Linear Slider Unselected\":\"ff262a2e\",\"Modulation Button Dragging\":\"ffea1616\",\"M"
-"odulation Button Selected\":\"ff4c4f52\",\"Modulation Button Unselected\":\"ff2c3033\",\"Modulation Button Width\":68.0,\"Modulation Font Size\":11.0,\"Modulation Meter\":\"ff1de9b6\",\"Modulation Meter Control\":\"ff64ffda\",\"Modulation Meter Left\""
-":\"ff1de952\",\"Modulation Meter Right\":\"ff1dc2e9\",\"Overlay Screen\":\"22000000\",\"Padding\":4.0,\"Popup Background\":\"ff1d2125\",\"Popup Border\":\"ff000000\",\"Popup Selector Background\":\"ff2c3033\",\"Power Button Off\":\"ff606265\",\"Power"
-" Button On\":\"ffaa88ff\",\"Preset Text\":\"ffffffff\",\"Rotary Arc\":\"ffaa88ff\",\"Rotary Arc Disabled\":\"ff848789\",\"Rotary Arc Unselected\":\"ff4c4f52\",\"Rotary Arc Unselected Disabled\":\"ff4c4f52\",\"Rotary Body\":\"ff262a2e\",\"Rotary Body "
-"Border\":\"ff4c4f52\",\"Rotary Hand\":\"ffffffff\",\"Rotary Option Width\":20.0,\"Rotary Option X Offset\":24.0,\"Rotary Option Y Offset\":4.0,\"Shadow\":\"66000000\",\"Slider Width\":24.0,\"Text Button Height\":20.0,\"Text Component Background\":\"f"
-"f2c3033\",\"Text Component Font Size\":15.0,\"Text Component Height\":43.0,\"Text Component Label Offset\":0.0,\"Text Component Offset\":-8.0,\"Text Component Text\":\"ffffffff\",\"Text Editor Background\":\"ff2c3033\",\"Text Editor Border\":\"ffffff"
-"\",\"Text Editor Caret\":\"ffaaacad\",\"Text Editor Selection\":\"1faaabab\",\"Title Width\":32.0,\"UI Action Button\":\"ffaa88ff\",\"UI Action Button Hover\":\"ffba9fff\",\"UI Action Button Press\":\"ff906de9\",\"UI Button\":\"ff848789\",\"UI Button"
-" Hover\":\"ff939699\",\"UI Button Press\":\"ff606265\",\"UI Button Text\":\"ff111111\",\"Wavetable Draw Height\":0.10000000149011612,\"Wavetable Draw Width\":0.7200000286102295,\"Wavetable Horizontal Angle\":-0.23999999463558197,\"Wavetable Vertical "
-"Angle\":1.2200000286102295,\"Wavetable Y Offset\":0.05000000074505806,\"Widget Accent 1\":\"19aa88ff\",\"Widget Accent 2\":\"19aa88ff\",\"Widget Background\":\"ff1d2125\",\"Widget Center Line\":\"ffffffff\",\"Widget Fill Boost\":1.600000023841858,\"W"
-"idget Fill Center\":0.0,\"Widget Fill Fade\":0.30000001192092896,\"Widget Line Boost\":1.0,\"Widget Line Width\":2.0,\"Widget Margin\":5.5,\"Widget Primary 1\":\"ffaa88ff\",\"Widget Primary 2\":\"ffaa88ff\",\"Widget Primary Disabled\":\"ff4c4f52\",\""
-"Widget Rounded Corner\":9.0,\"Widget Secondary 1\":\"669f88ff\",\"Widget Secondary 2\":\"669f88ff\",\"Widget Secondary Disabled\":\"22666666\",\"overrides\":{\"Advanced\":{\"Text Button Height\":30.0,\"Widget Line Width\":1.2000000476837158,\"Widget "
-"Primary 2\":\"64aa88ff\"},\"All\":null,\"All Effects\":{\"Power Button Off\":\"ff848686\"},\"Chorus\":{\"Widget Fill Center\":-1.0},\"Compressor\":{\"Power Button On\":\"ff1de9b6\",\"Rotary Arc\":\"ff1de9b6\",\"Widget Primary 1\":\"ff1de9b6\",\"Widge"
-"t Primary 2\":\"ffffffff\",\"Widget Secondary 1\":\"ff10735b\",\"Widget Secondary 2\":\"ff0b4039\",\"Widget Secondary Disabled\":\"11ffffff\"},\"Delay\":{\"Power Button On\":\"ffff99e9\",\"Rotary Arc\":\"ffff99e9\",\"Widget Fill Center\":-1.0,\"Widge"
-"t Primary 1\":\"ffff99e9\",\"Widget Primary 2\":\"ffff99e9\",\"Widget Secondary 1\":\"66ff99e9\",\"Widget Secondary 2\":\"66ff99e9\"},\"Distortion\":{\"Power Button On\":\"ffff5252\",\"Rotary Arc\":\"ffff5252\",\"Widget Fill Center\":-1.0,\"Widget Pr"
-"imary 1\":\"ffff5252\",\"Widget Primary 2\":\"ffff5252\",\"Widget Primary Disabled\":\"ff666666\",\"Widget Secondary 1\":\"66ff5252\",\"Widget Secondary 2\":\"66ff5252\"},\"Effects Filter\":{\"Power Button On\":\"ffffb74d\",\"Rotary Arc\":\"ffffb74d\""
-",\"Widget Fill Center\":-1.0,\"Widget Primary 1\":\"ffffb74d\",\"Widget Primary 2\":\"ffff8180\",\"Widget Secondary 1\":\"64ffb74d\",\"Widget Secondary 2\":\"64ff8180\",\"Widget Secondary Disabled\":\"ff4c4c4c\"},\"Envelope\":{\"Rotary Arc\":\"ff64ff"
-"da\",\"Widget Accent 1\":\"bbffffff\",\"Widget Accent 2\":\"11ffffff\",\"Widget Center Line\":\"ff64ffda\",\"Widget Fill Center\":-1.0,\"Widget Primary 1\":\"ff1de9b6\",\"Widget Primary 2\":\"ff40c4ff\",\"Widget Secondary 1\":\"361de9b6\",\"Widget Se"
-"condary 2\":\"3640c4ff\"},\"Equalizer\":{\"Icon Button Off\":\"ff545454\",\"Icon Button Off Hover\":\"ff6b6b6b\",\"Icon Button On\":\"fffff6e1\",\"Icon Button On Hover\":\"ffffffff\",\"Icon Button On Pressed\":\"ffd1cab7\",\"Power Button On\":\"fffff"
-"6e1\",\"Rotary Arc\":\"fffff6e1\",\"Text Component Height\":30.0,\"Text Component Text\":\"ff6b6b6b\",\"Widget Primary 1\":\"fffff6e1\",\"Widget Primary 2\":\"fffff6e1\",\"Widget Primary Disabled\":\"ff666666\",\"Widget Secondary 1\":\"33fff6e1\",\"W"
-"idget Secondary 2\":\"33fff6e1\",\"Widget Secondary Disabled\":\"ff4c4c4c\"},\"Filter\":{\"Body Heading Background\":\"0\",\"Icon Button On\":\"ffffb74d\",\"Icon Button On Hover\":\"fffdcf91\",\"Icon Button On Pressed\":\"ffffb74d\",\"Power Button On"
-"\":\"ffffb74d\",\"Rotary Arc\":\"ffffb74d\",\"Widget Fill Center\":-1.0,\"Widget Primary 1\":\"ffffb74d\",\"Widget Primary 2\":\"ffff8180\",\"Widget Secondary 1\":\"64ffb74d\",\"Widget Secondary 2\":\"64ff8a80\"},\"Flanger\":{\"Power Button On\":\"ff"
-"ffd740\",\"Rotary Arc\":\"ffffd740\",\"Widget Fill Center\":-1.0,\"Widget Primary 1\":\"ffffd740\",\"Widget Primary 2\":\"ffffc900\",\"Widget Primary Disabled\":\"ff666666\",\"Widget Secondary 1\":\"66ffd740\",\"Widget Secondary 2\":\"66ffc900\",\"Wi"
-"dget Secondary Disabled\":\"ff4c4c4c\"},\"Header\":{\"Body\":\"333333\",\"Body Heading Background\":\"0\",\"Popup Selector Background\":\"ff14181b\",\"Widget Accent 1\":\"ffff1744\",\"Widget Accent 2\":\"ffff5252\",\"Widget Background\":\"ff161718\","
-"\"Widget Line Width\":1.2000000476837158,\"Widget Primary 1\":\"ffaa88ff\",\"Widget Primary 2\":\"64aa88ff\",\"Widget Secondary 1\":\"ff1de9b6\",\"Widget Secondary 2\":\"ff80d8ff\"},\"Keyboard\":{\"Widget Accent 1\":\"ff848789\",\"Widget Accent 2\":\""
-"32ffffff\",\"Widget Primary 1\":\"ffaa88ff\",\"Widget Rounded Corner\":4.0,\"Widget Secondary 1\":\"ff4c4f52\",\"Widget Secondary 2\":\"ff262a2e\"},\"Lfo\":{\"Icon Button On\":\"ff64ffda\",\"Icon Button On Hover\":\"ffb1ffec\",\"Icon Button On Presse"
-"d\":\"ff32d6bf\",\"Rotary Arc\":\"ff64ffda\",\"Text Component Background\":\"ff2c3033\",\"Widget Accent 1\":\"bbffffff\",\"Widget Accent 2\":\"11ffffff\",\"Widget Center Line\":\"ff64ffda\",\"Widget Fill Center\":-1.0,\"Widget Primary 1\":\"ff1de9b6\""
-",\"Widget Primary 2\":\"ff40c4ff\",\"Widget Secondary 1\":\"361de9b6\",\"Widget Secondary 2\":\"3640c4ff\"},\"Logo\":{\"Body Heading Background\":\"0\",\"Shadow\":\"ff000000\",\"Widget Primary 1\":\"ffaa88ff\",\"Widget Primary 2\":\"ff8464d2\",\"Widg"
-"et Secondary 1\":\"ffffffff\",\"Widget Secondary 2\":\"ffeeeeee\"},\"Macro\":{\"Knob Offset\":0.0,\"Label Background\":\"0\",\"Label Offset\":19.0,\"Rotary Option Width\":22.0,\"Rotary Option X Offset\":25.0,\"Rotary Option Y Offset\":24.0},\"Modulat"
-"ion Drag Drop\":{\"Label Rounding\":4.0,\"Lighten Screen\":\"5637beac\",\"Widget Accent 1\":\"bbffffff\",\"Widget Accent 2\":\"11ffffff\",\"Widget Center Line\":\"ffb6e6e6\",\"Widget Primary 1\":\"ff00e686\",\"Widget Primary 2\":\"ff0086e6\",\"Widget"
-" Secondary 1\":\"3500e686\",\"Widget Secondary 2\":\"350086e6\"},\"Modulation Matrix\":{\"Button Font Size\":14.0,\"Icon Button On\":\"ff1de9b6\",\"Icon Button On Hover\":\"ff64ffda\",\"Icon Button On Pressed\":\"ff00bfa5\",\"Widget Accent 1\":\"bbff"
-"ffff\",\"Widget Accent 2\":\"11ffffff\",\"Widget Center Line\":\"ff64ffda\",\"Widget Primary 1\":\"ff1de9b6\",\"Widget Primary 2\":\"ff40c4ff\",\"Widget Secondary 1\":\"361de9b6\",\"Widget Secondary 2\":\"3640c4ff\"},\"Oscillator\":{\"Button Font Siz"
-"e\":14.0,\"Overlay Screen\":\"aa1d2125\",\"Popup Selector Background\":\"0\",\"Rotary Option Width\":24.0,\"Rotary Option X Offset\":36.0,\"Rotary Option Y Offset\":1.0,\"Text Button Height\":30.0,\"Text Component Font Size\":13.0,\"Text Component He"
-"ight\":30.0,\"UI Action Button\":\"ff1de9b6\",\"Wavetable Draw Width\":0.7799999713897705},\"Overlays\":{\"Body\":\"ff3e4245\",\"Overlay Screen\":\"bb111111\",\"Shadow\":\"ff000000\",\"Widget Accent 1\":\"ff1de9b6\",\"Widget Primary 1\":\"ffaa88ff\","
-"\"Widget Primary 2\":\"ff8464d2\",\"Widget Secondary 1\":\"ffffffff\",\"Widget Secondary 2\":\"ffeeeeee\"},\"Phaser\":{\"Power Button On\":\"ff40cfff\",\"Rotary Arc\":\"ff40cfff\",\"Widget Fill Center\":-1.0,\"Widget Primary 1\":\"ff40c4ff\",\"Widget"
-" Primary 2\":\"ff00b0ff\",\"Widget Primary Disabled\":\"ff666666\",\"Widget Secondary 1\":\"6640c4ff\",\"Widget Secondary 2\":\"6600b0ff\",\"Widget Secondary Disabled\":\"ff4c4c4c\"},\"Popup Browser\":{\"Body\":\"ff1d2125\",\"Border\":\"ff848789\",\""
-"Icon Button Off\":\"ffaaacad\",\"Icon Button Off Hover\":\"ffd3d6d6\",\"UI Action Button\":\"ff1de9b6\",\"UI Action Button Hover\":\"ff64ffda\",\"UI Action Button Press\":\"ff11cbb2\",\"Widget Primary 1\":\"ff906de9\"},\"Preset Browser\":{\"Button Fo"
-"nt Size\":14.0,\"UI Action Button\":\"ff1de9b6\",\"UI Action Button Hover\":\"ff64ffda\",\"UI Action Button Press\":\"ff11cbb2\",\"Widget Rounded Corner\":5.0},\"RandomLfo\":{\"Icon Button On\":\"ff64ffda\",\"Icon Button On Hover\":\"ffb1ffec\",\"Ico"
-"n Button On Pressed\":\"ff32d6bf\",\"Popup Background\":\"ff2c2e2f\",\"Rotary Arc\":\"ff64ffda\",\"Widget Accent 1\":\"bbffffff\",\"Widget Accent 2\":\"11ffffff\",\"Widget Center Line\":\"ff64ffda\",\"Widget Fill Center\":-1.0,\"Widget Primary 1\":\""
-"ff1de9b6\",\"Widget Primary 2\":\"ff40c4ff\",\"Widget Secondary 1\":\"361de9b6\",\"Widget Secondary 2\":\"3640c4ff\"},\"Reverb\":{\"Power Button On\":\"ff8fa0ff\",\"Rotary Arc\":\"ff8fa0ff\",\"Widget Primary 1\":\"ff9898ff\",\"Widget Primary 2\":\"ff"
-"8fa0ff\",\"Widget Secondary 1\":\"668fa0ff\",\"Widget Secondary 2\":\"668fa0ff\"},\"Sample\":{\"Button Font Size\":14.0,\"Knob Section Height\":70.0,\"Popup Selector Background\":\"0\",\"Text Button Height\":30.0,\"Text Component Font Size\":13.0,\"T"
-"ext Component Height\":30.0,\"UI Action Button\":\"ff1de9b6\",\"Widget Fill Boost\":2.5},\"Sub\":{\"Text Component Font Size\":12.0,\"Text Component Offset\":0.0,\"Widget Secondary Disabled\":\"ff4c4c4c\"},\"Voice\":null,\"Wavetable Editor\":{\"Label"
-" Rounding\":12.0,\"Lighten Screen\":\"19ffffff\",\"Popup Selector Background\":\"ff14181b\",\"Text Component Offset\":0.0,\"UI Button\":\"ff2c3033\",\"UI Button Hover\":\"ff3e4245\",\"UI Button Press\":\"ff1d2125\",\"UI Button Text\":\"ff64ffda\",\"W"
-"idget Accent 1\":\"bbffffff\",\"Widget Accent 2\":\"11ffffff\",\"Widget Center Line\":\"ffaa88ff\",\"Widget Primary Disabled\":\"ff848789\",\"Widget Secondary Disabled\":\"66848789\"}},\"synth_version\":65541}";
+"{\"Background\":\"ff262a2d\",\"Body\":\"ff4c4f52\",\"Body Heading Background\":\"ff3e4245\",\"Body Rounding\":4.0,\"Body Text\":\"ffd3d6d"
+"6\",\"Border\":\"8ffffff\",\"Button Font Size\":11.0,\"Heading Text\":\"ffdfdfdf\",\"Icon Button Off\":\"ff848789\",\"Icon Button Off Ho"
+"ver\":\"ffaaacad\",\"Icon Button Off Pressed\":\"ff848789\",\"Icon Button On\":\"ff93ff88\",\"Icon Button On Hover\":\"ffa3ffb2\",\"Icon"
+" Button On Pressed\":\"ff6de96d\",\"Icon Selector Icon\":\"ff848789\",\"Knob Arc Size\":32.0,\"Knob Arc Thickness\":2.4000000953674"
+"316,\"Knob Body Size\":40.0,\"Knob Handle Length\":0.5,\"Knob Mod Amount Arc Size\":40.0,\"Knob Mod Amount Arc Thickness\":0.5,\""
+"Knob Mod Meter Arc Size\":39.0,\"Knob Mod Meter Arc Thickness\":3.0,\"Knob Offset\":-7.0,\"Knob Section Height\":71.0,\"Knob Sha"
+"dow Offset\":0.0,\"Knob Shadow Width\":0.0,\"Label Background\":\"ff3e4245\",\"Label Background Height\":18.0,\"Label Connection\":"
+"\"393636\",\"Label Height\":11.0,\"Label Offset\":0.0,\"Label Rounding\":9.0,\"Large Padding\":10.0,\"Lighten Screen\":\"22ffffff\",\"L"
+"inear Slider\":\"ff848789\",\"Linear Slider Disabled\":\"ff848686\",\"Linear Slider Thumb\":\"ffffffff\",\"Linear Slider Thumb Disab"
+"led\":\"ffffffff\",\"Linear Slider Unselected\":\"ff262a2e\",\"Modulation Button Dragging\":\"ffea1616\",\"Modulation Button Selecte"
+"d\":\"ff4c4f52\",\"Modulation Button Unselected\":\"ff2c3033\",\"Modulation Button Width\":68.0,\"Modulation Font Size\":11.0,\"Modu"
+"lation Meter\":\"ff44e91d\",\"Modulation Meter Control\":\"ff00b015\",\"Modulation Meter Left\":\"ff1de952\",\"Modulation Meter Righ"
+"t\":\"ff1dc2e9\",\"Overlay Screen\":\"22000000\",\"Padding\":4.0,\"Popup Background\":\"ff1d2125\",\"Popup Border\":\"ff000000\",\"Popup S"
+"elector Background\":\"ff2c3033\",\"Power Button Off\":\"ff606265\",\"Power Button On\":\"ff2ab62e\",\"Preset Text\":\"ffffffff\",\"Rota"
+"ry Arc\":\"ff25992a\",\"Rotary Arc Disabled\":\"ff848789\",\"Rotary Arc Unselected\":\"ff4c4f52\",\"Rotary Arc Unselected Disabled\":"
+"\"ff4c4f52\",\"Rotary Body\":\"ff262a2e\",\"Rotary Body Border\":\"ff4c4f52\",\"Rotary Hand\":\"ffffffff\",\"Rotary Option Width\":20.0,"
+"\"Rotary Option X Offset\":24.0,\"Rotary Option Y Offset\":4.0,\"Shadow\":\"66000000\",\"Slider Width\":24.0,\"Text Button Height\":"
+"20.0,\"Text Component Background\":\"ff2c3033\",\"Text Component Font Size\":15.0,\"Text Component Height\":43.0,\"Text Component"
+" Label Offset\":0.0,\"Text Component Offset\":-8.0,\"Text Component Text\":\"ffffffff\",\"Text Editor Background\":\"ff2c3033\",\"Te"
+"xt Editor Border\":\"ffffff\",\"Text Editor Caret\":\"ffaaacad\",\"Text Editor Selection\":\"1faaabab\",\"Title Width\":32.0,\"UI Acti"
+"on Button\":\"ff88ff88\",\"UI Action Button Hover\":\"ff9fffa4\",\"UI Action Button Press\":\"ff6de96d\",\"UI Button\":\"ff848789\",\"UI"
+" Button Hover\":\"ff939699\",\"UI Button Press\":\"ff606265\",\"UI Button Text\":\"ff111111\",\"Wavetable Draw Height\":0.10000000149"
+"011612,\"Wavetable Draw Width\":0.7200000286102295,\"Wavetable Horizontal Angle\":-0.23999999463558197,\"Wavetable Vertical A"
+"ngle\":1.2200000286102295,\"Wavetable Y Offset\":0.05000000074505806,\"Widget Accent 1\":\"19aa88ff\",\"Widget Accent 2\":\"19aa88"
+"ff\",\"Widget Background\":\"ff1d2125\",\"Widget Center Line\":\"ffffffff\",\"Widget Fill Boost\":1.600000023841858,\"Widget Fill Ce"
+"nter\":0.0,\"Widget Fill Fade\":0.30000001192092896,\"Widget Line Boost\":1.0,\"Widget Line Width\":2.0,\"Widget Margin\":5.5,\"Wi"
+"dget Primary 1\":\"ff42c131\",\"Widget Primary 2\":\"ff22a21b\",\"Widget Primary Disabled\":\"ff4c4f52\",\"Widget Rounded Corner\":9."
+"0,\"Widget Secondary 1\":\"665bce43\",\"Widget Secondary 2\":\"6636572e\",\"Widget Secondary Disabled\":\"22666666\",\"overrides\":{\"A"
+"dvanced\":{\"Text Button Height\":30.0,\"Widget Line Width\":1.2000000476837158,\"Widget Primary 2\":\"6428f023\"},\"All\":null,\"Al"
+"l Effects\":{\"Power Button Off\":\"ff848686\"},\"Chorus\":{\"Widget Fill Center\":-1.0},\"Compressor\":{\"Power Button On\":\"ff1de9b"
+"6\",\"Rotary Arc\":\"ff1de9b6\",\"Widget Primary 1\":\"ff1de9b6\",\"Widget Primary 2\":\"ffffffff\",\"Widget Secondary 1\":\"ff10735b\",\""
+"Widget Secondary 2\":\"ff0b4039\",\"Widget Secondary Disabled\":\"11ffffff\"},\"Delay\":{\"Power Button On\":\"ffff99e9\",\"Rotary Arc"
+"\":\"ffff99e9\",\"Widget Fill Center\":-1.0,\"Widget Primary 1\":\"ffff99e9\",\"Widget Primary 2\":\"ffff99e9\",\"Widget Secondary 1\":"
+"\"66ff99e9\",\"Widget Secondary 2\":\"66ff99e9\"},\"Distortion\":{\"Power Button On\":\"ffff5252\",\"Rotary Arc\":\"ffff5252\",\"Widget F"
+"ill Center\":-1.0,\"Widget Primary 1\":\"ffff5252\",\"Widget Primary 2\":\"ffff5252\",\"Widget Primary Disabled\":\"ff666666\",\"Widge"
+"t Secondary 1\":\"66ff5252\",\"Widget Secondary 2\":\"66ff5252\"},\"Effects Filter\":{\"Power Button On\":\"ffffb74d\",\"Rotary Arc\":\""
+"ffffb74d\",\"Widget Fill Center\":-1.0,\"Widget Primary 1\":\"ffffb74d\",\"Widget Primary 2\":\"ffff8180\",\"Widget Secondary 1\":\"64"
+"ffb74d\",\"Widget Secondary 2\":\"64ff8180\",\"Widget Secondary Disabled\":\"ff4c4c4c\"},\"Envelope\":{\"Rotary Arc\":\"ff64ff73\",\"Wid"
+"get Accent 1\":\"bbffffff\",\"Widget Accent 2\":\"11ffffff\",\"Widget Center Line\":\"ff64ff85\",\"Widget Fill Center\":-1.0,\"Widget "
+"Primary 1\":\"ff38d86d\",\"Widget Primary 2\":\"ff89ff40\",\"Widget Secondary 1\":\"3644e91d\",\"Widget Secondary 2\":\"3622be1a\"},\"Eq"
+"ualizer\":{\"Icon Button Off\":\"ff545454\",\"Icon Button Off Hover\":\"ff6b6b6b\",\"Icon Button On\":\"fffff6e1\",\"Icon Button On Ho"
+"ver\":\"ffffffff\",\"Icon Button On Pressed\":\"ffd1cab7\",\"Power Button On\":\"fffff6e1\",\"Rotary Arc\":\"fffff6e1\",\"Text Component"
+" Height\":30.0,\"Text Component Text\":\"ff6b6b6b\",\"Widget Primary 1\":\"fffff6e1\",\"Widget Primary 2\":\"fffff6e1\",\"Widget Prima"
+"ry Disabled\":\"ff666666\",\"Widget Secondary 1\":\"33fff6e1\",\"Widget Secondary 2\":\"33fff6e1\",\"Widget Secondary Disabled\":\"ff4"
+"c4c4c\"},\"Filter\":{\"Body Heading Background\":\"0\",\"Icon Button On\":\"ff5a4dff\",\"Icon Button On Hover\":\"ffd191fd\",\"Icon Butt"
+"on On Pressed\":\"fff74dff\",\"Power Button On\":\"ff774dff\",\"Rotary Arc\":\"ff4d55ff\",\"Widget Fill Center\":-1.0,\"Widget Primary"
+" 1\":\"ff9631da\",\"Widget Primary 2\":\"ff4709e4\",\"Widget Secondary 1\":\"641e32ca\",\"Widget Secondary 2\":\"64500397\"},\"Flanger\":"
+"{\"Power Button On\":\"ffffd740\",\"Rotary Arc\":\"ffffd740\",\"Widget Fill Center\":-1.0,\"Widget Primary 1\":\"ffffd740\",\"Widget Pr"
+"imary 2\":\"ffffc900\",\"Widget Primary Disabled\":\"ff666666\",\"Widget Secondary 1\":\"66ffd740\",\"Widget Secondary 2\":\"66ffc900\""
+",\"Widget Secondary Disabled\":\"ff4c4c4c\"},\"Freq Shifter\":null,\"Header\":{\"Body\":\"333333\",\"Body Heading Background\":\"0\",\"Po"
+"pup Selector Background\":\"ff14181b\",\"Widget Accent 1\":\"ffff1744\",\"Widget Accent 2\":\"ffff5252\",\"Widget Background\":\"ff161"
+"718\",\"Widget Line Width\":1.2000000476837158,\"Widget Primary 1\":\"ff38ee0c\",\"Widget Primary 2\":\"640f2b14\",\"Widget Secondar"
+"y 1\":\"ff00ac35\",\"Widget Secondary 2\":\"ff10160f\"},\"Keyboard\":{\"Widget Accent 1\":\"ff848789\",\"Widget Accent 2\":\"32ffffff\",\""
+"Widget Primary 1\":\"ff257a0e\",\"Widget Rounded Corner\":4.0,\"Widget Secondary 1\":\"ff4c4f52\",\"Widget Secondary 2\":\"ff262a2e\""
+"},\"Lfo\":{\"Icon Button On\":\"ff64ffda\",\"Icon Button On Hover\":\"ffb1ffec\",\"Icon Button On Pressed\":\"ff32d6bf\",\"Rotary Arc\":"
+"\"ff22eb00\",\"Text Component Background\":\"ff2c3033\",\"Widget Accent 1\":\"bbffffff\",\"Widget Accent 2\":\"11ffffff\",\"Widget Cent"
+"er Line\":\"ff89ff64\",\"Widget Fill Center\":-1.0,\"Widget Primary 1\":\"ff34402f\",\"Widget Primary 2\":\"ff67ee31\",\"Widget Second"
+"ary 1\":\"3630e91d\",\"Widget Secondary 2\":\"3640ffb6\"},\"Logo\":{\"Body Heading Background\":\"0\",\"Shadow\":\"ff000000\",\"Widget Pri"
+"mary 1\":\"ff25c419\",\"Widget Primary 2\":\"ff09240d\",\"Widget Secondary 1\":\"ffffffff\",\"Widget Secondary 2\":\"ffeeeeee\"},\"Macro"
+"\":{\"Knob Offset\":0.0,\"Label Background\":\"0\",\"Label Offset\":19.0,\"Rotary Option Width\":22.0,\"Rotary Option X Offset\":25.0"
+",\"Rotary Option Y Offset\":24.0},\"Modulation Drag Drop\":{\"Label Rounding\":4.0,\"Lighten Screen\":\"5637beac\",\"Widget Accent "
+"1\":\"bbffffff\",\"Widget Accent 2\":\"11ffffff\",\"Widget Center Line\":\"ffb6e6e6\",\"Widget Primary 1\":\"ff00e686\",\"Widget Primary"
+" 2\":\"ff0086e6\",\"Widget Secondary 1\":\"3500e686\",\"Widget Secondary 2\":\"350086e6\"},\"Modulation Matrix\":{\"Button Font Size\":"
+"14.0,\"Icon Button On\":\"ff1de93f\",\"Icon Button On Hover\":\"ff7eff64\",\"Icon Button On Pressed\":\"ff05bf00\",\"Widget Accent 1\""
+":\"bbffffff\",\"Widget Accent 2\":\"11ffffff\",\"Widget Center Line\":\"ff64ff89\",\"Widget Primary 1\":\"ff49e91d\",\"Widget Primary 2"
+"\":\"ff80ff40\",\"Widget Secondary 1\":\"361de957\",\"Widget Secondary 2\":\"3689ff40\"},\"Morph\":null,\"Oscillator\":{\"Button Font Si"
+"ze\":14.0,\"Overlay Screen\":\"aa1d2125\",\"Popup Selector Background\":\"0\",\"Rotary Option Width\":24.0,\"Rotary Option X Offset\""
+":36.0,\"Rotary Option Y Offset\":1.0,\"Text Button Height\":30.0,\"Text Component Font Size\":13.0,\"Text Component Height\":30."
+"0,\"UI Action Button\":\"ff1de9b6\",\"Wavetable Draw Width\":0.7799999713897705},\"Overlays\":{\"Body\":\"ff3e4245\",\"Overlay Screen"
+"\":\"bb111111\",\"Shadow\":\"ff000000\",\"Widget Accent 1\":\"ff4ee91d\",\"Widget Primary 1\":\"ff21e800\",\"Widget Primary 2\":\"ff4bb258"
+"\",\"Widget Secondary 1\":\"ffffffff\",\"Widget Secondary 2\":\"ffeeeeee\"},\"Phaser\":{\"Power Button On\":\"ff40cfff\",\"Rotary Arc\":\""
+"ff40cfff\",\"Widget Fill Center\":-1.0,\"Widget Primary 1\":\"ff40c4ff\",\"Widget Primary 2\":\"ff00b0ff\",\"Widget Primary Disabled"
+"\":\"ff666666\",\"Widget Secondary 1\":\"6640c4ff\",\"Widget Secondary 2\":\"6600b0ff\",\"Widget Secondary Disabled\":\"ff4c4c4c\"},\"Pi"
+"tch Shifter\":null,\"Popup Browser\":{\"Body\":\"ff1d2125\",\"Border\":\"ff848789\",\"Icon Button Off\":\"ffaaacad\",\"Icon Button Off H"
+"over\":\"ffd3d6d6\",\"UI Action Button\":\"ff1de957\",\"UI Action Button Hover\":\"ff64ff90\",\"UI Action Button Press\":\"ff11cb3d\",\""
+"Widget Primary 1\":\"ff6de970\"},\"Preset Browser\":{\"Button Font Size\":14.0,\"UI Action Button\":\"ff1de974\",\"UI Action Button "
+"Hover\":\"ff64ff9f\",\"UI Action Button Press\":\"ff11cb61\",\"Widget Rounded Corner\":5.0},\"RandomLfo\":{\"Icon Button On\":\"ff64ff"
+"da\",\"Icon Button On Hover\":\"ffb1ffec\",\"Icon Button On Pressed\":\"ff32d6bf\",\"Popup Background\":\"ff2c2e2f\",\"Rotary Arc\":\"ff"
+"64ffda\",\"Widget Accent 1\":\"bbffffff\",\"Widget Accent 2\":\"11ffffff\",\"Widget Center Line\":\"ff64ffda\",\"Widget Fill Center\":-"
+"1.0,\"Widget Primary 1\":\"ff1de9b6\",\"Widget Primary 2\":\"ff40c4ff\",\"Widget Secondary 1\":\"361de9b6\",\"Widget Secondary 2\":\"36"
+"40c4ff\"},\"Reverb\":{\"Power Button On\":\"ff8fa0ff\",\"Rotary Arc\":\"ff8fa0ff\",\"Widget Primary 1\":\"ff9898ff\",\"Widget Primary 2\""
+":\"ff8fa0ff\",\"Widget Secondary 1\":\"668fa0ff\",\"Widget Secondary 2\":\"668fa0ff\"},\"Sample\":{\"Button Font Size\":14.0,\"Knob Sec"
+"tion Height\":70.0,\"Popup Background\":\"ff000000\",\"Popup Selector Background\":\"0\",\"Text Button Height\":30.0,\"Text Componen"
+"t Font Size\":13.0,\"Text Component Height\":30.0,\"UI Action Button\":\"ff1de9b6\",\"Widget Fill Boost\":2.5},\"Sub\":{\"Text Compo"
+"nent Font Size\":12.0,\"Text Component Offset\":0.0,\"Widget Secondary Disabled\":\"ff4c4c4c\"},\"Tremolo\":null,\"Utility\":null,\""
+"Vibrato\":null,\"Voice\":null,\"Wavetable Editor\":{\"Label Rounding\":12.0,\"Lighten Screen\":\"19ffffff\",\"Popup Selector Backgro"
+"und\":\"ff14181b\",\"Text Component Offset\":0.0,\"UI Button\":\"ff2c3033\",\"UI Button Hover\":\"ff3e4245\",\"UI Button Press\":\"ff1d2"
+"125\",\"UI Button Text\":\"ff64ff94\",\"Widget Accent 1\":\"bbffffff\",\"Widget Accent 2\":\"11ffffff\",\"Widget Center Line\":\"ff88ffb"
+"0\",\"Widget Primary Disabled\":\"ff848789\",\"Widget Secondary Disabled\":\"66848789\"}},\"synth_version\":65542}";
 
 const char* default_vitalskin = (const char*) temp_binary_data_3;
 
@@ -9091,23 +9133,14 @@ static const unsigned char temp_binary_data_22[] =
 
 const char* shuffle_svg = (const char*) temp_binary_data_22;
 
-//================== VialFX.svg ==================
+//================== VialSynth.svg ==================
 static const unsigned char temp_binary_data_23[] =
 "<svg width=\"387\" height=\"387\" viewBox=\"0 0 387 387\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n"
-"<path d=\"M184.5 223.445L261.271 101.032C262.482 101.69 263.773 102.226 265.137 102.63C267.859 103.435 270.802 102.909 273.076 101.21C275.351 99.511 276.69 96.8389 276.69 94V88.065"
-"4H310.94C311.307 91.8867 312.939 95.3608 315.72 98.1416C318.901 101.323 322.991 103 327.469 103C327.738 103 328.004 102.985 328.267 102.962L184.449 332.144L30.1709 86.1436H98.3916L"
-"184.5 223.445ZM130.201 116.163C149.383 108.232 177.924 112.561 184.156 124.556C188.395 132.711 213.317 131.12 233.419 124.738L184.499 202.742L130.201 116.163ZM251.457 64.1426C251.5"
-"1 65.1379 251.726 66.1198 252.102 67.0469C251.402 68.3272 251.003 69.7964 251.003 71.3584V79.1436H14C11.2386 79.1436 9 76.904 9 74.1426V69.1426C9.00026 66.3814 11.2387 64.1426 14 6"
-"4.1426H251.457Z\" fill=\"black\"/>\n"
-"<path d=\"M267.69 79.0654V94C265.435 93.3327 263.586 92.0514 262.145 90.1562C260.717 88.2477 260.003 86.0856 260.003 83.6699V71.3579H313.875V79.0654H267.69ZM313.415 63.6704H260.443"
-"C261.111 61.4149 262.392 59.5731 264.287 58.145C266.196 56.7036 268.358 55.9829 270.773 55.9829H303.085C305.501 55.9829 307.656 56.7036 309.551 58.145C311.46 59.5731 312.748 61.414"
-"9 313.415 63.6704ZM373.113 86.3926C373.113 88.5013 372.373 90.2964 370.891 91.7778C369.41 93.2593 367.615 94 365.506 94V83.4097L354.415 80.4468L369.109 76.5029L373.113 77.584V86.39"
-"26ZM373.113 63.5703V72.2388L327.469 84.4707V94C325.36 94 323.565 93.2593 322.083 91.7778C320.602 90.2964 319.861 88.5013 319.861 86.3926V78.625L365.506 66.3931V55.9629C367.615 55.9"
-"629 369.41 56.7036 370.891 58.1851C372.373 59.6665 373.113 61.4616 373.113 63.5703ZM339.701 68.6353L325.006 72.5591L319.861 71.1777V63.5703C319.861 61.4616 320.602 59.6665 322.083 "
-"58.1851C323.565 56.7036 325.36 55.9629 327.469 55.9629V65.3521L339.701 68.6353Z\" fill=\"black\"/>\n"
+"<path d=\"M184.5 223.445L261.271 101.032C262.482 101.69 263.773 102.226 265.137 102.63C267.859 103.435 270.802 102.909 273.076 101.21C275.351 99.511 276.69 96.8389 276.69 94V88.0654H310.94C311.307 91.8867 312.939 95.3608 315.72 98.1416C318.901 101.323 322.991 103 327.469 103C327.738 103 328.004 102.985 328.267 102.962L184.449 332.144L30.1709 86.1436H98.3916L184.5 223.445ZM130.201 116.163C149.383 108.232 177.924 112.561 184.156 124.556C188.395 132.711 213.317 131.12 233.419 124.738L184.499 202.742L130.201 116.163ZM251.457 64.1426C251.51 65.1379 251.726 66.1198 252.102 67.0469C251.402 68.3272 251.003 69.7964 251.003 71.3584V79.1436H14C11.2386 79.1436 9 76.904 9 74.1426V69.1426C9.00026 66.3814 11.2387 64.1426 14 64.1426H251.457Z\" fill=\"black\"/>\n"
+"<path d=\"M276.300 56.000L263.200 56.000A3.200 3.200 0 0 0 263.200 62.400L276.300 62.400A3.200 3.200 0 0 0 276.300 56.000ZM260.000 59.200L260.000 75.000A3.200 3.200 0 0 0 266.400 75.000L266.400 59.200A3.200 3.200 0 0 0 260.000 59.200ZM263.200 78.200L276.300 78.200A3.200 3.200 0 0 0 276.300 71.800L263.200 71.800A3.200 3.200 0 0 0 263.200 78.200ZM273.100 75.000L273.100 90.800A3.200 3.200 0 0 0 279.500 90.800L279.500 75.000A3.200 3.200 0 0 0 273.100 75.000ZM276.300 87.600L263.200 87.600A3.200 3.200 0 0 0 263.200 94.000L276.300 94.000A3.200 3.200 0 0 0 276.300 87.600ZM283.644 60.425L290.194 76.225A3.200 3.200 0 0 0 296.106 73.775L289.556 57.975A3.200 3.200 0 0 0 283.644 60.425ZM296.744 57.975L290.194 73.775A3.200 3.200 0 0 0 296.106 76.225L302.656 60.425A3.200 3.200 0 0 0 296.744 57.975ZM289.950 75.000L289.950 90.800A3.200 3.200 0 0 0 296.350 90.800L296.350 75.000A3.200 3.200 0 0 0 289.950 75.000ZM313.200 90.800L313.200 59.200A3.200 3.200 0 0 0 306.800 59.200L306.800 90.800A3.200 3.200 0 0 0 313.200 90.800ZM307.044 60.425L320.144 92.025A3.200 3.200 0 0 0 326.056 89.575L312.956 57.975A3.200 3.200 0 0 0 307.044 60.425ZM326.300 90.800L326.300 59.200A3.200 3.200 0 0 0 319.900 59.200L319.900 90.800A3.200 3.200 0 0 0 326.300 90.800ZM333.400 62.400L346.500 62.400A3.200 3.200 0 0 0 346.500 56.000L333.400 56.000A3.200 3.200 0 0 0 333.400 62.400ZM336.750 59.200L336.750 90.800A3.200 3.200 0 0 0 343.150 90.800L343.150 59.200A3.200 3.200 0 0 0 336.750 59.200ZM353.600 59.200L353.600 90.800A3.200 3.200 0 0 0 360.000 90.800L360.000 59.200A3.200 3.200 0 0 0 353.600 59.200ZM366.700 59.200L366.700 90.800A3.200 3.200 0 0 0 373.100 90.800L373.100 59.200A3.200 3.200 0 0 0 366.700 59.200ZM356.800 78.200L369.900 78.200A3.200 3.200 0 0 0 369.900 71.800L356.800 71.800A3.200 3.200 0 0 0 356.800 78.200Z\" fill=\"black\"/>\n"
 "</svg>\n";
 
-const char* VialFX_svg = (const char*) temp_binary_data_23;
+const char* VialSynth_svg = (const char*) temp_binary_data_23;
 
 
 const char* getNamedResource (const char* resourceNameUTF8, int& numBytes)
@@ -9123,7 +9156,7 @@ const char* getNamedResource (const char* resourceNameUTF8, int& numBytes)
         case 0x34f65c2f:  numBytes = 87; return _5_Limit_scl;
         case 0x5ebfc1b1:  numBytes = 85; return _7_Limit_scl;
         case 0xd4ac7689:  numBytes = 108; return Pythagorean_scl;
-        case 0xd9fa030b:  numBytes = 10485; return default_vitalskin;
+        case 0xd9fa030b:  numBytes = 10663; return default_vitalskin;
         case 0x11764cb9:  numBytes = 119380; return DroidSansMono_ttf;
         case 0xbd046e4d:  numBytes = 77192; return LatoLight_ttf;
         case 0xdc5a21d3:  numBytes = 75136; return LatoRegular_ttf;
@@ -9143,7 +9176,7 @@ const char* getNamedResource (const char* resourceNameUTF8, int& numBytes)
         case 0xee7a107c:  numBytes = 1588; return phaser_svg;
         case 0xd06e9e77:  numBytes = 14394; return reverb_svg;
         case 0x1954101e:  numBytes = 382; return shuffle_svg;
-        case 0x0aa8c535:  numBytes = 1853; return VialFX_svg;
+        case 0x73e8c243:  numBytes = 2676; return VialSynth_svg;
         default: break;
     }
 
@@ -9176,7 +9209,7 @@ const char* namedResourceList[] =
     "phaser_svg",
     "reverb_svg",
     "shuffle_svg",
-    "VialFX_svg"
+    "VialSynth_svg"
 };
 
 const char* originalFilenames[] =
@@ -9204,7 +9237,7 @@ const char* originalFilenames[] =
     "phaser.svg",
     "reverb.svg",
     "shuffle.svg",
-    "VialFX.svg"
+    "VialSynth.svg"
 };
 
 const char* getNamedResourceOriginalFilename (const char* resourceNameUTF8)

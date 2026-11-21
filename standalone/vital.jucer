@@ -44,7 +44,7 @@
       <FILE id="QqS7z3" name="phaser.svg" compile="0" resource="1" file="../icons/phaser.svg"/>
       <FILE id="Rq21nY" name="reverb.svg" compile="0" resource="1" file="../icons/reverb.svg"/>
       <FILE id="e7nm1m" name="shuffle.svg" compile="0" resource="1" file="../icons/shuffle.svg"/>
-      <FILE id="FG9w1L" name="VialFX.svg" compile="0" resource="1" file="../icons/VialFX.svg"/>
+      <FILE id="FG9w1L" name="VialSynth.svg" compile="0" resource="1" file="../icons/VialSynth.svg"/>
     </GROUP>
     <GROUP id="{6EB9491D-275F-935A-E819-B8E979A73E01}" name="images">
       <FILE id="FH25oH" name="vital.xpm" compile="0" resource="0" file="../images/vital.xpm"/>

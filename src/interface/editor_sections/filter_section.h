@@ -27,6 +27,9 @@ class SynthSlider;
 class TextSelector;
 class TextSlider;
 
+class LineGenerator;
+class SpectralCurveEditor;
+
 class FilterSection : public SynthSection, public PresetSelector::Listener {
   public:
     static constexpr int kBlendLabelPaddingY = 4;
@@ -51,6 +54,8 @@ class FilterSection : public SynthSection, public PresetSelector::Listener {
     void positionLeftRight();
     void resized() override;
     void buttonClicked(Button* clicked_button) override;
+    void sliderValueChanged(Slider* moved_slider) override;
+    void parentHierarchyChanged() override;
     void setAllValues(vital::control_map& controls) override;
 
     void prevClicked() override;
@@ -71,6 +76,9 @@ class FilterSection : public SynthSection, public PresetSelector::Listener {
     FilterSection(String name, String suffix);
 
     void showModelKnobs();
+    void bindCurves();
+    void showCurveEditor();
+    int editedCurve() const;
     void setFilterText();
     void setLabelText();
     void notifyFilterChange();
@@ -109,6 +117,12 @@ class FilterSection : public SynthSection, public PresetSelector::Listener {
     std::unique_ptr<PlainTextComponent> filter_label_2_;
 
     std::unique_ptr<SynthSlider> blend_transpose_;
+
+    // The Custom model of the Other filters: three drawn response curves (A, B, C) over the response display.
+    std::unique_ptr<LineGenerator> placeholder_curve_;
+    std::unique_ptr<SpectralCurveEditor> curve_editors_[3];
+    std::unique_ptr<OpenGlShapeButton> edit_curve_button_;
+    bool curves_bound_ = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FilterSection)
 };

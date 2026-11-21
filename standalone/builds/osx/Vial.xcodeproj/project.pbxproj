@@ -1173,8 +1173,8 @@
 		474558D49539D4E5CDB8E4F3 = {
 			isa = PBXFileReference;
 			lastKnownFileType = file.svg;
-			name = "VialFX.svg";
-			path = "../../../icons/VialFX.svg";
+			name = "VialSynth.svg";
+			path = "../../../icons/VialSynth.svg";
 			sourceTree = "SOURCE_ROOT";
 		};
 		477448E534D21338A3EFE83E = {

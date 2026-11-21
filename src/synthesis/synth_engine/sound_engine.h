@@ -19,15 +19,18 @@
 #include "circular_queue.h"
 #include "synth_module.h"
 #include "note_handler.h"
+#include "keytrack_voices.h"
+#include "line_generator.h"
 
-class LineGenerator;
+#include <memory>
+
 class Tuning;
 
 namespace vital {
   class Decimator;
   class PeakMeter;
   class Sample;
-  class ReorderableEffectChain;
+  class FxEffectChain;
   class StereoMemory;
   class SynthVoiceHandler;
   class SynthLfo;
@@ -72,7 +75,51 @@ namespace vital {
       void enableModSource(const std::string& source);
       void disableModSource(const std::string& source);
       bool isModSourceEnabled(const std::string& source);
-      const StereoMemory* getEqualizerMemory();
+      const StereoMemory* getEqualizerMemory(int instance = 0);
+
+      // The effect chain: slots hold 0 or 1 + effectId (see FxEffectChain). Safe to call while audio runs.
+      void setEffectChain(const int* slots, int num_slots);
+      int getEffectChain(int* slots) const;
+      bool morphInChain(int instance) const;
+
+      // Drawn spectral curves of the Morph effects (lanes 2 .. 9, copy n is lane 2 + n) and of the Custom model of the
+      // Other filters (lane 10 and 11: filter 1 and 2; lanes 12 .. 19: the copies of the Filter effect). Lanes 0 and 1 are
+      // unused. Saved with the preset; the curves are not parameters.
+      static constexpr int kNumSpectralCurves = 3;
+      static constexpr int kFirstFilterLane = 2 + kMaxEffectInstances;
+      static constexpr int kNumFilterCurveSets = 2 + kMaxEffectInstances;
+      // The three oscillators' Spectral Filter / Phaser / Flanger drawings follow the filter lanes (lanes 20 .. 22).
+      static constexpr int kFirstOscLane = kFirstFilterLane + kNumFilterCurveSets;
+      static constexpr int kNumDrawingLanes = kFirstOscLane + kNumOscillators;
+      static int oscLane(int oscillator) { return kFirstOscLane + oscillator; }
+      static bool isFilterLane(int lane) { return lane >= kFirstFilterLane && lane < kFirstOscLane; }
+      static int morphLane(int instance) { return 2 + instance; }
+      static int filterLane(int filter) { return kFirstFilterLane + filter; }
+      static int filterFxLane(int instance) { return kFirstFilterLane + 2 + instance; }
+      static bool isMorphLane(int lane) { return lane >= 2 && lane < kFirstFilterLane; }
+      // Whether copy n of the Morph effect is in the effect chain (its tables are only saved with the preset then).
+      bool isMorphInUse(int instance) const { return morphInChain(instance); }
+      LineGenerator* getSpectralCurve(int lane, int index);
+      void resetSpectralCurve(int lane, int index);
+      void resetSpectralDrawings(int lane);
+      void setRandomSeed(int lane, uint32_t seed);
+      uint32_t getRandomSeed(int lane) const;
+
+      // Modulation of the points of drawn lines. Every spectral curve and every LFO shape has an id; a point's x or
+      // y is bound to one of the kNumPointMods slots (a control named pointmod_<slot + 1> of the modulation matrix).
+      static constexpr int kNumPointMods = 32;  // = LineGenerator::kMaxPointSlots
+      static constexpr int kNumPointModCurves = kNumDrawingLanes * kNumSpectralCurves + kNumLfos;
+      LineGenerator* getPointModCurve(int curve_id);
+      // Binds a point's axis to a free slot (or returns the slot it already has); -1 when none is left.
+      int bindPointMod(int curve_id, int point, int axis);
+      // Binds to a given slot (loading a preset); false if the slot is taken or the point does not exist.
+      bool bindPointModToSlot(int slot, int curve_id, int point, int axis);
+      void unbindPointMod(int slot);
+      void unbindAllPointMods();
+      int pointModCurve(int slot) const { return point_mod_curve_[slot]; }
+      static std::string pointModName(int slot) { return "pointmod_" + std::to_string(slot + 1); }
+      // The delay (host samples) the effects in the chain add: the Morph effects' FFT latency.
+      int getLatencySamples() const;
 
       void setBpm(mono_float bpm);
       void setAftertouch(mono_float note, mono_float value, int sample, int channel);
@@ -98,10 +145,23 @@ namespace vital {
       void checkOversampling();
 
     private:
+      void applyPointModulation();
+      int point_mod_curve_[kNumPointMods];
+      bool point_mod_dirty_[kNumPointModCurves] = {};
+      bool had_point_modulation_ = false;
+      Output* point_mod_outputs_[kNumPointMods] = {};
+      std::unique_ptr<Wavetable> fx_tables_[kNumFxTables];
+      std::unique_ptr<LineGenerator> spectral_curves_[kNumDrawingLanes][kNumSpectralCurves];
+
       void setOversamplingAmount(int oversampling_amount, int sample_rate);
     
       SynthVoiceHandler* voice_handler_;
-      ReorderableEffectChain* effect_chain_;
+      FxEffectChain* effect_chain_;
+      KeytrackNotes keytrack_notes_;
+      Value* fft_size_ = nullptr;
+      // The last played note, for the effects that follow it.
+      Value* midi_current_ = nullptr;
+      Value* midi_bent_ = nullptr;
       Add* output_total_;
 
       int last_oversampling_amount_;

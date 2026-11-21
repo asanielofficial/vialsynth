@@ -36,7 +36,7 @@ struct SynthGuiData {
   vital::output_map mono_modulations;
   vital::output_map poly_modulations;
   vital::output_map modulation_sources;
-  WavetableCreator* wavetable_creators[vital::kNumOscillators];
+  WavetableCreator* wavetable_creators[vital::kNumWavetableSlots];
   SynthBase* synth;
 };
 
@@ -52,6 +52,8 @@ class SynthGuiInterface {
     vital::mono_float getControlValue(const std::string& name);
 
     void notifyModulationsChanged();
+    // A window without its own gui_ (the oscillator popups) passes modulation changes on to this one.
+    void setModulationForward(SynthGuiInterface* forward) { modulation_forward_ = forward; }
     void notifyModulationValueChanged(int index);
     void connectModulation(std::string source, std::string destination);
     void connectModulation(vital::ModulationConnection* connection);
@@ -75,5 +77,6 @@ class SynthGuiInterface {
     std::unique_ptr<FullInterface> gui_;
   
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SynthGuiInterface)
+    SynthGuiInterface* modulation_forward_ = nullptr;
 };
 

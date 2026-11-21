@@ -16,6 +16,8 @@
 
 #include "line_editor.h"
 
+#include <algorithm>
+
 #include "default_look_and_feel.h"
 #include "full_interface.h"
 #include "fonts.h"
@@ -41,13 +43,15 @@ LineEditor::LineEditor(LineGenerator* line_source) :
     grid_lines_(kMaxGridSizeX + kMaxGridSizeY + 1),
     position_circle_(Shaders::kRingFragment),
     point_circles_(LineGenerator::kMaxPoints, Shaders::kRingFragment),
-    power_circles_(LineGenerator::kMaxPoints, Shaders::kCircleFragment) {
+    power_circles_(LineGenerator::kMaxPoints, Shaders::kCircleFragment),
+    mod_circles_(LineGenerator::kMaxPoints, Shaders::kRingFragment) {
   addAndMakeVisible(drag_circle_);
   addAndMakeVisible(hover_circle_);
   addAndMakeVisible(grid_lines_);
   addAndMakeVisible(position_circle_);
   addAndMakeVisible(point_circles_);
   addAndMakeVisible(power_circles_);
+  addAndMakeVisible(mod_circles_);
 
 #if !defined(NO_TEXT_ENTRY)
   value_entry_ = std::make_unique<OpenGlTextEditor>("text_entry");
@@ -98,9 +102,13 @@ LineEditor::LineEditor(LineGenerator* line_source) :
   drag_circle_.setActive(false);
   hover_circle_.setActive(false);
   setWantsKeyboardFocus(true);
+  allEditors().push_back(this);
 }
 
-LineEditor::~LineEditor() { }
+LineEditor::~LineEditor() {
+  auto& editors = allEditors();
+  editors.erase(std::remove(editors.begin(), editors.end(), this), editors.end());
+}
 
 int LineEditor::getHoverPoint(Point<float> position) {
   position.x = unpadX(position.x);
@@ -358,6 +366,14 @@ void LineEditor::respondToCallback(int point, int power, int option) {
 
     parent->saveLfo(model_->stateToJson());
   }
+  else if (option == kImportShape) {
+    for (Listener* listener : listeners_)
+      listener->importLfo();
+  }
+  else if (option == kExportShape) {
+    for (Listener* listener : listeners_)
+      listener->exportLfo();
+  }
   else if (option == kInit) {
     model_->initLinear();
     for (Listener* listener : listeners_)
@@ -497,6 +513,11 @@ void LineEditor::mouseDown(const MouseEvent& e) {
 
     options.addItem(kFlipHorizontal, "Flip Horizontal");
     options.addItem(kFlipVertical, "Flip Vertical");
+
+    if (allow_import_export_) {
+      options.addItem(kImportShape, "Import Shape");
+      options.addItem(kExportShape, "Export Shape");
+    }
 
     SynthSection* parent = findParentComponentOfClass<SynthSection>();
     int point = active_point_;
@@ -742,24 +763,24 @@ void LineEditor::resetWavePath() {
   }
 }
 
-inline float LineEditor::padY(float y) {
+float LineEditor::padY(float y) {
   float pad = size_ratio_ * kPaddingY;
   return y * (getHeight() - 2.0f * pad) / getHeight() + pad;
 }
 
-inline float LineEditor::unpadY(float y) {
+float LineEditor::unpadY(float y) {
   float pad = size_ratio_ * kPaddingY;
   return (y - pad) * getHeight() / (getHeight() - 2.0f * pad);
 }
 
-inline float LineEditor::padX(float x) {
+float LineEditor::padX(float x) {
   if (loop_)
     return x;
   float pad = size_ratio_ * kPaddingX;
   return x * (getWidth() - 2.0f * pad) / getWidth() + pad;
 }
 
-inline float LineEditor::unpadX(float x) {
+float LineEditor::unpadX(float x) {
   if (loop_)
     return x;
   float pad = size_ratio_ * kPaddingX;
@@ -773,6 +794,7 @@ void LineEditor::init(OpenGlWrapper& open_gl) {
   grid_lines_.init(open_gl);
   point_circles_.init(open_gl);
   power_circles_.init(open_gl);
+  mod_circles_.init(open_gl);
   position_circle_.init(open_gl);
 }
 
@@ -793,6 +815,10 @@ void LineEditor::renderPoints(OpenGlWrapper& open_gl, bool animate) {
 
   power_circles_.setColor(center);
   power_circles_.render(open_gl, animate);
+
+  mod_circles_.setColor(findColour(Skin::kWidgetAccent1, true));
+  mod_circles_.setAltColor(background);
+  mod_circles_.render(open_gl, animate);
 
   drag_circle_.setColor(findColour(Skin::kWidgetAccent2, true));
   drag_circle_.render(open_gl, animate);
@@ -958,12 +984,29 @@ void LineEditor::setPointPositions() {
   int num_points = model_->getNumPoints();
   point_circles_.setNumQuads(num_points);
   power_circles_.setNumQuads(num_points);
+  mod_circles_.setNumQuads(num_points);
+  mod_circles_.setThickness(size_ratio_ * kPositionWidth * kRingThickness * 0.5f);
   for (int i = 0; i < num_points; ++i) {
     Point<float> point = pairToPoint(model_->getPoint(i));
     float x = padX(width * point.x) * 2.0f / width - 1.0f;
     float y = 1.0f - padY(height * point.y) * 2.0f / height;
 
     point_circles_.setQuad(i, x - position_width * 0.5f, y - position_height * 0.5f, position_width, position_height);
+
+    // A point with an X or Y modulation gets a bigger ring that follows where the modulation moves it.
+    bool modulated = model_->pointSlot(i, LineGenerator::kAxisX) >= 0 || model_->pointSlot(i, LineGenerator::kAxisY) >= 0;
+    if (modulated) {
+      float mx = point.x + model_->modOffset(i, LineGenerator::kAxisX);
+      float my = point.y + model_->modOffset(i, LineGenerator::kAxisY);
+      mx = std::max(0.0f, std::min(1.0f, mx));
+      my = std::max(0.0f, std::min(1.0f, my));
+      float rx = padX(width * mx) * 2.0f / width - 1.0f;
+      float ry = 1.0f - padY(height * my) * 2.0f / height;
+      float ring_width = position_width * 1.9f, ring_height = position_height * 1.9f;
+      mod_circles_.setQuad(i, rx - ring_width * 0.5f, ry - ring_height * 0.5f, ring_width, ring_height);
+    }
+    else
+      mod_circles_.setQuad(i, -2.0f, -2.0f, position_width, position_height);
 
     if (powerActive(i)) {
       Point<float> power_position = getPowerPosition(i);
@@ -994,6 +1037,7 @@ void LineEditor::destroy(OpenGlWrapper& open_gl) {
   grid_lines_.destroy(open_gl);
   point_circles_.destroy(open_gl);
   power_circles_.destroy(open_gl);
+  mod_circles_.destroy(open_gl);
   position_circle_.destroy(open_gl);
   OpenGlLineRenderer::destroy(open_gl);
 }

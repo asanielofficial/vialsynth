@@ -26,7 +26,7 @@ class TempoSelector;
 
 class ChorusSection : public SynthSection, DelayFilterViewer::Listener {
   public:
-    ChorusSection(const String& name, const vital::output_map& mono_modulations);
+    ChorusSection(const String& name, const std::string& id, const vital::output_map& mono_modulations);
     ~ChorusSection();
 
     void paintBackground(Graphics& g) override;
@@ -36,9 +36,11 @@ class ChorusSection : public SynthSection, DelayFilterViewer::Listener {
     void deltaMovement(float x, float y) override;
 
   private:
+    std::string id_;
     std::unique_ptr<SynthButton> on_;
     std::unique_ptr<SynthSlider> frequency_;
     std::unique_ptr<SynthSlider> tempo_;
+    std::unique_ptr<SynthSlider> keytrack_transpose_;
     std::unique_ptr<TempoSelector> sync_;
     std::unique_ptr<SynthSlider> voices_;
     std::unique_ptr<ChorusViewer> chorus_viewer_;

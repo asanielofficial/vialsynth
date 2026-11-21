@@ -51,6 +51,7 @@ class PopupList : public SynthSection, ScrollBar::Listener {
 
         virtual void newSelection(PopupList* list, int id, int index) = 0;
         virtual void doubleClickedSelected(PopupList* list, int id, int index) { }
+        virtual void hoveredRow(PopupList* list, int index) { }
     };
 
     static constexpr float kRowHeight = 24.0f;
@@ -65,6 +66,7 @@ class PopupList : public SynthSection, ScrollBar::Listener {
 
     void setSelections(PopupItems selections);
     PopupItems getSelectionItems(int index) const { return selections_.items[index]; }
+    int getSelectionCount() const { return selections_.size(); }
     int getRowFromPosition(float mouse_position);
     int getRowHeight() { return size_ratio_ * kRowHeight; }
     int getTextPadding() { return getRowHeight() / 4; }
@@ -254,11 +256,14 @@ class SelectionList : public SynthSection, ScrollBar::Listener {
 
 class SinglePopupSelector : public SynthSection, public PopupList::Listener {
   public:
+    static constexpr int kMaxSubRows = 12;
+
     SinglePopupSelector();
 
     void paintBackground(Graphics& g) override { }
     void paintBackgroundShadow(Graphics& g) override { }
     void resized() override;
+    bool hitTest(int x, int y) override;
 
     void visibilityChanged() override {
       if (isShowing() && isVisible())
@@ -268,14 +273,22 @@ class SinglePopupSelector : public SynthSection, public PopupList::Listener {
     void setPosition(Point<int> position, Rectangle<int> bounds);
 
     void newSelection(PopupList* list, int id, int index) override {
+      if (list == popup_list_.get() && index >= 0 && popup_list_->getSelectionItems(index).size() > 0)
+        return;
+      if (id == kSearchRowId)
+        return;
+
       if (id >= 0) {
         cancel_ = nullptr;
         callback_(id);
         setVisible(false);
       }
-      else
+      else if (cancel_)
         cancel_();
     }
+
+    // Submenus open while their row is hovered.
+    void hoveredRow(PopupList* list, int index) override;
 
     void focusLost(FocusChangeType cause) override {
       setVisible(false);
@@ -287,16 +300,49 @@ class SinglePopupSelector : public SynthSection, public PopupList::Listener {
     void setCancelCallback(std::function<void()> cancel) { cancel_ = std::move(cancel); }
 
     void showSelections(const PopupItems& selections) {
+      full_items_ = selections;
+      query_ = "";
+      searching_ = false;
       popup_list_->setSelections(selections);
+      showSubmenu(-1);
     }
 
+    // Typing while the menu is open filters it: every item of every submenu whose name (or submenu's name)
+    // contains all the typed words is listed, with the typed text in the first row.
+    bool keyPressed(const KeyPress& key) override;
+
   private:
+    static constexpr int kSearchRowId = -2;
+    static constexpr int kMaxSearchRows = 14;
+
+    void showSubmenu(int row);
+    void applyQuery();
+    void collectMatches(const PopupItems& items, const std::string& parent, const StringArray& words,
+                        PopupItems& results);
+
+    PopupItems full_items_;
+    std::string query_;
+    bool searching_ = false;
+    Rectangle<int> menu_bounds_;
+    int menu_main_x_ = 0, menu_main_width_ = 0, menu_main_height_ = 0;
+
     OpenGlQuad body_;
     OpenGlQuad border_;
+    OpenGlQuad sub_body_;
+    OpenGlQuad sub_border_;
 
     std::function<void(int)> callback_;
     std::function<void()> cancel_;
     std::unique_ptr<PopupList> popup_list_;
+    std::unique_ptr<PopupList> sub_list_;
+
+    int main_x_ = 0;
+    int main_width_ = 0;
+    int main_height_ = 0;
+    int sub_reserve_width_ = 0;
+    int sub_reserve_height_ = 0;
+    bool sub_on_left_ = false;
+    Rectangle<int> sub_bounds_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SinglePopupSelector)
 };

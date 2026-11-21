@@ -74,6 +74,9 @@ class OscillatorSection : public SynthSection, public PresetSelector::Listener,
     void setDistortionSelected(int selection);
     int getDistortion() const { return current_distortion_type_; }
     void setSpectralMorphSelected(int selection);
+    void openModeSettings(int kind);
+    void rollDice();
+    void updateWarpTools();
     void setDestinationSelected(int selection);
     void toggleFilterInput(int filter_index, bool on);
 
@@ -153,6 +156,16 @@ class OscillatorSection : public SynthSection, public PresetSelector::Listener,
     std::unique_ptr<PlainTextComponent> spectral_morph_type_text_;
     std::unique_ptr<ShapeButton> spectral_morph_type_selector_;
     std::unique_ptr<SynthSlider> spectral_morph_amount_;
+    std::unique_ptr<SynthSlider> shuffle_;
+    std::unique_ptr<SynthSlider> dice_slider_;   // the dice parameter (osc_N_random_dice), drawn by dice_button_
+    Rectangle<int> random_mix_label_, random_shuffle_label_;   // Random Amplitudes label pills (empty otherwise)
+    float random_font_size_ = 8.0f;
+    Rectangle<int> spectral_cell_;   // the whole cell of the Spectral Morph knob (the knob itself shrinks for Random Amplitudes)
+    std::unique_ptr<OpenGlShapeButton> dice_button_;
+    std::unique_ptr<OpenGlShapeButton> curve_button_;
+    std::unique_ptr<OpenGlShapeButton> spectral_edit_button_;
+    std::unique_ptr<OpenGlShapeButton> warp_tool_button_;
+    std::unique_ptr<OpenGlShapeButton> warp_edit_button_;
 
     std::unique_ptr<PlainTextComponent> destination_text_;
     std::unique_ptr<ShapeButton> destination_selector_;

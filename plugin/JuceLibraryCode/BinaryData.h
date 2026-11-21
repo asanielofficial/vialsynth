@@ -18,7 +18,7 @@ namespace BinaryData
     const int            Pythagorean_sclSize = 108;
 
     extern const char*   default_vitalskin;
-    const int            default_vitalskinSize = 10485;
+    const int            default_vitalskinSize = 10663;
 
     extern const char*   DroidSansMono_ttf;
     const int            DroidSansMono_ttfSize = 119380;
@@ -77,8 +77,8 @@ namespace BinaryData
     extern const char*   shuffle_svg;
     const int            shuffle_svgSize = 382;
 
-    extern const char*   VialFX_svg;
-    const int            VialFX_svgSize = 1853;
+    extern const char*   VialSynth_svg;
+    const int            VialSynth_svgSize = 2676;
 
     // Number of elements in the namedResourceList and originalFileNames arrays.
     const int namedResourceListSize = 24;

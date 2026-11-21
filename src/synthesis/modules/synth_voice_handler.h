@@ -56,6 +56,10 @@ namespace vital {
       output_map& getPolyModulations() override;
       ModulationConnectionBank& getModulationBank() { return modulation_bank_; }
       Wavetable* getWavetable(int index) { return producers_->getWavetable(index); }
+      void setOscillatorWarp(int index, const LineGenerator* const* curves, Wavetable* spectral_table,
+                             Wavetable* distort_table) {
+        producers_->setOscillatorWarp(index, curves, spectral_table, distort_table);
+      }
       Sample* getSample() { return producers_->getSample(); }
       LineGenerator* getLfoSource(int index) { return &lfo_sources_[index]; }
       Output* getDirectOutput() { return getAccumulatedOutput(direct_output_->output()); }

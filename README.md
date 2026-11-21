@@ -4,8 +4,8 @@ VialSynth is a wavetable synthesizer plugin. It is built from GPLv3 synthesizer 
 [VialFX](https://github.com/asanielofficial/vialfx), the effect plugin made from the same code (see
 [NOTICE.md](NOTICE.md) for the origin of the code).
 
-> **Status: early scaffold.** The project has been put together from the VialFX tree but has not been built or
-> run yet. Nothing here has been compiled, tested or validated with pluginval.
+> **Version 1.0.** The first release: VST3 builds for Windows, macOS and Linux. See the
+> [release notes](.github/release-notes/1.0.md) for what is in it.
 
 ## What this is
 
@@ -50,13 +50,11 @@ The skin file format is unchanged, so VialFX skins still load. The overrides for
 (Morph, Pitch Shifter, Utility, Freq Shifter, Vibrato, Tremolo) stay in the format but have no bin here, because
 VialSynth has no such sections.
 
-## Not done yet
+## Known gaps
 
-- **Nothing has been built.** Do a first Linux build and fix whatever the compiler finds.
-- **CI has never run.** The workflows under `.github/workflows/` now build the synth plugin (`plugin/`) as a VST3
-  on Linux, Windows and macOS, but nobody has run them yet, so expect the first run to need fixes. They are manual
-  (Actions tab) and publish VST3 zips only: the CLAP wrapper and the Windows and macOS installers belonged to the
-  effect plugin and are not part of this project yet.
+- **CI.** The workflows under `.github/workflows/` build the synth plugin (`plugin/`) as a VST3 on Linux, Windows and
+  macOS. They are manual (Actions tab) and publish VST3 zips only: the CLAP wrapper and installers are not part of
+  this project yet. Releases use the notes in `.github/release-notes/<version>.md`.
 - **No VST2 yet.** Only the VST3 is built. The VST2 target needs Steinberg's VST2 SDK, which is not public, and
   `JUCE_VST3_CAN_REPLACE_VST2` is switched off for the same reason. [vst2sdk](https://github.com/Xaymar/vst2sdk)
   (BSD-3-Clause, header-only) is a possible replacement, but it uses its own names, not Steinberg's, so JUCE's

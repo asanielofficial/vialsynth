@@ -1934,7 +1934,7 @@ class SkinEditorHost : public Component {
 };
 
 SkinDesigner::SkinDesigner(Skin* skin, FullInterface* full_interface) :
-    DocumentWindow("VialFX Skin Editor", kEditorBackground, DocumentWindow::closeButton) {
+    DocumentWindow("VialSynth Skin Editor", kEditorBackground, DocumentWindow::closeButton) {
   setAlwaysOnTop(true);
   setResizeLimits(320, 300, 3000, 3000);
   container_ = std::make_unique<SkinEditorHost>(skin, full_interface);

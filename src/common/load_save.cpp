@@ -17,9 +17,7 @@
 #include "load_save.h"
 #include "modulation_connection_processor.h"
 #include "sound_engine.h"
-#if VITAL_FX
 #include "fx_tables.h"
-#endif
 #include "midi_manager.h"
 #include "sample_source.h"
 #include "synth_base.h"
@@ -31,7 +29,7 @@
 #define STRINGIFY(x) QUOTE(x)
 
 namespace {
-  const std::string kLinuxUserDataDirectory = "~/.local/share/vialfx/";
+  const std::string kLinuxUserDataDirectory = "~/.local/share/vialsynth/";
   const std::string kAvailablePacksFile = "available_packs.json";
   const std::string kInstalledPacksFile = "packs.json";
 
@@ -128,13 +126,12 @@ json LoadSave::stateToJson(SynthBase* synth, const CriticalSection& critical_sec
       WavetableCreator* wavetable_creator = synth->getWavetableCreator(i);
       if (wavetable_creator == nullptr)
         continue;
-#if VITAL_FX
       // The tables of the Morph copies that are not in the chain are the defaults: a null keeps the preset small.
-      if (i >= vital::FxTables::kNumLaneTables && !synth->getEngine()->isMorphInUse((i - vital::FxTables::kNumLaneTables) / 2)) {
+      if (i >= vital::FxTables::kNumLaneTables && i < vital::FxTables::oscSlot(0, false) &&
+          !synth->getEngine()->isMorphInUse((i - vital::FxTables::kNumLaneTables) / 2)) {
         wavetables.push_back(nullptr);
         continue;
       }
-#endif
       wavetables.push_back(wavetable_creator->stateToJson());
     }
 
@@ -149,7 +146,6 @@ json LoadSave::stateToJson(SynthBase* synth, const CriticalSection& critical_sec
 
   settings_data["lfos"] = lfos;
 
-#if VITAL_FX
   // Drawn curves (Spectral Filter, Phaser, Flanger) and the dice seed of Random Amplitudes, per lane. Not
   // parameters: they are saved here only, so they can be neither automated nor modulated.
   {
@@ -176,16 +172,23 @@ json LoadSave::stateToJson(SynthBase* synth, const CriticalSection& critical_sec
         point_mods.push_back({ { "slot", slot }, { "curve", curve_id }, { "point", point }, { "axis", axis } });
     }
     settings_data["point_mods"] = point_mods;
+  }
 
+  {
     // The effect chain: effect ids in order (+ a flag for minimized effects); see FxEffectChain.
-    int chain[vital::kMaxEffectInstances * vital::constants::kNumEffects];
+    int chain[vital::kMaxFxChainEntries];
     int count = synth->getEffectChain(chain);
     json effect_chain = json::array();
     for (int i = 0; i < count; ++i)
       effect_chain.push_back(chain[i]);
     settings_data["effect_chain"] = effect_chain;
+    settings_data["effect_chain_format"] = vital::chain_token::kFormat;
+
+    json bin_names = json::array();
+    for (int i = 0; i < vital::kMaxFxBins; ++i)
+      bin_names.push_back(synth->getFxBinName(i).toStdString());
+    settings_data["fx_bin_names"] = bin_names;
   }
-#endif
 
   json data;
   data["synth_version"] = ProjectInfo::versionString;
@@ -270,13 +273,11 @@ void LoadSave::loadWavetables(SynthBase* synth, const json& wavetables) {
     i++;
   }
 
-#if VITAL_FX
   // Older presets have no tables for the Morph copies.
   for (; i < vital::kNumWavetableSlots; ++i) {
     if (synth->getWavetableCreator(i))
       synth->initWavetableCreator(i);
   }
-#endif
 }
 
 void LoadSave::loadLfos(SynthBase* synth, const json& lfos) {
@@ -286,6 +287,15 @@ void LoadSave::loadLfos(SynthBase* synth, const json& lfos) {
     lfo_source->jsonToState(lfo);
     lfo_source->render();
     i++;
+    if (i >= vital::kNumLfos)
+      break;
+  }
+
+  // Presets saved with fewer LFOs leave the others at their default shape.
+  for (; i < vital::kNumLfos; ++i) {
+    LineGenerator* lfo_source = synth->getLfoSource(i);
+    lfo_source->initTriangle();
+    lfo_source->render();
   }
 }
 
@@ -381,7 +391,7 @@ json LoadSave::updateFromOldVersion(json state) {
   if (compareVersionStrings(version, "0.2.1") < 0) {
     std::string env_start = "env_";
 
-    for (int i = 0; i < vital::kNumEnvelopes; ++i) {
+    for (int i = 0; i < vital::kLegacyNumEnvelopes; ++i) {
       std::string number = std::to_string(i + 1);
       std::string attack_string = env_start + number + "_attack";
       std::string decay_string = env_start + number + "_decay";
@@ -411,7 +421,7 @@ json LoadSave::updateFromOldVersion(json state) {
   if (compareVersionStrings(version, "0.2.5") < 0) {
     std::string env_start = "env_";
 
-    for (int i = 0; i < vital::kNumEnvelopes; ++i) {
+    for (int i = 0; i < vital::kLegacyNumEnvelopes; ++i) {
       std::string number = std::to_string(i + 1);
       std::string attack_string = env_start + number + "_attack";
       std::string decay_string = env_start + number + "_decay";
@@ -429,7 +439,7 @@ json LoadSave::updateFromOldVersion(json state) {
   if (compareVersionStrings(version, "0.2.6") < 0) {
     std::string lfo_start = "lfo_";
 
-    for (int i = 0; i < vital::kNumLfos; ++i) {
+    for (int i = 0; i < vital::kLegacyNumLfos; ++i) {
       std::string number = std::to_string(i + 1);
       std::string fade_string = lfo_start + number + "_fade_time";
       std::string delay_string = lfo_start + number + "_delay_time";
@@ -494,15 +504,17 @@ json LoadSave::updateFromOldVersion(json state) {
   }
 
   if (compareVersionStrings(version, "0.3.4") < 0) {
+    // Those presets only know the nine effects up to the Reverb.
+    constexpr int kLegacyEffects = vital::constants::kMorph;
     float float_order = settings["effect_chain_order"];
-    int effect_order[vital::constants::kNumEffects];
-    vital::utils::decodeFloatToOrder(effect_order, float_order, vital::constants::kNumEffects - 1);
-    for (int i = 0; i < vital::constants::kNumEffects - 1; ++i) {
+    int effect_order[kLegacyEffects];
+    vital::utils::decodeFloatToOrder(effect_order, float_order, kLegacyEffects - 1);
+    for (int i = 0; i < kLegacyEffects - 1; ++i) {
       if (effect_order[i] >= vital::constants::kFilterFx)
         effect_order[i] += 1;
     }
-    effect_order[vital::constants::kNumEffects - 1] = vital::constants::kFilterFx;
-    settings["effect_chain_order"] = vital::utils::encodeOrderToFloat(effect_order, vital::constants::kNumEffects);
+    effect_order[kLegacyEffects - 1] = vital::constants::kFilterFx;
+    settings["effect_chain_order"] = vital::utils::encodeOrderToFloat(effect_order, kLegacyEffects);
   }
 
   if (compareVersionStrings(version, "0.3.5") < 0) {
@@ -517,7 +529,7 @@ json LoadSave::updateFromOldVersion(json state) {
   if (compareVersionStrings(version, "0.3.6") < 0) {
     std::string lfo_start = "lfo_";
 
-    for (int i = 0; i < vital::kNumLfos; ++i) {
+    for (int i = 0; i < vital::kLegacyNumLfos; ++i) {
       std::string sync_type_string = lfo_start + std::to_string(i + 1) + "_sync_type";
       if (settings.count(sync_type_string)) {
         float value = settings[sync_type_string];
@@ -867,7 +879,7 @@ json LoadSave::updateFromOldVersion(json state) {
     settings["delay_tempo"] = delay_tempo + 1.0f;
 
     std::string lfo_start = "lfo_";
-    for (int i = 0; i < vital::kNumLfos; ++i) {
+    for (int i = 0; i < vital::kLegacyNumLfos; ++i) {
       std::string tempo_string = lfo_start + std::to_string(i + 1) + "_tempo";
       if (settings.count(tempo_string)) {
         float tempo = settings[tempo_string];
@@ -876,7 +888,7 @@ json LoadSave::updateFromOldVersion(json state) {
     }
 
     std::string random_start = "random_";
-    for (int i = 0; i < vital::kNumRandomLfos; ++i) {
+    for (int i = 0; i < vital::kLegacyNumRandomLfos; ++i) {
       std::string tempo_string = random_start + std::to_string(i + 1) + "_tempo";
       if (settings.count(tempo_string)) {
         float tempo = settings[tempo_string];
@@ -1045,7 +1057,7 @@ json LoadSave::updateFromOldVersion(json state) {
   }
 
   if (compareVersionStrings(version, "0.8.1") < 0) {
-    for (int i = 0; i < vital::kNumLfos; ++i) {
+    for (int i = 0; i < vital::kLegacyNumLfos; ++i) {
       std::string name = "lfo_" + std::to_string(i) + "_smooth_mode";
       settings[name] = 0.0f;
     }
@@ -1111,7 +1123,6 @@ bool LoadSave::jsonToState(SynthBase* synth, std::map<std::string, String>& save
   loadSample(synth, sample);
   loadWavetables(synth, wavetables);
   loadLfos(synth, lfos);
-#if VITAL_FX
   {
     // Presets without drawings (older ones) get the defaults.
     for (int lane = 0; lane < vital::SoundEngine::kNumDrawingLanes; ++lane) {
@@ -1141,13 +1152,18 @@ bool LoadSave::jsonToState(SynthBase* synth, std::map<std::string, String>& save
                                                binding["point"].get<int>(), binding["axis"].get<int>());
       }
     }
-
+  }
+  {
     // The chain. Presets from before the effects list had a fixed set of effects in a permuted order.
     std::vector<int> chain;
+    bool current_format = settings.count("effect_chain_format") && settings["effect_chain_format"].is_number_integer() &&
+                          settings["effect_chain_format"].get<int>() >= vital::chain_token::kFormat;
     if (settings.count("effect_chain") && settings["effect_chain"].is_array()) {
       for (const json& value : settings["effect_chain"]) {
-        if (value.is_number_integer())
-          chain.push_back(value.get<int>());
+        if (value.is_number_integer()) {
+          int token = value.get<int>();
+          chain.push_back(current_format ? token : vital::chain_token::fromLegacy(token));
+        }
       }
     }
     else {
@@ -1167,8 +1183,18 @@ bool LoadSave::jsonToState(SynthBase* synth, std::map<std::string, String>& save
       }
     }
     synth->setEffectChain(chain.data(), static_cast<int>(chain.size()));
+
+    for (int i = 0; i < vital::kMaxFxBins; ++i)
+      synth->setFxBinName(i, "");
+    if (settings.count("fx_bin_names") && settings["fx_bin_names"].is_array()) {
+      int i = 0;
+      for (const json& name : settings["fx_bin_names"]) {
+        if (i < vital::kMaxFxBins && name.is_string())
+          synth->setFxBinName(i, String(name.get<std::string>()));
+        ++i;
+      }
+    }
   }
-#endif
   loadSaveState(save_info, data);
   synth->checkOversampling();
   
@@ -1252,7 +1278,7 @@ std::string LoadSave::getLicense(json data) {
 File LoadSave::getConfigFile() {
 #if defined(JUCE_DATA_STRUCTURES_H_INCLUDED)
   PropertiesFile::Options config_options;
-  config_options.applicationName = "VialFX";
+  config_options.applicationName = "VialSynth";
   config_options.osxLibrarySubFolder = "Application Support";
   config_options.filenameSuffix = "config";
 
@@ -1288,7 +1314,7 @@ void LoadSave::writeErrorLog(String error_log) {
 File LoadSave::getFavoritesFile() {
 #if defined(JUCE_DATA_STRUCTURES_H_INCLUDED)
   PropertiesFile::Options config_options;
-  config_options.applicationName = "VialFX";
+  config_options.applicationName = "VialSynth";
   config_options.osxLibrarySubFolder = "Application Support";
   config_options.filenameSuffix = "favorites";
 
@@ -1307,7 +1333,7 @@ File LoadSave::getFavoritesFile() {
 File LoadSave::getDefaultSkin() {
 #if defined(JUCE_DATA_STRUCTURES_H_INCLUDED)
   PropertiesFile::Options config_options;
-  config_options.applicationName = "VialFX";
+  config_options.applicationName = "VialSynth";
   config_options.osxLibrarySubFolder = "Application Support";
   config_options.filenameSuffix = "skin";
 
@@ -1883,14 +1909,14 @@ File LoadSave::getDataDirectory() {
   String xdg_data_home = SystemStats::getEnvironmentVariable ("XDG_DATA_HOME", {});
 
   if (!xdg_data_home.trim().isEmpty())
-    directory = File(xdg_data_home).getChildFile("vialfx");
+    directory = File(xdg_data_home).getChildFile("vialsynth");
 
 #elif defined(__APPLE__)
   File home_directory = File::getSpecialLocation(File::userHomeDirectory);
-  File directory = home_directory.getChildFile("Music").getChildFile("vialfx");
+  File directory = home_directory.getChildFile("Music").getChildFile("VialSynth");
 #else
   File documents_dir = File::getSpecialLocation(File::userDocumentsDirectory);
-  File directory = documents_dir.getChildFile("vialfx");
+  File directory = documents_dir.getChildFile("VialSynth");
 #endif
 
   return directory;

@@ -185,6 +185,10 @@ void PopupList::mouseMove(const MouseEvent& e) {
   int row = getRowFromPosition(e.position.y);
   if (row >= selections_.size() || row < 0)
     row = -1;
+  if (row != hovered_ && row >= 0) {
+    for (Listener* listener : listeners_)
+      listener->hoveredRow(this, row);
+  }
   hovered_ = row;
 }
 
@@ -935,11 +939,15 @@ void SelectionList::destroyOpenGlComponents(OpenGlWrapper& open_gl) {
 
 SinglePopupSelector::SinglePopupSelector() : SynthSection("Popup Selector"),
                                              body_(Shaders::kRoundedRectangleFragment),
-                                             border_(Shaders::kRoundedRectangleBorderFragment) {
+                                             border_(Shaders::kRoundedRectangleBorderFragment),
+                                             sub_body_(Shaders::kRoundedRectangleFragment),
+                                             sub_border_(Shaders::kRoundedRectangleBorderFragment) {
   callback_ = nullptr;
   cancel_ = nullptr;
   addOpenGlComponent(&body_);
   addOpenGlComponent(&border_);
+  addOpenGlComponent(&sub_body_);
+  addOpenGlComponent(&sub_border_);
 
   popup_list_ = std::make_unique<PopupList>();
   popup_list_->addListener(this);
@@ -947,37 +955,215 @@ SinglePopupSelector::SinglePopupSelector() : SynthSection("Popup Selector"),
   popup_list_->setAlwaysOnTop(true);
   popup_list_->setWantsKeyboardFocus(false);
 
+  sub_list_ = std::make_unique<PopupList>();
+  sub_list_->addListener(this);
+  addSubSection(sub_list_.get());
+  sub_list_->setAlwaysOnTop(true);
+  sub_list_->setWantsKeyboardFocus(false);
+  sub_list_->setVisible(false);
+
   setSkinOverride(Skin::kPopupBrowser);
+}
+
+bool SinglePopupSelector::hitTest(int x, int y) {
+  Rectangle<int> main_bounds(main_x_, 0, main_width_, main_height_);
+  return main_bounds.contains(x, y) || (!sub_bounds_.isEmpty() && sub_bounds_.contains(x, y));
 }
 
 void SinglePopupSelector::resized() {
   SynthSection::resized();
 
-  Rectangle<int> bounds = getLocalBounds();
   int rounding = findValue(Skin::kBodyRounding);
-  popup_list_->setBounds(1, rounding, getWidth() - 2, getHeight() - 2 * rounding);
+  Rectangle<int> main_bounds(main_x_, 0, main_width_, main_height_);
+  popup_list_->setBounds(main_bounds.getX() + 1, rounding, main_bounds.getWidth() - 2,
+                         main_bounds.getHeight() - 2 * rounding);
 
-  body_.setBounds(bounds);
-  body_.setRounding(findValue(Skin::kBodyRounding));
+  body_.setBounds(main_bounds);
+  body_.setRounding(rounding);
   body_.setColor(findColour(Skin::kBody, true));
 
-  border_.setBounds(bounds);
-  border_.setRounding(findValue(Skin::kBodyRounding));
+  border_.setBounds(main_bounds);
+  border_.setRounding(rounding);
   border_.setThickness(1.0f, true);
   border_.setColor(findColour(Skin::kBorder, true));
+
+  sub_body_.setBounds(sub_bounds_);
+  sub_body_.setRounding(rounding);
+  sub_body_.setColor(findColour(Skin::kBody, true));
+
+  sub_border_.setBounds(sub_bounds_);
+  sub_border_.setRounding(rounding);
+  sub_border_.setThickness(1.0f, true);
+  sub_border_.setColor(findColour(Skin::kBorder, true));
+
+  if (!sub_bounds_.isEmpty()) {
+    sub_list_->setBounds(sub_bounds_.getX() + 1, sub_bounds_.getY() + rounding,
+                         sub_bounds_.getWidth() - 2, sub_bounds_.getHeight() - 2 * rounding);
+  }
+}
+
+void SinglePopupSelector::showSubmenu(int row) {
+  sub_bounds_ = Rectangle<int>();
+  sub_list_->setVisible(false);
+
+  if (row >= 0 && row < popup_list_->getSelectionCount() && popup_list_->getSelectionItems(row).size() > 0) {
+    int rounding = findValue(Skin::kBodyRounding);
+    PopupItems children = popup_list_->getSelectionItems(row);
+    sub_list_->setSelections(children);
+    sub_list_->resetScrollPosition();
+
+    int rows = std::min(children.size(), static_cast<int>(kMaxSubRows));
+    int height = rows * sub_list_->getRowHeight() + 2 * rounding;
+    int width = sub_list_->getBrowseWidth() + (children.size() > kMaxSubRows ? 16 : 0);
+    int y = row * popup_list_->getRowHeight();
+    y = std::max(0, std::min(y, getHeight() - height));
+    int x = sub_on_left_ ? main_x_ - width : main_x_ + main_width_;
+    sub_bounds_ = Rectangle<int>(std::max(0, x), y, width, height);
+    sub_list_->setVisible(true);
+  }
+  resized();
+}
+
+void SinglePopupSelector::hoveredRow(PopupList* list, int index) {
+  if (list == popup_list_.get())
+    showSubmenu(index);
 }
 
 void SinglePopupSelector::setPosition(Point<int> position, Rectangle<int> bounds) {
   int rounding = findValue(Skin::kBodyRounding);
-  int width = popup_list_->getBrowseWidth();
-  int height = popup_list_->getBrowseHeight() + 2 * rounding;
+  main_width_ = popup_list_->getBrowseWidth();
+  main_height_ = popup_list_->getBrowseHeight() + 2 * rounding;
+
+  // Room for the widest submenu beside the list.
+  int sub_width = 0;
+  int sub_height = 0;
+  for (int i = 0; i < popup_list_->getSelectionCount(); ++i) {
+    PopupItems children = popup_list_->getSelectionItems(i);
+    if (children.size() == 0)
+      continue;
+    sub_list_->setSelections(children);
+    sub_width = std::max(sub_width, sub_list_->getBrowseWidth() + 16);
+    sub_height = std::max(sub_height, std::min(children.size(), static_cast<int>(kMaxSubRows)) *
+                                      sub_list_->getRowHeight() + 2 * rounding);
+  }
+  sub_reserve_width_ = sub_width;
+  sub_reserve_height_ = sub_height;
+
   int x = position.x;
   int y = position.y;
-  if (x + width > bounds.getRight())
-    x -= width;
+  int height = std::max(main_height_, sub_height);
+  if (x + main_width_ > bounds.getRight())
+    x -= main_width_;
   if (y + height > bounds.getBottom())
     y = bounds.getBottom() - height;
-  setBounds(x, y, width, height);
+  y = std::max(0, y);
+
+  sub_on_left_ = sub_width > 0 && x + main_width_ + sub_width > bounds.getRight();
+  main_x_ = sub_on_left_ ? sub_width : 0;
+  int total_width = main_width_ + sub_width;
+  setBounds(x - main_x_, y, total_width, height);
+  showSubmenu(-1);
+  menu_bounds_ = getBounds();
+  menu_main_x_ = main_x_;
+  menu_main_width_ = main_width_;
+  menu_main_height_ = main_height_;
+}
+
+void SinglePopupSelector::collectMatches(const PopupItems& items, const std::string& parent,
+                                         const StringArray& words, PopupItems& results) {
+  for (const PopupItems& item : items.items) {
+    if (item.size() > 0) {
+      collectMatches(item, item.name, words, results);
+      continue;
+    }
+    if (item.id < 0 || item.name.empty() || item.name == "-")
+      continue;
+
+    String haystack = String(parent + " " + item.name).toLowerCase();
+    bool all = true;
+    for (const String& word : words) {
+      if (!haystack.contains(word))
+        all = false;
+    }
+    if (all)
+      results.addItem(item.id, parent.empty() ? item.name : parent + ": " + item.name);
+  }
+}
+
+bool SinglePopupSelector::keyPressed(const KeyPress& key) {
+  juce::juce_wchar character = key.getTextCharacter();
+  if (key == KeyPress::escapeKey) {
+    if (!query_.empty()) {
+      query_ = "";
+      applyQuery();
+      return true;
+    }
+    setVisible(false);
+    if (cancel_)
+      cancel_();
+    return true;
+  }
+  if (key == KeyPress::backspaceKey) {
+    if (!query_.empty()) {
+      query_ = String(query_).dropLastCharacters(1).toStdString();
+      applyQuery();
+    }
+    return true;
+  }
+  if (key == KeyPress::returnKey) {
+    if (searching_ && popup_list_->getSelectionCount() > 1) {
+      int id = popup_list_->getSelectionItems(1).id;
+      if (id >= 0) {
+        cancel_ = nullptr;
+        callback_(id);
+        setVisible(false);
+      }
+    }
+    return true;
+  }
+  if (character >= 32 && character != 127 && !key.getModifiers().isCommandDown() &&
+      !key.getModifiers().isCtrlDown()) {
+    query_ += String::charToString(character).toStdString();
+    applyQuery();
+    return true;
+  }
+  return false;
+}
+
+void SinglePopupSelector::applyQuery() {
+  StringArray words;
+  words.addTokens(String(query_).toLowerCase(), " ", "");
+  words.removeEmptyStrings();
+
+  if (words.isEmpty()) {
+    searching_ = false;
+    popup_list_->setSelections(full_items_);
+    main_x_ = menu_main_x_;
+    main_width_ = menu_main_width_;
+    main_height_ = menu_main_height_;
+    setBounds(menu_bounds_);
+    showSubmenu(-1);
+    return;
+  }
+
+  PopupItems results;
+  results.addItem(kSearchRowId, "Search: " + query_ + "_");
+  collectMatches(full_items_, "", words, results);
+  if (results.size() == 1)
+    results.addItem(kSearchRowId, "No matches");
+  popup_list_->setSelections(results);
+  popup_list_->resetScrollPosition();
+  searching_ = true;
+
+  int rounding = findValue(Skin::kBodyRounding);
+  int rows = std::min(results.size(), kMaxSearchRows + 1);
+  main_x_ = 0;
+  main_width_ = std::max(popup_list_->getBrowseWidth() + (results.size() > rows ? 16 : 0), menu_main_width_);
+  main_height_ = rows * popup_list_->getRowHeight() + 2 * rounding;
+  sub_bounds_ = Rectangle<int>();
+  sub_list_->setVisible(false);
+  setBounds(menu_bounds_.getX() + menu_main_x_, menu_bounds_.getY(), main_width_, main_height_);
+  resized();
 }
 
 DualPopupSelector::DualPopupSelector() : SynthSection("Dual Popup Selector"),
@@ -1290,18 +1476,11 @@ void PopupBrowser::closingAreaClicked(PopupClosingArea* closing_area, const Mous
 }
 
 void PopupBrowser::checkNoContent() {
-#if VITAL_FX
-  bool has_content = true;   // the search bar is always useful (user LFO shapes live in the user folder)
-#else
-  bool has_content = LoadSave::hasDataDirectory();
-#endif
+  // There is no content download: the search bar is always shown (user presets, shapes and skins live in the user
+  // folder).
   if (search_box_)
-    search_box_->setVisible(has_content);
-#if VITAL_FX
+    search_box_->setVisible(true);
   download_button_->setVisible(false);
-#else
-  download_button_->setVisible(!has_content);
-#endif
 }
 
 void PopupBrowser::checkStoreButton() {

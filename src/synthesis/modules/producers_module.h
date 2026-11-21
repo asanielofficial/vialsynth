@@ -59,6 +59,11 @@ namespace vital {
         return oscillators_[index]->getWavetable();
       }
 
+      void setOscillatorWarp(int index, const LineGenerator* const* curves, Wavetable* spectral_table,
+                             Wavetable* distort_table) {
+        oscillators_[index]->oscillator()->setWarpSources(curves, spectral_table, distort_table);
+      }
+
       Sample* getSample() { return sampler_->getSample(); }
       Output* samplePhaseOutput() { return sampler_->getPhaseOutput(); }
       void setFilter1On(const Value* on) { filter1_on_ = on; }

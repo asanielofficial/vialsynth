@@ -16,6 +16,8 @@
 
 #include "synth_section.h"
 
+#include "debug_log.h"
+
 #include "skin.h"
 #include "fonts.h"
 #include "full_interface.h"
@@ -389,11 +391,18 @@ void SynthSection::drawTempoDivider(Graphics& g, Component* sync) {
 }
 
 void SynthSection::initOpenGlComponents(OpenGlWrapper& open_gl) {
+  double start = Time::getMillisecondCounterHiRes();
   for (auto& open_gl_component : open_gl_components_)
     open_gl_component->init(open_gl);
 
+  double own = Time::getMillisecondCounterHiRes() - start;
   for (auto& sub_section : sub_sections_)
     sub_section->initOpenGlComponents(open_gl);
+
+  double total = Time::getMillisecondCounterHiRes() - start;
+  if (total > 40.0 && vial_debug::enabled())
+    vial_debug::log("  gl init " + getName() + ": " + String(total, 0) + " ms (own " + String(own, 0) + ", " +
+                    String(static_cast<int>(open_gl_components_.size())) + " parts)");
 }
 
 void SynthSection::renderOpenGlComponents(OpenGlWrapper& open_gl, bool animate) {
@@ -512,6 +521,21 @@ void SynthSection::addSubSection(SynthSection* sub_section, bool show) {
 
   std::map<std::string, ModulationButton*> sub_mod_buttons = sub_section->getAllModulationButtons();
   all_modulation_buttons_.insert(sub_mod_buttons.begin(), sub_mod_buttons.end());
+}
+
+void SynthSection::registerSubSectionControls(SynthSection* sub_section) {
+  std::map<std::string, SynthSlider*> sub_sliders = sub_section->getAllSliders();
+  all_sliders_.insert(sub_sliders.begin(), sub_sliders.end());
+
+  std::map<std::string, ToggleButton*> sub_buttons = sub_section->getAllButtons();
+  all_buttons_.insert(sub_buttons.begin(), sub_buttons.end());
+
+  std::map<std::string, ModulationButton*> sub_mod_buttons = sub_section->getAllModulationButtons();
+  all_modulation_buttons_.insert(sub_mod_buttons.begin(), sub_mod_buttons.end());
+
+  SynthSection* parent = const_cast<SynthSection*>(parent_);
+  if (parent)
+    parent->registerSubSectionControls(this);
 }
 
 void SynthSection::removeSubSection(SynthSection* section) {

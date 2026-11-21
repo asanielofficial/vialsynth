@@ -43,16 +43,20 @@ class FxVoiceInterface : public SynthSection {
 #include "bin_highlight.h"
 #include "glow_pass.h"
 #include "shaders.h"
+#include "skin.h"
 #include "synth_section.h"
 #include "update_check_section.h"
 #include "wavetable_creator.h"
 
+namespace vital { class SoundEngine; }
+class TableSettingsEditor;
+class SpectralWarpEditor;
 class AboutSection;
 class BankExporter;
 class BendSection;
 class DeleteSection;
 class ExpiredSection;
-class ExtraModSection;
+#include "extra_mod_section.h"
 class HeaderSection;
 class KeyboardInterface;
 class MasterControlsInterface;
@@ -72,7 +76,7 @@ class VoiceSection;
 class FullInterface : public SynthSection, public AuthenticationSection::Listener, public HeaderSection::Listener,
                       public DownloadSection::Listener, public UpdateCheckSection::Listener,
                       public EffectsInterface::Listener, public ModulationMatrix::Listener,
-                      public OpenGLRenderer, DragAndDropContainer {
+                      public ExtraModSection::Listener, public OpenGLRenderer, DragAndDropContainer {
   public:
     static constexpr double kMinOpenGlVersion = 1.4;
 
@@ -109,6 +113,10 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
       checkShouldReposition();
     }
     virtual void resized() override;
+    void extraModExpansionChanged(bool expanded) override {
+      resized();
+      repaintBackground();
+    }
     void animate(bool animate) override;
     void reset() override;
     void setAllValues(vital::control_map& controls) override;
@@ -136,6 +144,7 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     void bankImported() override;
 
     void effectsMoved() override;
+    void effectSectionCreated(SynthSection* section) override;
     void modulationsScrolled() override;
 
     void setFocus();
@@ -144,6 +153,9 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     void externalPresetLoaded(const File& preset);
     void showFullScreenSection(SynthSection* full_screen);
     void showWavetableEditSection(int index);
+    // Opens an oscillator's mode editor: kind 0-2 the Spectral Filter / Phaser / Flanger drawing, 3 / 4 the Spectral
+    // Table / Distort Table settings menu (the gear), 5 / 6 the Spectral Table / Distort Table wavetable editor.
+    void showOscillatorWarpEditor(int oscillator, int kind);
     std::string getLastBrowsedWavetable(int index);
     std::string getWavetableName(int index);
     std::string getSignedInName();
@@ -190,15 +202,22 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     }
 
     float getResizingScale() const { return width_ * 1.0f / resized_width_; }
+    // Windows of their own measure how many pixels they really draw per unit; 0 means use the context's scale.
+    float getForcedRenderScale() const { return forced_render_scale_; }
     float getPixelScaling() const override { return display_scale_; }
     int getPixelMultiple() const override { return pixel_multiple_; }
     void toggleOscillatorZoom(int index);
     void toggleFilter1Zoom();
     void toggleFilter2Zoom();
 
-  private:
+  protected:
+    // Copies of Morph past this many get their editors (and effect sections) when first used.
+    static constexpr int kBuiltEffectCopies = 8;
+    // A table slot of a Morph copy past the first kBuiltEffectCopies.
+    static bool isLateMorphTable(int slot) { return slot >= 4 + 2 * kBuiltEffectCopies && slot < 4 + 2 * vital::kMaxEffectInstances; }
+
     bool wavetableEditorsInitialized() {
-      for (int i = 0; i < vital::kNumWavetableSlots; ++i) {
+      for (int i = 0; i < vital::kNumOscillators; ++i) {
         if (wavetable_edits_[i] == nullptr)
           return false;
       }
@@ -212,6 +231,13 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     std::unique_ptr<PointModTargets> point_mod_targets_;
 #endif
     std::unique_ptr<ModulationManager> modulation_manager_;
+    // Effect copies get their sections the first time they are used: the new controls need a modulation manager
+    // that knows them, and the render thread sets up their OpenGL parts.
+    void rebuildModulationManager();
+    CriticalSection pending_lock_;  // guards the two lists below; never held while taking another lock
+    std::vector<SynthSection*> pending_gl_init_;
+    std::vector<std::unique_ptr<ModulationManager>> retired_managers_;
+    bool manager_rebuild_pending_ = false;
     std::unique_ptr<ModulationMatrix> modulation_matrix_;
 
     std::unique_ptr<AboutSection> about_section_;
@@ -231,6 +257,11 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     std::unique_ptr<ExtraModSection> extra_mod_section_;
     std::unique_ptr<EffectsInterface> effects_interface_;
     std::unique_ptr<WavetableEditSection> wavetable_edits_[vital::kNumWavetableSlots];
+    // The editors of the Morph copies after the first few are built once their effect section exists.
+    WavetableCreator* wavetable_creators_[vital::kNumWavetableSlots] = {};
+    void createWavetableEdits();
+    // Set VIALFX_SELFTEST in the environment and the interface adds many effect copies by itself, for CI.
+    std::unique_ptr<Timer> self_test_;
     std::unique_ptr<KeyboardInterface> keyboard_interface_;
     std::unique_ptr<BendSection> bend_section_;
     std::unique_ptr<PortamentoSection> portamento_section_;
@@ -247,6 +278,14 @@ class FullInterface : public SynthSection, public AuthenticationSection::Listene
     std::unique_ptr<DownloadSection> download_section_;
     std::unique_ptr<ExpiredSection> expired_section_;
     SynthSection* full_screen_section_;
+
+    float forced_render_scale_ = 0.0f;
+    vital::SoundEngine* engine_ = nullptr;
+    vital::output_map mono_modulations_;
+    vital::output_map poly_modulations_;
+    Skin current_skin_;
+    std::unique_ptr<SynthSection> modulation_proxies_;
+    std::map<int, Component::SafePointer<Component>> osc_popup_windows_;   // by oscillator * 10 + kind
 
     int width_;
     int resized_width_;

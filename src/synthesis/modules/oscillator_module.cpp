@@ -22,9 +22,10 @@
 namespace vital {
 
   OscillatorModule::OscillatorModule(std::string prefix) :
-      SynthModule(kNumInputs, kNumOutputs), prefix_(std::move(prefix)), on_(nullptr), distortion_type_(nullptr) {
+      SynthModule(kNumInputs, kNumOutputs), prefix_(std::move(prefix)), on_(nullptr), distortion_type_(nullptr), random_seed_(nullptr), random_dice_(nullptr) {
     wavetable_ = std::make_shared<Wavetable>(kNumOscillatorWaveFrames);
     was_on_ = std::make_shared<bool>(true);
+    last_dice_ = std::make_shared<float>(-1.0f);
   }
 
   void OscillatorModule::init() {
@@ -61,6 +62,27 @@ namespace vital {
     Output* spectral_morph_spread = createPolyModControl(prefix_ + "_spectral_morph_spread");
     Value* spectral_morph_type = createBaseControl(prefix_ + "_spectral_morph_type");
     Output* spectral_morph_amount = createPolyModControl(prefix_ + "_spectral_morph_amount");
+    Output* spectral_position = createPolyModControl(prefix_ + "_spectral_position");
+    Output* random_shuffle = createPolyModControl(prefix_ + "_random_shuffle");
+    Value* random_seed = createBaseControl(prefix_ + "_random_seed");
+    random_seed_ = random_seed;
+    // The dice: whenever its value (automation or modulation included) crosses the middle, the pattern is re-rolled.
+    random_dice_ = createMonoModControl(prefix_ + "_random_dice");
+    Output* spectral_table_mix = createMonoModControl(prefix_ + "_spectral_table_mix");
+    Output* spectral_gain = createMonoModControl(prefix_ + "_spectral_gain");
+    Output* spectral_density = createMonoModControl(prefix_ + "_spectral_density");
+    Output* spectral_resonance = createMonoModControl(prefix_ + "_spectral_resonance");
+    Output* spectral_depth = createMonoModControl(prefix_ + "_spectral_depth");
+    Output* spectral_phase = createMonoModControl(prefix_ + "_spectral_phase");
+    Output* spectral_spread = createMonoModControl(prefix_ + "_spectral_spread");
+    Output* table_position = createMonoModControl(prefix_ + "_table_position");
+    Output* table_gain = createMonoModControl(prefix_ + "_table_gain");
+    Output* table_resonance = createMonoModControl(prefix_ + "_table_resonance");
+    Output* distortion_bias = createMonoModControl(prefix_ + "_distortion_bias");
+    Output* distortion_smooth = createMonoModControl(prefix_ + "_distortion_smooth");
+    Output* distortion_drive = createMonoModControl(prefix_ + "_distortion_drive");
+    Value* distortion_dc_filter = createBaseControl(prefix_ + "_distortion_dc_filter");
+    Output* distortion_mix = createMonoModControl(prefix_ + "_distortion_mix");
 
     oscillator_->useInput(input(kReset), SynthOscillator::kReset);
     oscillator_->useInput(input(kRetrigger), SynthOscillator::kRetrigger);
@@ -92,6 +114,24 @@ namespace vital {
     oscillator_->plug(spectral_morph_spread, SynthOscillator::kUnisonSpectralMorphSpread);
     oscillator_->plug(spectral_morph_type, SynthOscillator::kSpectralMorphType);
     oscillator_->plug(spectral_morph_amount, SynthOscillator::kSpectralMorphAmount);
+    oscillator_->plug(spectral_position, SynthOscillator::kSpectralPosition);
+    oscillator_->plug(random_shuffle, SynthOscillator::kRandomShuffle);
+    oscillator_->plug(random_seed, SynthOscillator::kRandomSeed);
+    oscillator_->plug(spectral_table_mix, SynthOscillator::kSpectralTableMix);
+    oscillator_->plug(spectral_gain, SynthOscillator::kSpectralGain);
+    oscillator_->plug(spectral_density, SynthOscillator::kSpectralDensity);
+    oscillator_->plug(spectral_resonance, SynthOscillator::kSpectralResonance);
+    oscillator_->plug(spectral_depth, SynthOscillator::kSpectralDepth);
+    oscillator_->plug(spectral_phase, SynthOscillator::kSpectralPhase);
+    oscillator_->plug(spectral_spread, SynthOscillator::kSpectralSpread);
+    oscillator_->plug(table_position, SynthOscillator::kTablePosition);
+    oscillator_->plug(table_gain, SynthOscillator::kTableGain);
+    oscillator_->plug(table_resonance, SynthOscillator::kTableResonance);
+    oscillator_->plug(distortion_bias, SynthOscillator::kDistortionBias);
+    oscillator_->plug(distortion_smooth, SynthOscillator::kDistortionSmooth);
+    oscillator_->plug(distortion_drive, SynthOscillator::kDistortionDrive);
+    oscillator_->plug(distortion_dc_filter, SynthOscillator::kDistortionDcFilter);
+    oscillator_->plug(distortion_mix, SynthOscillator::kDistortionMix);
     oscillator_->useOutput(output(kRaw), SynthOscillator::kRaw);
     oscillator_->useOutput(output(kLevelled), SynthOscillator::kLevelled);
 
@@ -101,6 +141,17 @@ namespace vital {
 
   void OscillatorModule::process(int num_samples) {
     bool on = on_->value();
+
+    if (random_dice_ && random_seed_) {
+      float dice = random_dice_->buffer[0][0] >= 0.5f ? 1.0f : 0.0f;
+      if (*last_dice_ >= 0.0f && dice != *last_dice_) {
+        // A linear congruential step keeps re-rolls deterministic for a given sequence of flips.
+        uint32_t seed = static_cast<uint32_t>(random_seed_->value() + 0.5f);
+        seed = (seed * 1664525u + 1013904223u) % 100000u;
+        random_seed_->set(static_cast<float>(seed));
+      }
+      *last_dice_ = dice;
+    }
 
     if (on)
       SynthModule::process(num_samples);

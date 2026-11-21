@@ -15,6 +15,10 @@
  */
 
 #include "filter_section.h"
+#include "line_generator.h"
+#include "other_filter.h"
+#include "sound_engine.h"
+#include "spectral_warp_editor.h"
 
 #include "skin.h"
 #include "digital_svf.h"
@@ -50,12 +54,19 @@ namespace {
         return 6;
       case vital::constants::kPhase:
         return 2;
+      case vital::constants::kOther:
+        return vital::OtherFilter::kNumOtherStyles;
       default:
         return 0;
     }
   }
 
   std::string getStyleName(int int_model, int style) {
+    // A host can automate the style to a value the model does not have, so keep the lookup in range.
+    int num_styles = getNumStyles(int_model);
+    if (num_styles <= 0)
+      return "";
+    style = std::max(0, std::min(style, num_styles - 1));
     vital::constants::FilterModel model = static_cast<vital::constants::FilterModel>(int_model);
     switch (model) {
       case vital::constants::kAnalog:
@@ -79,6 +90,8 @@ namespace {
           return "Negative";
         else
           return "Positive";
+      case vital::constants::kOther:
+        return strings::kOtherFilterStyleNames[style];
       default:
         return "";
     }
@@ -179,6 +192,27 @@ FilterSection::FilterSection(String name, String suffix) :
 
   filter_label_2_ = std::make_unique<PlainTextComponent>("label2", "KEY TRK");
   addOpenGlComponent(filter_label_2_.get());
+
+  placeholder_curve_ = std::make_unique<LineGenerator>();
+  for (int i = 0; i < 3; ++i) {
+    curve_editors_[i] = std::make_unique<SpectralCurveEditor>(placeholder_curve_.get());
+    curve_editors_[i]->setGridSizeX(8);
+    curve_editors_[i]->setGridSizeY(4);
+    curve_editors_[i]->setLoop(false);
+    addOpenGlComponent(curve_editors_[i].get());
+    addOpenGlComponent(curve_editors_[i]->getTextEditorComponent());
+    curve_editors_[i]->setVisible(false);
+  }
+
+  // The three frames of the Custom model are the three positions of the blend slider (left, middle, right). The
+  // pencil edits the frame the blend slider is closest to.
+  edit_curve_button_ = std::make_unique<OpenGlShapeButton>("Edit Custom Filter");
+  addAndMakeVisible(edit_curve_button_.get());
+  addOpenGlComponent(edit_curve_button_->getGlComponent());
+  edit_curve_button_->addListener(this);
+  edit_curve_button_->setClickingTogglesState(true);
+  edit_curve_button_->setShape(Paths::pencil());
+  edit_curve_button_->setVisible(false);
 
   formant_x_->setVisible(false);
   formant_y_->setVisible(false);
@@ -403,6 +437,18 @@ void FilterSection::resized() {
   formant_spread_->setBounds(keytrack_->getBounds());
   blend_transpose_->setBounds(drive_->getBounds());
 
+  Rectangle<int> editor_bounds = filter_response_->getBounds();
+  for (int i = 0; i < 3; ++i) {
+    curve_editors_[i]->setSizeRatio(size_ratio_);
+    curve_editors_[i]->setBounds(editor_bounds);
+  }
+  // The blend and resonance bars overlap the display edges, so the pencil sits inside them and stays on top.
+  int button_size = std::max(24, static_cast<int>(30 * size_ratio_));
+  int button_inset = 2 * getSliderOverlapWithSpace() + getWidgetMargin();
+  edit_curve_button_->setBounds(editor_bounds.getRight() - button_size - button_inset,
+                                editor_bounds.getY() + button_inset, button_size, button_size);
+  edit_curve_button_->toFront(false);
+
   filter_label_1_->setFontType(PlainTextComponent::kRegular);
   filter_label_2_->setFontType(PlainTextComponent::kRegular);
   float label_height = findValue(Skin::kLabelHeight);
@@ -418,6 +464,11 @@ void FilterSection::resized() {
 }
 
 void FilterSection::buttonClicked(Button* clicked_button) {
+  if (clicked_button == edit_curve_button_.get()) {
+    showCurveEditor();
+    return;
+  }
+
   if (clicked_button == filter_input_.get()) {
     if (filter_input_->getToggleState()) {
       for (Listener* listener : listeners_)
@@ -548,11 +599,34 @@ void FilterSection::showModelKnobs() {
   keytrack_->setVisible(!formant);
   blend_->setVisible(!formant || vocal_tract);
   drive_->setVisible(!formant && !comb);
+
+  if (model == vital::constants::kOther) {
+    // The blend slider is the width of Band Reject, the stage count of the Disperser, the spacing of the Metal Comb,
+    // the size of the Metal Reverb and the frame of the Custom filter. All-Pass has none. Drive works on all of them.
+    drive_->setVisible(true);
+    blend_->setVisible(current_style_ != vital::OtherFilter::kAllPass);
+    switch (current_style_) {
+      case vital::OtherFilter::kBandReject: blend_->setPopupPrefix("Width: "); break;
+      case vital::OtherFilter::kMetalComb: blend_->setPopupPrefix("Spacing: "); break;
+      case vital::OtherFilter::kMetalReverb: blend_->setPopupPrefix("Size: "); break;
+      case vital::OtherFilter::kDisperser: blend_->setPopupPrefix("Stages: "); break;
+      case vital::OtherFilter::kCustom: blend_->setPopupPrefix("Frame: "); break;
+      default: break;
+    }
+  }
+  else
+    blend_->setPopupPrefix("Blend: ");
+
+  // The knob shadows (the dark circles) are painted into the background, so redo it when knobs come or go.
+  repaintBackground();
+  bindCurves();
+  showCurveEditor();
 }
 
 void FilterSection::setFilterText() {
-  std::string style = getStyleName(current_model_, current_style_);
-  preset_selector_->setText(strings::kFilterModelNames[current_model_], ":", style);
+  int model = std::max(0, std::min<int>(current_model_, vital::constants::kNumFilterModels - 1));
+  std::string style = getStyleName(model, current_style_);
+  preset_selector_->setText(strings::kFilterModelNames[model], ":", style);
 }
 
 void FilterSection::setLabelText() {
@@ -589,6 +663,8 @@ void FilterSection::setActive(bool active) {
 }
 
 Path FilterSection::getLeftMorphPath() {
+  if (current_model_ == vital::constants::kOther)
+    return current_style_ == vital::OtherFilter::kCustom ? Paths::lowPass() : Paths::narrowBand();
   if (current_model_ == vital::constants::kPhase)
     return Paths::phaser1();
   if (current_model_ == vital::constants::kFormant)
@@ -602,6 +678,8 @@ Path FilterSection::getLeftMorphPath() {
 }
 
 Path FilterSection::getRightMorphPath() {
+  if (current_model_ == vital::constants::kOther)
+    return current_style_ == vital::OtherFilter::kCustom ? Paths::highPass() : Paths::wideBand();
   if (current_model_ == vital::constants::kPhase)
     return Paths::phaser3();
   if (current_model_ == vital::constants::kFormant)
@@ -613,4 +691,59 @@ Path FilterSection::getRightMorphPath() {
   if (current_model_ == vital::constants::kDiode)
     return Paths::bandPass();
   return Paths::highPass();
+}
+
+void FilterSection::parentHierarchyChanged() {
+  SynthSection::parentHierarchyChanged();
+  bindCurves();
+}
+
+// Points the three curve editors (and the response display) at this filter's drawn curves in the engine.
+void FilterSection::bindCurves() {
+  if (curves_bound_ || model_name_.empty())
+    return;
+
+  SynthGuiInterface* parent = findParentComponentOfClass<SynthGuiInterface>();
+  if (parent == nullptr || parent->getSynth() == nullptr)
+    return;
+
+  std::string prefix = model_name_.substr(0, model_name_.size() - std::string("_model").size());
+  int set = vital::OtherFilter::curveSetForPrefix(prefix);
+  vital::SoundEngine* engine = parent->getSynth()->getEngine();
+  if (set < 0 || engine == nullptr)
+    return;
+
+  int lane = vital::SoundEngine::kFirstFilterLane + set;
+  for (int i = 0; i < 3; ++i) {
+    curve_editors_[i]->setModel(engine->getSpectralCurve(lane, i));
+    curve_editors_[i]->setPointModCurve(lane * vital::SoundEngine::kNumSpectralCurves + i);
+  }
+  filter_response_->setOtherCurves(engine->getSpectralCurve(lane, 0), engine->getSpectralCurve(lane, 1),
+                                   engine->getSpectralCurve(lane, 2));
+  curves_bound_ = true;
+}
+
+int FilterSection::editedCurve() const {
+  return std::max(0, std::min(2, static_cast<int>(std::round(blend_->getValue()))));
+}
+
+void FilterSection::sliderValueChanged(Slider* moved_slider) {
+  SynthSection::sliderValueChanged(moved_slider);
+  if (moved_slider == blend_.get())
+    showCurveEditor();
+}
+
+// Custom filter: the display shows the response, or (pencil on) the drawn frame closest to the blend slider.
+void FilterSection::showCurveEditor() {
+  bool custom = current_model_ == vital::constants::kOther && current_style_ == vital::OtherFilter::kCustom;
+  bool editing = custom && edit_curve_button_->getToggleState();
+  int frame = editedCurve();
+  for (int i = 0; i < 3; ++i) {
+    curve_editors_[i]->setVisible(editing && i == frame);
+    curve_editors_[i]->getTextEditorComponent()->setVisible(false);
+  }
+  edit_curve_button_->setVisible(custom);
+  edit_curve_button_->getGlComponent()->setVisible(custom);
+  filter_response_->setVisible(!editing);
+  edit_curve_button_->toFront(false);
 }

@@ -54,6 +54,13 @@ namespace vital {
       JUCE_LEAK_DETECTOR(StatusOutput)
   };
 
+  // What an alias needs to know about a control it does not create itself.
+  struct ModControlRecord {
+    Output* output = nullptr;
+    Output* internal_modulation = nullptr;
+    bool audio_rate = false;
+  };
+
   struct ModuleData {
     std::vector<Processor*> owned_mono_processors;
     std::vector<SynthModule*> sub_modules;
@@ -67,20 +74,60 @@ namespace vital {
     output_map poly_modulation_readout;
     std::map<std::string, ValueSwitch*> mono_modulation_switches;
     std::map<std::string, ValueSwitch*> poly_modulation_switches;
+    std::map<std::string, ModControlRecord> mod_control_records;
 
     JUCE_LEAK_DETECTOR(ModuleData)
+  };
+
+  // While one of these is alive, every SynthModule that is constructed names its controls (and status outputs)
+  // with the prefix "from" replaced by "to". The effect chain uses it to create several copies of an effect whose
+  // code names its controls "chorus_dry_wet": the copy made with from = "chorus_", to = "chorus_2_" creates
+  // "chorus_2_dry_wet" instead.
+  class ControlRemapScope {
+    public:
+      ControlRemapScope(const std::string& from, const std::string& to);
+      ~ControlRemapScope();
+      static const std::string& currentFrom();
+      static const std::string& currentTo();
+
+    private:
+      std::string previous_from_, previous_to_;
+  };
+
+  class SynthModule;
+
+  // While one of these is alive, every SynthModule that is constructed becomes an "alias" of the module (tree) given:
+  // it creates no controls, modulation destinations or status outputs of its own, and the controls it asks for are
+  // the original's (same names). The result is an independent copy of the processing (own filter memory, delay
+  // buffers...) that follows the original's parameters and modulation. Controls that are created with an internal
+  // modulation (like a filter's key tracking) get that modulation swapped for the alias's own.
+  class ControlAliasScope {
+    public:
+      explicit ControlAliasScope(SynthModule* source);
+      ~ControlAliasScope();
+      static SynthModule* current();
+
+    private:
+      SynthModule* previous_;
   };
 
   class SynthModule : public ProcessorRouter {
     public:
       SynthModule(int num_inputs, int num_outputs, bool control_rate = false) :
-          ProcessorRouter(num_inputs, num_outputs, control_rate) {
+          ProcessorRouter(num_inputs, num_outputs, control_rate),
+          remap_from_(ControlRemapScope::currentFrom()), remap_to_(ControlRemapScope::currentTo()),
+          alias_source_(ControlAliasScope::current()) {
         data_ = std::make_shared<ModuleData>();
       }
       virtual ~SynthModule() { }
 
       // Returns a map of all controls of this module and all submodules.
       control_map getControls();
+
+      // Searches this module and its submodules.
+      Value* findControl(const std::string& name);
+      const ModControlRecord* findModControlRecord(const std::string& name);
+      bool isAlias() const { return alias_source_ != nullptr; }
 
       Output* getModulationSource(std::string name);
       const StatusOutput* getStatusOutput(std::string name) const;
@@ -108,6 +155,15 @@ namespace vital {
       void addSubmodule(SynthModule* module) { data_->sub_modules.push_back(module); }
 
     protected:
+      // The name a control of this module really gets (see ControlRemapScope).
+      std::string remapName(const std::string& name) const {
+        if (remap_from_.empty() || name.compare(0, remap_to_.size(), remap_to_) == 0 ||
+            name.compare(0, remap_from_.size(), remap_from_) != 0) {
+          return name;
+        }
+        return remap_to_ + name.substr(remap_from_.size());
+      }
+
       // Creates a basic linear non-scaled control.
       Value* createBaseControl(std::string name, bool audio_rate = false, bool smooth_value = false);
 
@@ -130,6 +186,11 @@ namespace vital {
       void createStatusOutput(std::string name, Output* source);
 
       std::shared_ptr<ModuleData> data_;
+      std::string remap_from_, remap_to_;
+      SynthModule* alias_source_;
+
+    private:
+      Output* aliasModControl(const std::string& name, Output* internal_modulation);
 
       JUCE_LEAK_DETECTOR(SynthModule)
   };

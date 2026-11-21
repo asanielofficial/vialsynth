@@ -57,6 +57,27 @@ class SynthBase : public MidiManager::Listener {
     void presetChangedThroughMidi(File preset) override;
     void valueChangedExternal(const std::string& name, vital::mono_float value);
     void valueChangedInternal(const std::string& name, vital::mono_float value);
+
+    // Parameters the host always sees (no slot needed): bypass, master volume, lane switches and levels, macros.
+    static const std::vector<std::string>& getFixedHostParameters();
+    static bool isFixedHostParameter(const std::string& name);
+
+    // Host automation slots. A parameter is automatable from the host only while it is assigned to a slot.
+    const std::string& getAutomationSlot(int slot) const { return automation_slots_[slot]; }
+    int findAutomationSlot(const std::string& name) const;
+    void setAutomationSlot(int slot, const std::string& name);
+    void clearAutomationSlot(const std::string& name);
+    json automationSlotsToJson() const;
+    void automationSlotsFromJson(const json& data);
+    virtual void automationSlotsChanged() { }
+
+    // Undo / redo of everything done in the interface: snapshots of the whole state, one per burst of edits.
+    // noteEdit() goes right before every change made from the interface.
+    void noteEdit();
+    bool canUndo();
+    bool canRedo();
+    bool undo();
+    bool redo();
     bool connectModulation(const std::string& source, const std::string& destination);
     void connectModulation(vital::ModulationConnection* connection);
     void disconnectModulation(const std::string& source, const std::string& destination);
@@ -75,6 +96,7 @@ class SynthBase : public MidiManager::Listener {
 
     vital::Wavetable* getWavetable(int index);
     WavetableCreator* getWavetableCreator(int index);
+    void initWavetableCreator(int index);
     vital::Sample* getSample();
     LineGenerator* getLfoSource(int index);
 
@@ -116,7 +138,18 @@ class SynthBase : public MidiManager::Listener {
     MidiKeyboardState* getKeyboardState() { return keyboard_state_.get(); }
     const vital::poly_float* getOscilloscopeMemory() { return oscilloscope_memory_; }
     const vital::StereoMemory* getAudioMemory() { return audio_memory_.get(); }
-    const vital::StereoMemory* getEqualizerMemory();
+    // Recent audio of the effect build's two inputs (for the input panels' spectrum displays).
+    const vital::StereoMemory* getInputMemory();
+    const vital::StereoMemory* getSidechainMemory();
+    // Constant latency of the spectral stage in samples (the FFT size); 0 outside the FX build.
+    int getEngineLatencySamples();
+    const vital::StereoMemory* getEqualizerMemory(int instance = 0);
+    // The effect chain: slots hold 0 or 1 + effectId (+ a "minimized" flag for the interface).
+    void setEffectChain(const int* slots, int num_slots);
+    int getEffectChain(int* slots) const;
+    // Names of the FX Bins (saved with the preset); an empty name means the default "FX Bin".
+    String getFxBinName(int index) const { return index >= 0 && index < vital::kMaxFxBins ? fx_bin_names_[index] : String(); }
+    void setFxBinName(int index, const String& name) { if (index >= 0 && index < vital::kMaxFxBins) fx_bin_names_[index] = name; }
     vital::ModulationConnectionBank& getModulationBank();
     void notifyOversamplingChanged();
     void checkOversampling();
@@ -154,8 +187,10 @@ class SynthBase : public MidiManager::Listener {
     }
 
     void processAudio(AudioSampleBuffer* buffer, int channels, int samples, int offset);
+    // sidechain_buffer is the second input of the effect build (nullptr when the host has none connected).
     void processAudioWithInput(AudioSampleBuffer* buffer, const vital::poly_float* input_buffer,
-                               int channels, int samples, int offset);
+                               int channels, int samples, int offset,
+                               const vital::poly_float* sidechain_buffer = nullptr);
     void writeAudio(AudioSampleBuffer* buffer, int channels, int samples, int offset);
     void processMidi(MidiBuffer& buffer, int start_sample = 0, int end_sample = 0);
     void processKeyboardEvents(MidiBuffer& buffer, int num_samples);
@@ -166,7 +201,7 @@ class SynthBase : public MidiManager::Listener {
     std::unique_ptr<MidiManager> midi_manager_;
     std::unique_ptr<MidiKeyboardState> keyboard_state_;
 
-    std::unique_ptr<WavetableCreator> wavetable_creators_[vital::kNumOscillators];
+    std::unique_ptr<WavetableCreator> wavetable_creators_[vital::kNumWavetableSlots];
     std::shared_ptr<SynthBase*> self_reference_;
 
     File active_file_;
@@ -181,6 +216,27 @@ class SynthBase : public MidiManager::Listener {
     bool expired_;
 
     std::map<std::string, String> save_info_;
+    String fx_bin_names_[vital::kMaxFxBins];
+    class EditTimer : public Timer {
+      public:
+        explicit EditTimer(SynthBase* owner) : owner_(owner) { }
+        void timerCallback() override { stopTimer(); owner_->commitEdits(); }
+      private:
+        SynthBase* owner_;
+    };
+
+    void commitEdits();
+    void resetHistory();
+    bool applySnapshot(const std::string& snapshot);
+
+    std::string automation_slots_[vital::kNumAutomationSlots];
+
+    std::vector<std::string> undo_stack_;
+    std::vector<std::string> redo_stack_;
+    std::string history_current_;
+    bool history_loading_ = false;
+    EditTimer edit_timer_{this};
+
     vital::control_map controls_;
     vital::CircularQueue<vital::ModulationConnection*> mod_connections_;
     moodycamel::ConcurrentQueue<vital::control_change> value_change_queue_;

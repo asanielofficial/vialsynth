@@ -14,30 +14,62 @@
  * along with pylon.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "debug_log.h"
 #include "synth_plugin.h"
 #include "synth_editor.h"
 #include "sound_engine.h"
 #include "load_save.h"
 
 SynthPlugin::SynthPlugin() {
+  vial_debug::log("SynthPlugin: constructing");
   last_seconds_time_ = 0.0;
 
-  int num_params = vital::Parameters::getNumParameters();
-  for (int i = 0; i < num_params; ++i) {
-    const vital::ValueDetails* details = vital::Parameters::getDetails(i);
-    if (controls_.count(details->name) == 0)
+  // The host sees bypass and a fixed set of automation slots; everything else is reached through a slot.
+  for (const std::string& name : getFixedHostParameters()) {
+    if (controls_.count(name) == 0)
       continue;
 
-    ValueBridge* bridge = new ValueBridge(details->name, controls_[details->name]);
+    ValueBridge* bridge = new ValueBridge(name, controls_[name]);
     bridge->setListener(this);
-    bridge_lookup_[details->name] = bridge;
+    bridge_lookup_[name] = bridge;
     addParameter(bridge);
   }
-
   bypass_parameter_ = bridge_lookup_["bypass"];
+
+  for (int i = 0; i < vital::kNumAutomationSlots; ++i) {
+    ValueBridge* bridge = new ValueBridge(i);
+    bridge->setListener(this);
+    slot_bridges_.push_back(bridge);
+    addParameter(bridge);
+  }
+  vial_debug::log("SynthPlugin: constructed");
+}
+
+void SynthPlugin::automationSlotsChanged() {
+  for (auto it = bridge_lookup_.begin(); it != bridge_lookup_.end();) {
+    if (isFixedHostParameter(it->first))
+      ++it;
+    else
+      it = bridge_lookup_.erase(it);
+  }
+
+  for (int i = 0; i < vital::kNumAutomationSlots; ++i) {
+    const std::string& name = getAutomationSlot(i);
+    auto control = controls_.find(name);
+    if (name.empty() || control == controls_.end() || control->second == nullptr) {
+      slot_bridges_[i]->assign("", nullptr);
+      continue;
+    }
+
+    slot_bridges_[i]->assign(name, control->second);
+    bridge_lookup_[name] = slot_bridges_[i];
+  }
+
+  updateHostDisplay();
 }
 
 SynthPlugin::~SynthPlugin() {
+  cancelPendingUpdate();
   midi_manager_ = nullptr;
   keyboard_state_ = nullptr;
 }
@@ -130,6 +162,19 @@ void SynthPlugin::prepareToPlay(double sample_rate, int buffer_size) {
   engine_->setSampleRate(sample_rate);
   engine_->updateAllModulationSwitches();
   midi_manager_->setSampleRate(sample_rate);
+  int latency = SynthBase::getEngineLatencySamples();
+  reported_latency_ = latency;
+  setLatencySamples(latency);
+}
+
+// The Morph effects delay by one FFT size while a spectral mode is chosen (none: no latency). The host must know
+// before it plays, and again whenever the FFT size changes, so this is re-checked every block.
+void SynthPlugin::checkLatency() {
+  int latency = SynthBase::getEngineLatencySamples();
+  if (latency != reported_latency_.load()) {
+    reported_latency_ = latency;
+    triggerAsyncUpdate();
+  }
 }
 
 void SynthPlugin::releaseResources() {
@@ -142,6 +187,8 @@ void SynthPlugin::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midi_messa
     processBlockBypassed(buffer, midi_messages);
     return;
   }
+
+  checkLatency();
 
   int total_samples = buffer.getNumSamples();
   int num_channels = getTotalNumOutputChannels();
@@ -179,6 +226,7 @@ bool SynthPlugin::hasEditor() const {
 }
 
 AudioProcessorEditor* SynthPlugin::createEditor() {
+  vial_debug::log("createEditor");
   return new SynthEditor(*this);
 }
 
@@ -189,6 +237,7 @@ void SynthPlugin::parameterChanged(std::string name, vital::mono_float value) {
 void SynthPlugin::getStateInformation(MemoryBlock& dest_data) {
   json data = LoadSave::stateToJson(this, getCallbackLock());
   data["tuning"] = getTuning()->stateToJson();
+  data["automation_slots"] = automationSlotsToJson();
 
   String data_string = data.dump();
   MemoryOutputStream stream;
@@ -197,6 +246,7 @@ void SynthPlugin::getStateInformation(MemoryBlock& dest_data) {
 }
 
 void SynthPlugin::setStateInformation(const void* data, int size_in_bytes) {
+  vial_debug::log("setStateInformation " + String(size_in_bytes) + " bytes");
   MemoryInputStream stream(data, size_in_bytes, false);
   String data_string = stream.readEntireStreamAsString();
 
@@ -207,16 +257,20 @@ void SynthPlugin::setStateInformation(const void* data, int size_in_bytes) {
 
     if (json_data.count("tuning"))
       getTuning()->jsonToState(json_data["tuning"]);
+    if (json_data.count("automation_slots"))
+      automationSlotsFromJson(json_data["automation_slots"]);
   }
   catch (const json::exception& e) {
     std::string error = "There was an error open the preset. Preset file is corrupted.";
     AlertWindow::showNativeDialogBox("Error opening preset", error, false);
   }
   pauseProcessing(false);
+  vial_debug::log("setStateInformation: engine state loaded");
 
   SynthGuiInterface* editor = getGuiInterface();
   if (editor)
     editor->updateFullGui();
+  vial_debug::log("setStateInformation: done");
 }
 
 AudioProcessor* JUCE_CALLTYPE createPluginFilter() {

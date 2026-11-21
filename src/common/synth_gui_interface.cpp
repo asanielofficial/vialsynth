@@ -87,14 +87,25 @@ vital::mono_float SynthGuiInterface::getControlValue(const std::string& name) {
 }
 
 void SynthGuiInterface::notifyModulationsChanged() {
+  if (gui_ == nullptr) {
+    if (modulation_forward_)
+      modulation_forward_->notifyModulationsChanged();
+    return;
+  }
   gui_->modulationChanged();
 }
 
 void SynthGuiInterface::notifyModulationValueChanged(int index) {
+  if (gui_ == nullptr) {
+    if (modulation_forward_)
+      modulation_forward_->notifyModulationValueChanged(index);
+    return;
+  }
   gui_->modulationValueChanged(index);
 }
 
 void SynthGuiInterface::connectModulation(std::string source, std::string destination) {
+  synth_->noteEdit();
   bool created = synth_->connectModulation(source, destination);
   if (created)
     initModulationValues(source, destination);
@@ -102,6 +113,7 @@ void SynthGuiInterface::connectModulation(std::string source, std::string destin
 }
 
 void SynthGuiInterface::connectModulation(vital::ModulationConnection* connection) {
+  synth_->noteEdit();
   synth_->connectModulation(connection);
   notifyModulationsChanged();
 }
@@ -117,11 +129,12 @@ void SynthGuiInterface::initModulationValues(const std::string& source, const st
 
   std::string power_name = "modulation_" + std::to_string(connection_index + 1) + "_power";
   synth_->valueChanged(power_name, 0.0f);
-  gui_->setValue(power_name, 0.0f, NotificationType::dontSendNotification);
+  if (gui_) gui_->setValue(power_name, 0.0f, NotificationType::dontSendNotification);
 }
 
 void SynthGuiInterface::setModulationValues(const std::string& source, const std::string& destination,
                                             vital::mono_float amount, bool bipolar, bool stereo, bool bypass) {
+  synth_->noteEdit();
   int connection_index = synth_->getConnectionIndex(source, destination);
   if (connection_index < 0)
     return;
@@ -140,18 +153,20 @@ void SynthGuiInterface::setModulationValues(const std::string& source, const std
   synth_->valueChanged(bipolar_name, bipolar_amount);
   synth_->valueChanged(stereo_name, stereo_amount);
   synth_->valueChanged(bypass_name, bypass_amount);
-  gui_->setValue(amount_name, amount, NotificationType::dontSendNotification);
-  gui_->setValue(bipolar_name, bipolar_amount, NotificationType::dontSendNotification);
-  gui_->setValue(stereo_name, stereo_amount, NotificationType::dontSendNotification);
-  gui_->setValue(bypass_name, bypass_amount, NotificationType::dontSendNotification);
+  if (gui_) gui_->setValue(amount_name, amount, NotificationType::dontSendNotification);
+  if (gui_) gui_->setValue(bipolar_name, bipolar_amount, NotificationType::dontSendNotification);
+  if (gui_) gui_->setValue(stereo_name, stereo_amount, NotificationType::dontSendNotification);
+  if (gui_) gui_->setValue(bypass_name, bypass_amount, NotificationType::dontSendNotification);
 }
 
 void SynthGuiInterface::disconnectModulation(std::string source, std::string destination) {
+  synth_->noteEdit();
   synth_->disconnectModulation(source, destination);
   notifyModulationsChanged();
 }
 
 void SynthGuiInterface::disconnectModulation(vital::ModulationConnection* connection) {
+  synth_->noteEdit();
   synth_->disconnectModulation(connection);
   notifyModulationsChanged();
 }

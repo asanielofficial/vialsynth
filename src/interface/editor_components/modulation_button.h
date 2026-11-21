@@ -80,6 +80,7 @@ class ModulationButton : public PlainShapeComponent {
     void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override;
     void focusLost(FocusChangeType cause) override;
     void addListener(Listener* listener);
+    void removeListener(Listener* listener);
     void disconnectIndex(int index);
 
     void select(bool select);
@@ -104,6 +105,7 @@ class ModulationButton : public PlainShapeComponent {
     SynthGuiInterface* parent_;
     std::vector<Listener*> listeners_;
     MouseState mouse_state_;
+    bool dragging_out_ = false;
     bool selected_;
     bool connect_right_;
     bool draw_border_;

@@ -35,6 +35,44 @@
 #include "wavetable_3d.h"
 
 namespace {
+  // The dice is a real parameter (so it can be automated, modulated and right-clicked like a knob), but it looks
+  // and acts like a button: a plain click rolls a new seed, and dragging does nothing.
+  class DiceSlider : public SynthSlider {
+    public:
+      explicit DiceSlider(String name) : SynthSlider(name) { }
+
+      void setClickCallback(std::function<void()> callback) { click_callback_ = callback; }
+
+      void mouseDown(const MouseEvent& e) override {
+        if (e.mods.isPopupMenu() || e.mods.isAltDown())
+          SynthSlider::mouseDown(e);
+      }
+      void drawShadow(Graphics&) override { }   // no dark disc behind the die
+      void mouseDrag(const MouseEvent&) override { }
+      void mouseDoubleClick(const MouseEvent&) override { }
+      void mouseWheelMove(const MouseEvent&, const MouseWheelDetails&) override { }
+      void mouseUp(const MouseEvent& e) override {
+        if (e.mods.isPopupMenu() || e.mods.isAltDown())
+          return;
+        if (e.mouseWasClicked() && click_callback_)
+          click_callback_();
+      }
+
+    private:
+      std::function<void()> click_callback_;
+  };
+
+  // A die: a rounded square with five holes.
+  Path dicePath() {
+    Path path;
+    path.setUsingNonZeroWinding(false);
+    path.addRoundedRectangle(0.15f, 0.15f, 0.7f, 0.7f, 0.14f);
+    const float pips[5][2] = { { 0.3f, 0.3f }, { 0.7f, 0.3f }, { 0.5f, 0.5f }, { 0.3f, 0.7f }, { 0.7f, 0.7f } };
+    for (const auto& pip : pips)
+      path.addEllipse(pip[0] - 0.055f, pip[1] - 0.055f, 0.11f, 0.11f);
+    return path;
+  }
+
   const std::string kSpectralMorphTypes[vital::SynthOscillator::kNumSpectralMorphTypes] = {
     "---",
     "VOCODE",
@@ -48,6 +86,11 @@ namespace {
     "PHASE DISP",
     "SHEPARD TONE",
     "TIME SKEW",
+    "SPEC GATE",
+    "SPEC FILTER",
+    "SPEC PHASER",
+    "SPEC FLANGER",
+    "SPEC TABLE",
   };
 
   const std::string kDistortionTypes[vital::SynthOscillator::kNumDistortionTypes] = {
@@ -63,7 +106,8 @@ namespace {
     "FM <- SAMPLE",
     "RM <- OSC",
     "RM <- OSC",
-    "RM <- SAMPLE"
+    "RM <- SAMPLE",
+    "DIST TABLE"
   };
 
   const std::string kLanguageNames[] = {
@@ -152,11 +196,13 @@ namespace {
   }
 
   bool isSpectralMenuSeparator(int index) {
-    return index == (vital::SynthOscillator::kNoSpectralMorph + 1);
+    return index == (vital::SynthOscillator::kNoSpectralMorph + 1) || index == vital::SynthOscillator::kSpectralFilter ||
+           index == vital::SynthOscillator::kSpectralTable;
   }
 
   bool isDistortionMenuSeparator(int index) {
-    return index == (vital::SynthOscillator::kNone + 1) || index == vital::SynthOscillator::kFmOscillatorA;
+    return index == (vital::SynthOscillator::kNone + 1) || index == vital::SynthOscillator::kFmOscillatorA ||
+           index == vital::SynthOscillator::kDistortTable;
   }
 
   String getDistortionMenuString(int type, int index) {
@@ -393,6 +439,44 @@ OscillatorSection::OscillatorSection(Authentication* auth,
   spectral_morph_amount_->setKnobSizeScale(1.5f);
   spectral_morph_amount_->setPopupPrefix("Spectral Morph: ");
 
+  auto make_tool = [this](const String& name, const Path& shape) {
+    auto tool = std::make_unique<OpenGlShapeButton>(name);
+    addAndMakeVisible(tool.get());
+    addOpenGlComponent(tool->getGlComponent());
+    tool->addListener(this);
+    tool->setShape(shape);
+    tool->setVisible(false);
+    return tool;
+  };
+  curve_button_ = make_tool("Spectral Tool", Paths::pencil());
+  spectral_edit_button_ = make_tool("Spectral Table Editor", Paths::pencil());
+  warp_tool_button_ = make_tool("Table Settings", Paths::gear());
+  warp_edit_button_ = make_tool("Table Editor", Paths::pencil());
+  dice_button_ = make_tool("Dice", dicePath());
+
+  shuffle_ = std::make_unique<SynthSlider>("osc_" + number + "_random_shuffle");
+  addSlider(shuffle_.get());
+  shuffle_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+  shuffle_->setKnobSizeScale(0.6f);   // resized() fits the real scale (same as the MIX knob)
+  shuffle_->setPopupPlacement(BubbleComponent::above);
+  shuffle_->setModulationPlacement(BubbleComponent::above);
+  shuffle_->setPopupPrefix("Shuffle: ");
+  shuffle_->setDoubleClickReturnValue(true, 0.0);
+  shuffle_->setVisible(false);
+
+  // The slider sits on top of the drawn die and carries the parameter; its own knob drawing is switched off.
+  dice_button_->setInterceptsMouseClicks(false, false);
+  dice_slider_ = std::make_unique<DiceSlider>("osc_" + number + "_random_dice");
+  addSlider(dice_slider_.get());
+  dice_slider_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+  dice_slider_->setPopupPlacement(BubbleComponent::above);
+  dice_slider_->setModulationPlacement(BubbleComponent::above);
+  dice_slider_->setPopupPrefix("Dice: ");
+  dice_slider_->getQuadComponent()->setVisible(false);
+  dice_slider_->getImageComponent()->setVisible(false);
+  static_cast<DiceSlider*>(dice_slider_.get())->setClickCallback([this]() { rollDice(); });
+  dice_slider_->setVisible(false);
+
   spectral_morph_type_selector_ = std::make_unique<ShapeButton>("Spectral Morph", Colour(0xff666666),
                                                                  Colour(0xffaaaaaa), Colour(0xff888888));
   addAndMakeVisible(spectral_morph_type_selector_.get());
@@ -586,8 +670,8 @@ void OscillatorSection::paintBackground(Graphics& g) {
   g.setColour(findColour(Skin::kTextComponentBackground, true));
   int label_rounding = findValue(Skin::kLabelBackgroundRounding);
   int morph_y = getHeight() - knob_section_height + widget_margin;
-  Rectangle<int> spectral_normal_bounds(spectral_morph_amount_->getX(), morph_y,
-                                        spectral_morph_amount_->getWidth(), knob_section_height - 2 * widget_margin);
+  Rectangle<int> spectral_normal_bounds(spectral_cell_.getX(), morph_y,
+                                        spectral_cell_.getWidth(), knob_section_height - 2 * widget_margin);
   g.fillRoundedRectangle(getLabelBackgroundBounds(spectral_normal_bounds, false).toFloat(), label_rounding);
   Rectangle<int> distortion_normal_bounds(distortion_amount_->getX(), morph_y,
                                           distortion_amount_->getWidth(), knob_section_height - 2 * widget_margin);
@@ -595,6 +679,17 @@ void OscillatorSection::paintBackground(Graphics& g) {
   g.fillRoundedRectangle(destination_selector_->getBounds().toFloat(), label_rounding);
 
   paintKnobShadows(g);
+
+  if (!random_mix_label_.isEmpty()) {
+    float rounding = static_cast<float>(random_mix_label_.getHeight()) * 0.5f;
+    g.setColour(findColour(Skin::kTextComponentBackground, true));
+    g.fillRoundedRectangle(random_mix_label_.toFloat(), rounding);
+    g.fillRoundedRectangle(random_shuffle_label_.toFloat(), rounding);
+    g.setColour(findColour(Skin::kBodyText, true));
+    g.setFont(getLabelFont().withHeight(random_font_size_));
+    g.drawText("MIX", random_mix_label_, Justification::centred, false);
+    g.drawText("SHUFFLE", random_shuffle_label_, Justification::centred, false);
+  }
 
   paintJointControl(g, level_pan_x + widget_margin, top_row_y, top_row_width, top_row_height, "PITCH");
   paintJointControl(g, unison_x, top_row_y, top_row_width, top_row_height, "UNISON");
@@ -677,6 +772,7 @@ void OscillatorSection::resized() {
 
   placeKnobsInArea(Rectangle<int>(section2_x - widget_margin, knob_y, section2_width + widget_margin, big_knob_height),
                    { spectral_morph_amount_.get(), distortion_amount_.get() });
+  spectral_cell_ = spectral_morph_amount_->getBounds();
 
   int morph_y = getHeight() - knob_section_height + widget_margin;
   Rectangle<int> spectral_normal_bounds(spectral_morph_amount_->getX(), morph_y,
@@ -705,6 +801,87 @@ void OscillatorSection::resized() {
   int distortion_menu_x = prev_distortion_->getRight();
   distortion_type_selector_->setBounds(distortion_menu_x, prev_distortion_->getY(),
                                        next_distortion_->getX() - distortion_menu_x, prev_distortion_->getHeight());
+
+  // Tool buttons sit in the top corners of the knobs; Random Amplitudes keeps the dice and the shuffle bar in a strip
+  // at the right of its knob.
+  Rectangle<int> spectral_cell = spectral_cell_;
+  Rectangle<int> distortion_cell = distortion_amount_->getBounds();
+  int tool_size = std::max(1, static_cast<int>(spectral_cell.getHeight() * 0.24f));
+  curve_button_->setBounds(spectral_cell.getRight() - tool_size, spectral_cell.getY(), tool_size, tool_size);
+  spectral_edit_button_->setBounds(spectral_cell.getX(), spectral_cell.getY(), tool_size, tool_size);
+  warp_tool_button_->setBounds(distortion_cell.getRight() - tool_size, distortion_cell.getY(), tool_size, tool_size);
+  warp_edit_button_->setBounds(distortion_cell.getX(), distortion_cell.getY(), tool_size, tool_size);
+  if (dice_button_->isVisible()) {
+    // Random Amplitudes: one row (the MIX knob, the dice and an equally sized SHUFFLE knob) with label pills right
+    // under it. The knobs are drawn at their scale around the centre of their bounds, so the
+    // scale is fitted to the room left above the mode selector, and the modulation rings follow it (they read it).
+    int cell_w = spectral_cell.getWidth();
+    int pill_gap = std::max(1, widget_margin / 2);
+    int strip_h = std::max(1, static_cast<int>(label_height * 0.72f));
+
+    random_font_size_ = label_text_height * 0.95f;
+    int pad = std::max(2, widget_margin / 2);
+    int mix_w = 0, shuffle_w = 0;
+    for (;;) {
+      Font label_font = getLabelFont().withHeight(random_font_size_);
+      mix_w = static_cast<int>(label_font.getStringWidthFloat("MIX")) + 2 * pad;
+      shuffle_w = static_cast<int>(label_font.getStringWidthFloat("SHUFFLE")) + 2 * pad;
+      if (mix_w + shuffle_w + pill_gap <= cell_w || random_font_size_ <= 4.0f)
+        break;
+      random_font_size_ -= 0.5f;
+    }
+
+    int selector_top = spectral_cell.getBottom() - label_height;
+    float footprint_size = findValue(Skin::kKnobModAmountArcSize);
+    int dice_size = std::max(1, strip_h + 5);   // room for the die and its modulation ring
+
+    // The knobs and the pills right under them are centred as one block in the room above the mode selector.
+    float area_h = static_cast<float>(selector_top - spectral_cell.getY());
+    float mix_footprint = std::min(area_h - strip_h - pill_gap, (cell_w - dice_size - 4.0f * pill_gap) * 0.5f * 0.96f);
+    float mix_scale = std::max(0.3f, mix_footprint / footprint_size);
+    float shuffle_scale = mix_scale;   // both knobs are the same size
+    int mix_d = static_cast<int>(footprint_size * mix_scale);
+    int shuffle_d = mix_d;
+    spectral_morph_amount_->setKnobSizeScale(mix_scale);
+    shuffle_->setKnobSizeScale(shuffle_scale);
+
+    float block_h = mix_d + pill_gap + strip_h;
+    float knob_top = spectral_cell.getY() + (area_h - block_h) * 0.5f;
+    float draw_centre_y = knob_top + mix_d * 0.5f;
+
+    // One row: margin, MIX, dice, SHUFFLE, margin with the leftover width shared evenly.
+    int space = std::max(0, (cell_w - mix_d - dice_size - shuffle_d) / 4);
+    int x = spectral_cell.getX() + space;
+    int bounds_centre_y = static_cast<int>(draw_centre_y - findValue(Skin::kKnobOffset));
+    // The knob is drawn above the middle of its bounds (the knob offset), so the bounds get that much extra
+    // height; otherwise the top of the knob body is cut off.
+    int bounds_pad = static_cast<int>(std::abs(findValue(Skin::kKnobOffset))) + 2;
+    spectral_morph_amount_->setBounds(x, bounds_centre_y - mix_d / 2 - bounds_pad, mix_d, mix_d + 2 * bounds_pad);
+    x += mix_d + space;
+    int dice_bounds_y = bounds_centre_y - dice_size / 2 - bounds_pad;
+    dice_slider_->setKnobSizeScale(dice_size / findValue(Skin::kKnobArcSize));
+    dice_slider_->setBounds(x, dice_bounds_y, dice_size, dice_size + 2 * bounds_pad);
+    int die = std::max(1, static_cast<int>(dice_size * 0.85f));
+    dice_button_->setBounds(x + (dice_size - die) / 2, static_cast<int>(draw_centre_y) - die / 2, die, die);
+    x += dice_size + space;
+    shuffle_->setBounds(x, bounds_centre_y - shuffle_d / 2 - bounds_pad, shuffle_d, shuffle_d + 2 * bounds_pad);
+
+    // Pills hang right below their knobs; SHUFFLE is kept inside the cell and clear of MIX.
+    int strip_y = static_cast<int>(knob_top) + mix_d + pill_gap;
+    int mix_x = std::max(spectral_cell.getX(), spectral_morph_amount_->getBounds().getCentreX() - mix_w / 2);
+    int shuffle_x = std::min(spectral_cell.getRight() - shuffle_w, shuffle_->getBounds().getCentreX() - shuffle_w / 2);
+    shuffle_x = std::max(shuffle_x, mix_x + mix_w + pill_gap);
+    random_mix_label_ = Rectangle<int>(mix_x, strip_y, mix_w, strip_h);
+    random_shuffle_label_ = Rectangle<int>(shuffle_x, strip_y, shuffle_w, strip_h);
+  }
+  else {
+    spectral_morph_amount_->setKnobSizeScale(1.5f);
+    random_mix_label_ = Rectangle<int>();
+    random_shuffle_label_ = Rectangle<int>();
+    dice_button_->setBounds(0, 0, 0, 0);
+    dice_slider_->setBounds(0, 0, 0, 0);
+    shuffle_->setBounds(0, 0, 0, 0);
+  }
 
   distortion_phase_->setBounds(wavetable_->getX() - widget_margin,
                                wavetable_->getBottom() - slider_overlap + widget_margin,
@@ -772,6 +949,21 @@ void OscillatorSection::buttonClicked(Button* clicked_button) {
     Point<int> position(distortion_type_selector_->getX(), distortion_type_selector_->getBottom());
     showPopupSelector(this, position, options, [=](int selection) { setDistortionSelected(selection); });
   }
+  else if (clicked_button == curve_button_.get()) {
+    int type = current_spectral_morph_type_;
+    if (type == vital::SynthOscillator::kSpectralTable)
+      openModeSettings(3);
+    else if (type >= vital::SynthOscillator::kSpectralFilter && type <= vital::SynthOscillator::kSpectralFlanger)
+      openModeSettings(type - vital::SynthOscillator::kSpectralFilter);
+  }
+  else if (clicked_button == spectral_edit_button_.get())
+    openModeSettings(5);
+  else if (clicked_button == warp_tool_button_.get())
+    openModeSettings(4);
+  else if (clicked_button == warp_edit_button_.get())
+    openModeSettings(6);
+  else if (clicked_button == dice_button_.get())
+    rollDice();
   else if (clicked_button == destination_selector_.get()) {
     PopupItems options;
 
@@ -827,6 +1019,7 @@ void OscillatorSection::setAllValues(vital::control_map& controls) {
   setupSpectralMorph();
   setupDistortion();
   setupDestination();
+  updateWarpTools();
   vital::SynthOscillator::DistortionType type = (vital::SynthOscillator::DistortionType)current_distortion_type_;
 
   setDistortionPhaseVisible(vital::SynthOscillator::usesDistortionPhase(type));
@@ -930,16 +1123,68 @@ Slider* OscillatorSection::getWaveFrameSlider() {
   return wave_frame_.get();
 }
 
+// The dice picks a new seed for the Random Amplitudes pattern.
+void OscillatorSection::rollDice() {
+  SynthGuiInterface* parent = findParentComponentOfClass<SynthGuiInterface>();
+  if (parent == nullptr || parent->getSynth() == nullptr)
+    return;
+
+  static Random random;
+  std::string name = "osc_" + std::to_string(index_ + 1) + "_random_seed";
+  float current = 0.0f;
+  auto& controls = parent->getSynth()->getControls();
+  auto control = controls.find(name);
+  if (control != controls.end() && control->second)
+    current = control->second->value();
+
+  float seed = current;
+  while (seed == current)
+    seed = static_cast<float>(random.nextInt(99999) + 1);
+  parent->getSynth()->valueChangedInternal(name, seed);
+  parent->notifyChange();
+}
+
+// Pencils, cogs and the dice only exist for the modes that have something to open or roll.
+void OscillatorSection::updateWarpTools() {
+  int type = current_spectral_morph_type_;
+  bool drawable = type >= vital::SynthOscillator::kSpectralFilter && type <= vital::SynthOscillator::kSpectralFlanger;
+  bool spectral_table = type == vital::SynthOscillator::kSpectralTable;
+  bool random = type == vital::SynthOscillator::kRandomAmplitudes;
+  bool distort_table = current_distortion_type_ == vital::SynthOscillator::kDistortTable;
+
+  curve_button_->setVisible(drawable || spectral_table);
+  curve_button_->setShape(drawable ? Paths::pencil() : Paths::gear());
+  spectral_edit_button_->setVisible(spectral_table);
+  warp_tool_button_->setVisible(distort_table);
+  warp_edit_button_->setVisible(distort_table);
+  dice_button_->setVisible(random);
+  shuffle_->setVisible(random);
+  dice_slider_->setVisible(random);
+  resized();
+  modulationLayoutChanged();   // the modulation rings follow the knob scale
+  repaintBackground();
+}
+
 void OscillatorSection::setDistortionSelected(int selection) {
   current_distortion_type_ = selection;
+  updateWarpTools();
   wavetable_->setDistortionType(selection);
   vital::SynthOscillator::DistortionType type = (vital::SynthOscillator::DistortionType)current_distortion_type_;
   setDistortionPhaseVisible(vital::SynthOscillator::usesDistortionPhase(type));
   notifyDistortionTypeChange();
 }
 
+void OscillatorSection::openModeSettings(int kind) {
+  if (kind < 0)
+    return;
+  FullInterface* parent = findParentComponentOfClass<FullInterface>();
+  if (parent)
+    parent->showOscillatorWarpEditor(index_, kind);
+}
+
 void OscillatorSection::setSpectralMorphSelected(int selection) {
   current_spectral_morph_type_ = selection;
+  updateWarpTools();
   wavetable_->setSpectralMorphType(selection);
   notifySpectralMorphTypeChange();
 }
@@ -1146,7 +1391,7 @@ void OscillatorSection::setupDestination() {
   for (Listener* listener : listeners_)
     listener->oscillatorDestinationChanged(this, current_destination_);
 
-  destination_text_->setText(strings::kDestinationNames[current_destination_]);
+  destination_text_->setText(strings::kDestinationNames[std::max(0, std::min(current_destination_, vital::constants::kNumSourceDestinations + vital::constants::kNumEffects - 1))]);
 }
 
 void OscillatorSection::setDistortionPhaseVisible(bool visible) {

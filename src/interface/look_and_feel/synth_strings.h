@@ -90,7 +90,10 @@ namespace strings {
     "24dB",
     "Notch Blend",
     "Notch Spread",
-    "B/P/N"
+    "B/P/N",
+    // The style parameter's range is 0-9 but only five names are used. The rest are empty so that a host reading
+    // the parameter text for any value stays inside the array.
+    "", "", "", "", ""
   };
 
   const std::string kDiodeStyleNames[] = {
@@ -105,6 +108,15 @@ namespace strings {
     "Band Spread Comb",
     "Band Spread Flange+",
     "Band Spread Flange-"
+  };
+
+  const std::string kOtherFilterStyleNames[] = {
+    "Band Reject",
+    "All-Pass",
+    "Metal Comb",
+    "Metal Reverb",
+    "Disperser",
+    "Custom"
   };
 
   const std::string kFrequencySyncNames[] = {
@@ -122,6 +134,9 @@ namespace strings {
     "Sine Fold",
     "Bit Crush",
     "Down Samp",
+    "Tube",
+    "Saturator",
+    "Overdrive",
   };
 
   const std::string kDistortionTypeNames[] = {
@@ -131,6 +146,9 @@ namespace strings {
     "Sine Fold",
     "Bit Crush",
     "Down Sample",
+    "Tube",
+    "Saturator",
+    "Overdrive",
   };
 
   const std::string kDistortionFilterOrderNames[] = {
@@ -148,6 +166,7 @@ namespace strings {
     "Formant",
     "Comb",
     "Phaser",
+    "Other",
   };
 
   const std::string kPredefinedWaveformNames[] = {
@@ -168,7 +187,13 @@ namespace strings {
     "filter_fx",
     "flanger",
     "phaser",
-    "reverb"
+    "reverb",
+    "morph",
+    "pitch_shifter",
+    "utility",
+    "freq_shifter",
+    "vibrato",
+    "tremolo"
   };
 
   const std::string kSyncedFrequencyNames[] = {
@@ -280,6 +305,12 @@ namespace strings {
     "FLANGER",
     "PHASER",
     "REVERB",
+    "MORPH",
+    "PITCH SHIFTER",
+    "UTILITY",
+    "FREQ SHIFTER",
+    "VIBRATO",
+    "TREMOLO",
   };
 
   const std::string kDestinationMenuNames[vital::constants::kNumSourceDestinations + vital::constants::kNumEffects] = {
@@ -297,6 +328,41 @@ namespace strings {
     "Flanger",
     "Phaser",
     "Reverb",
+    "Morph",
+    "Pitch Shifter",
+    "Utility",
+    "Freq Shifter",
+    "Vibrato",
+    "Tremolo",
+  };
+
+  const std::string kRateUnitNames[] = {
+    "Hz", "Tempo"
+  };
+
+  const std::string kVibratoModNames[] = {
+    "Sine", "Triangle", "Saw Up", "Saw Down", "Square", "Random"
+  };
+
+  const std::string kFreqShifterUnitNames[] = {
+    "Hertz", "Seconds", "Tempo", "Tempo Dotted", "Tempo Triplets", "Keytrack"
+  };
+
+  const std::string kFreqShifterQualityNames[] = {
+    "Rough", "Normal", "Better", "Excellent"
+  };
+
+  const std::string kPitchShifterModeNames[] = {
+    "GRANULAR",
+    "MB-GRANULAR",
+    "RETRO",
+    "SPECTRAL"
+  };
+
+  const std::string kPitchShifterCompensationNames[] = {
+    "OFF",
+    "LOW",
+    "HIGH"
   };
 
   const std::string kPhaseDistortionNames[] = {
@@ -312,8 +378,49 @@ namespace strings {
     "FM <- Sample",
     "RM <- Osc",
     "RM <- Osc",
-    "RM <- Sample"
+    "RM <- Sample",
+    "Distort Table"
   };
+
+  // Distortion warp modes of the effect build's input lanes (None first; the sidechain lane offers the first seven).
+  const std::string kWarpNames[] = {
+    "None",
+    "Sync",
+    "Formant",
+    "Quantize",
+    "Bend",
+    "Squeeze",
+    "Pulse",
+    "FM",
+    "RM",
+    "Distort Table"
+  };
+
+  // Spectral morph modes of the effect build's input lanes (the sidechain lane offers all but the last;
+  // Vocode needs the other lane as its modulator).
+  const std::string kFxSpectralNames[] = {
+    "None",
+    "Formant Scale",
+    "Harmonic Stretch",
+    "Inharmonic Stretch",
+    "Smear",
+    "Random Amplitudes",
+    "Low Pass",
+    "High Pass",
+    "Phase Disperse",
+    "Shepard Tone",
+    "Spectral Time Skew",
+    "Spectral Filter",
+    "Spectral Phaser",
+    "Spectral Flanger",
+    "Vocode",
+    "Spectral Table",
+    "Spectral Gate"
+  };
+
+  const std::string kDiceNames[] = { "0%", "100%" };
+
+  const std::string kFftSizeNames[] = { "256", "512", "1024", "2048", "4096", "8192", "16384", "32768" };
 
   const std::string kSpectralMorphNames[] = {
     "None",
@@ -328,5 +435,10 @@ namespace strings {
     "Phase Disperse",
     "Shepard Tone",
     "Spectral Time Skew",
+    "Spectral Gate",
+    "Spectral Filter",
+    "Spectral Phaser",
+    "Spectral Flanger",
+    "Spectral Table",
   };
 } // namespace strings

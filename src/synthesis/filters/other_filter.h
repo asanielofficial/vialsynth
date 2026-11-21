@@ -130,7 +130,7 @@ namespace vital {
       void processCustom(const poly_float* audio_in, int num_samples);
       void updateCustomCoefficients(float morph, float shift_octaves, float depth);
 
-      poly_float driven_[kMaxBufferSize];
+      poly_float driven_[kMaxBufferSize * kMaxOversample];  // the filters run oversampled
       int last_style_;
       mono_float sample_rate_cache_;
 

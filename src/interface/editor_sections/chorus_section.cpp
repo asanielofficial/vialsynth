@@ -31,7 +31,7 @@ class ChorusViewer : public BarRenderer {
     static constexpr int kDelays = vital::ChorusModule::kMaxDelayPairs;
     static constexpr int kNumBars = kDelays * vital::poly_float::kSize;
   
-    ChorusViewer() : BarRenderer(kNumBars, true), delays_() {
+    ChorusViewer(const std::string& id) : BarRenderer(kNumBars, true), id_(id), delays_() {
       active_ = true;
       parent_ = nullptr;
       num_voices_ = nullptr;
@@ -50,7 +50,7 @@ class ChorusViewer : public BarRenderer {
         return;
 
       for (int i = 0; i < kDelays; ++i)
-        delays_[i] = parent->getSynth()->getStatusOutput("chorus_delays" + std::to_string(i + 1));
+        delays_[i] = parent->getSynth()->getStatusOutput(id_ + "_delays" + std::to_string(i + 1));
     }
 
     void drawBars(OpenGlWrapper& open_gl, bool animate) {
@@ -92,6 +92,7 @@ class ChorusViewer : public BarRenderer {
     void setNumVoicesSlider(SynthSlider* num_voices) { num_voices_ = num_voices; }
 
   private:
+    std::string id_;
     bool active_;
     const vital::StatusOutput* delays_[4];
     SynthSlider* num_voices_;
@@ -99,74 +100,83 @@ class ChorusViewer : public BarRenderer {
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChorusViewer)
 };
 
-ChorusSection::ChorusSection(const String& name, const vital::output_map& mono_modulations) : SynthSection(name) {
+ChorusSection::ChorusSection(const String& name, const std::string& id, const vital::output_map& mono_modulations) : SynthSection(name), id_(id) {
   static const double kTempoDragSensitivity = 0.5;
   static constexpr int kViewerResolution = 64;
 
-  voices_ = std::make_unique<SynthSlider>("chorus_voices");
+  voices_ = std::make_unique<SynthSlider>(id_ + "_voices");
   addSlider(voices_.get());
   voices_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
   voices_->setLookAndFeel(TextLookAndFeel::instance());
   voices_->setSensitivity(kTempoDragSensitivity);
 
-  delay_1_ = std::make_unique<SynthSlider>("chorus_delay_1");
+  delay_1_ = std::make_unique<SynthSlider>(id_ + "_delay_1");
   addSlider(delay_1_.get());
   delay_1_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
 
-  delay_2_ = std::make_unique<SynthSlider>("chorus_delay_2");
+  delay_2_ = std::make_unique<SynthSlider>(id_ + "_delay_2");
   addSlider(delay_2_.get());
   delay_2_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
 
-  mod_depth_ = std::make_unique<SynthSlider>("chorus_mod_depth");
+  mod_depth_ = std::make_unique<SynthSlider>(id_ + "_mod_depth");
   addSlider(mod_depth_.get());
   mod_depth_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
 
-  frequency_ = std::make_unique<SynthSlider>("chorus_frequency");
+  frequency_ = std::make_unique<SynthSlider>(id_ + "_frequency");
   addSlider(frequency_.get());
   frequency_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
   frequency_->setLookAndFeel(TextLookAndFeel::instance());
 
-  tempo_ = std::make_unique<SynthSlider>("chorus_tempo");
+  tempo_ = std::make_unique<SynthSlider>(id_ + "_tempo");
   addSlider(tempo_.get());
   tempo_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
   tempo_->setLookAndFeel(TextLookAndFeel::instance());
   tempo_->setSensitivity(kTempoDragSensitivity);
 
-  sync_ = std::make_unique<TempoSelector>("chorus_sync");
+  sync_ = std::make_unique<TempoSelector>(id_ + "_sync");
   addSlider(sync_.get());
   sync_->setSliderStyle(Slider::LinearBar);
+  keytrack_transpose_ = std::make_unique<SynthSlider>(id_ + "_keytrack_transpose");
+  addSlider(keytrack_transpose_.get());
+  keytrack_transpose_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+  keytrack_transpose_->setLookAndFeel(TextLookAndFeel::instance());
+  keytrack_transpose_->setSensitivity(kTransposeMouseSensitivity);
+  keytrack_transpose_->setBipolar();
+  keytrack_transpose_->setShiftIndexAmount(vital::kNotesPerOctave);
+
   sync_->setTempoSlider(tempo_.get());
+  sync_->setKeytrackTransposeSlider(keytrack_transpose_.get());
   sync_->setFreeSlider(frequency_.get());
 
-  feedback_ = std::make_unique<SynthSlider>("chorus_feedback");
+  feedback_ = std::make_unique<SynthSlider>(id_ + "_feedback");
   addSlider(feedback_.get());
   feedback_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
   feedback_->setBipolar();
   feedback_->snapToValue(true);
 
-  dry_wet_ = std::make_unique<SynthSlider>("chorus_dry_wet");
+  dry_wet_ = std::make_unique<SynthSlider>(id_ + "_dry_wet");
   addSlider(dry_wet_.get());
   dry_wet_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
 
-  filter_cutoff_ = std::make_unique<SynthSlider>("chorus_cutoff");
+  filter_cutoff_ = std::make_unique<SynthSlider>(id_ + "_cutoff");
   addSlider(filter_cutoff_.get());
   filter_cutoff_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
 
-  filter_spread_ = std::make_unique<SynthSlider>("chorus_spread");
+  filter_spread_ = std::make_unique<SynthSlider>(id_ + "_spread");
   addSlider(filter_spread_.get());
   filter_spread_->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
   
-  chorus_viewer_ = std::make_unique<ChorusViewer>();
+  chorus_viewer_ = std::make_unique<ChorusViewer>(id_);
   addOpenGlComponent(chorus_viewer_.get());
   chorus_viewer_->setNumVoicesSlider(voices_.get());
   
-  filter_viewer_ = std::make_unique<DelayFilterViewer>("chorus", kViewerResolution, mono_modulations);
+  filter_viewer_ = std::make_unique<DelayFilterViewer>(id_, kViewerResolution, mono_modulations);
   filter_viewer_->setCutoffSlider(filter_cutoff_.get());
   filter_viewer_->setSpreadSlider(filter_spread_.get());
   filter_viewer_->addListener(this);
   addOpenGlComponent(filter_viewer_.get());
 
-  on_ = std::make_unique<SynthButton>("chorus_on");
+  on_ = std::make_unique<SynthButton>(id_ + "_on");
   addButton(on_.get());
   setActivator(on_.get());
   setSkinOverride(Skin::kChorus);
@@ -212,6 +222,8 @@ void ChorusSection::resized() {
                      section_height - 2 * widget_margin, frequency_.get(), sync_.get());
   tempo_->setBounds(frequency_->getBounds());
   tempo_->setModulationArea(frequency_->getModulationArea());
+  keytrack_transpose_->setBounds(frequency_->getBounds());
+  keytrack_transpose_->setModulationArea(frequency_->getModulationArea());
 
   int delay_y = section_height - widget_margin;
   placeKnobsInArea(Rectangle<int>(delay_area.getX(), delay_y, delay_area.getWidth(), section_height),

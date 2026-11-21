@@ -18,6 +18,9 @@
 
 #include "JuceHeader.h"
 
+#include <map>
+#include <string>
+
 #include "open_gl_line_renderer.h"
 #include "audio_file_drop_source.h"
 #include "common.h"
@@ -110,6 +113,22 @@ class Wavetable3d : public OpenGlComponent, public AudioFileDropSource {
     void mouseExit(const MouseEvent& e) override;
     void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override;
     void setFrameSlider(SynthSlider* slider) { frame_slider_ = slider; }
+    // The effect build's table displays follow the lane's amount knob (0..1 across all frames); this lets them show
+    // that knob's modulation too.
+    void setFrameModulation(const vital::output_map& mono_modulations, const std::string& name) {
+      table_mode_ = true;
+      auto mono = mono_modulations.find(name);
+      frame_amount_outputs_ = { mono == mono_modulations.end() ? nullptr : mono->second, nullptr };
+    }
+    // Also looks in the poly modulations (an oscillator's amounts are poly controls).
+    void setFrameModulation(const vital::output_map& mono_modulations, const vital::output_map& poly_modulations,
+                            const std::string& name) {
+      table_mode_ = true;
+      auto mono = mono_modulations.find(name);
+      auto poly = poly_modulations.find(name);
+      frame_amount_outputs_ = { mono == mono_modulations.end() ? nullptr : mono->second,
+                                poly == poly_modulations.end() ? nullptr : poly->second };
+    }
     void setSpectralMorphSlider(Slider* slider) { spectral_morph_slider_ = slider; }
     void setDistortionSlider(Slider* slider) { distortion_slider_ = slider; }
     void setDistortionPhaseSlider(Slider* slider) { distortion_phase_slider_ = slider; }
@@ -147,6 +166,9 @@ class Wavetable3d : public OpenGlComponent, public AudioFileDropSource {
     vital::Wavetable* getWavetable() { return wavetable_; }
 
   private:
+    float frameSliderValue() const;
+    // The frame being shown for each voice: the slider's, plus the modulation of the control it stands for.
+    vital::poly_float frameValue();
     bool updateRenderValues();
     void loadIntoTimeDomain(int index);
     void loadWaveData(int index);
@@ -181,7 +203,10 @@ class Wavetable3d : public OpenGlComponent, public AudioFileDropSource {
 
     std::vector<Listener*> listeners_;
     std::pair<vital::Output*, vital::Output*> wave_frame_outputs_;
+    std::pair<vital::Output*, vital::Output*> frame_amount_outputs_ = { nullptr, nullptr };
+    bool table_mode_ = false;
     std::pair<vital::Output*, vital::Output*> spectral_morph_outputs_;
+    std::map<std::string, std::pair<vital::Output*, vital::Output*>> warp_outputs_;
     std::pair<vital::Output*, vital::Output*> distortion_outputs_;
     std::pair<vital::Output*, vital::Output*> distortion_phase_outputs_;
 
@@ -213,6 +238,17 @@ class Wavetable3d : public OpenGlComponent, public AudioFileDropSource {
     RenderType last_render_type_;
     bool active_;
     int size_;
+
+    // The oscillator's own warp settings (curves, table, details, random pattern, distort table), read from the
+    // synth so the display shows the same waveform the voices make.
+    float updateWarpContext();
+    float warpParameter(const std::string& name, float fallback);
+    vital::OscillatorWarpContext warp_context_;
+    const vital::Wavetable::WavetableData* distort_table_data_ = nullptr;
+    float distort_bias_ = 0.0f, distort_smooth_ = 0.0f, distort_drive_ = 0.0f, distort_mix_ = 1.0f;
+    float distort_phase_ = 0.5f;
+    bool distort_dc_filter_ = true;
+    float warp_signature_ = 0.0f;
     int index_;
     vital::Wavetable* wavetable_;
 
