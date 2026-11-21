@@ -45,5 +45,7 @@ jobs:
           cp art/VialSynth-windows-installer/*.exe out/
           cp art/VialSynth-macos-installer/*.pkg out/
           ls -l out
+          # Publishing the same version again replaces the earlier release of it.
+          gh release delete "v$VERSION" --repo "$REPO" --cleanup-tag --yes || true
           gh release create "v$VERSION" out/* --repo "$REPO" --target "${{ github.sha }}" \
             --title "VialSynth $VERSION" --notes-file "$notes" --latest
