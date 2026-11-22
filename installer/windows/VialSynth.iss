@@ -1,7 +1,7 @@
 ; Inno Setup script for the VialSynth installer (VST3), built by .github/workflows/build.yml.
-; Build: ISCC /DSourceFile=C:\path\to\VialSynth.vst3 /DAppVersion=1.0 installer\windows\VialSynth.iss
+; Build: ISCC /DSourceFile=C:\path\to\VialSynth.vst3 /DAppVersion=1.1 installer\windows\VialSynth.iss
 #ifndef AppVersion
-  #define AppVersion "1.0"
+  #define AppVersion "1.1"
 #endif
 #ifndef SourceFile
   #define SourceFile "..\..\dist\VialSynth.vst3"

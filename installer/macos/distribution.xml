@@ -9,5 +9,5 @@
   <choice id="vst3" title="VST3 plugin" description="Installs VialSynth.vst3 to /Library/Audio/Plug-Ins/VST3." start_selected="true">
     <pkg-ref id="com.vialsynth.vst3"/>
   </choice>
-  <pkg-ref id="com.vialsynth.vst3" version="1.0" onConclusion="none">vst3.pkg</pkg-ref>
+  <pkg-ref id="com.vialsynth.vst3" version="1.1" onConclusion="none">vst3.pkg</pkg-ref>
 </installer-gui-script>
