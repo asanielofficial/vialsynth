@@ -133,6 +133,10 @@ FullInterface::FullInterface(SynthGuiData* synth_data) : SynthSection("full_inte
                                                           synth_data->synth->getEngine());
   addSubSection(effects_interface_.get());
   effects_interface_->setVisible(false);
+  if (std::getenv("VIALSYNTH_SHOT") != nullptr) {   // developer aid for CI screenshots
+    Component::SafePointer<FullInterface> safe(this);
+    Timer::callAfterDelay(7000, [safe]() mutable { if (safe != nullptr) safe->tabSelected(1); });
+  }
   effects_interface_->addListener(this);
   effects_interface_->setOpenGlLock(&open_gl_critical_section_);
   // The Morph effects' table menus open the same wavetable editors as the voice panel's.
