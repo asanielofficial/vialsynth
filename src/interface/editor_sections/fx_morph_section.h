@@ -127,6 +127,21 @@ class FxMorphSection : public SynthSection {
       warp_edit_button_ = makeTool("Table Editor", Paths::pencil());
 
       setSkinOverride(Skin::kMorph);
+
+      // Developer aid for CI screenshots: switch the first Morph effect on, in Random Amplitudes.
+      if (instance_ == 0 && std::getenv("VIALSYNTH_SHOT") != nullptr) {
+        Component::SafePointer<FxMorphSection> safe(this);
+        Timer::callAfterDelay(4000, [safe]() mutable {
+          if (safe == nullptr)
+            return;
+          SynthGuiInterface* parent = safe->findParentComponentOfClass<SynthGuiInterface>();
+          if (parent == nullptr || parent->getSynth() == nullptr)
+            return;
+          parent->getSynth()->valueChangedInternal(safe->id_ + "_on", 1.0f);
+          parent->getSynth()->valueChangedInternal(safe->id_ + "_spectral_morph_type", 5.0f);
+          safe->setSpectral(5);
+        });
+      }
     }
 
     ~FxMorphSection() override { }
