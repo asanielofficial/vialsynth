@@ -18,7 +18,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential pkg-config xvfb imagemagick x11-apps libgl1-mesa-dri libglx-mesa0 mesa-utils \
+            build-essential pkg-config xvfb imagemagick x11-apps xdotool libgl1-mesa-dri libglx-mesa0 mesa-utils \
             libasound2-dev libfreetype6-dev libgl1-mesa-dev libcurl4-openssl-dev \
             libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev \
             libsecret-1-dev libglib2.0-dev libjack-jackd2-dev
@@ -36,7 +36,7 @@ jobs:
           xvfb-run -a -s "-screen 0 1600x1000x24" bash -c '
             standalone/builds/linux/build/vial > app.log 2>&1 &
             APP=$!
-            for i in $(seq 1 14); do sleep 8; import -window root shots/$i.png 2>/dev/null; done
+            for i in $(seq 1 14); do sleep 8; [ $i = 3 ] && xdotool mousemove 344 114 click 1; import -window root shots/$i.png 2>/dev/null; done
             kill $APP' 
           tail -20 app.log
       - name: Publish the screenshots to the ci-shots branch
@@ -56,3 +56,4 @@ jobs:
 # run 1795158249
 # run 1795194531
 # run 1795329034
+# run 1795329276
