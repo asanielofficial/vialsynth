@@ -29,39 +29,13 @@
 #include "synth_button.h"
 #include "synth_oscillator.h"
 #include "synth_gui_interface.h"
+#include "dice_slider.h"
 #include "synth_slider.h"
 #include "text_look_and_feel.h"
 #include "text_selector.h"
 #include "wavetable_3d.h"
 
 namespace {
-  // The dice is a real parameter (so it can be automated, modulated and right-clicked like a knob), but it looks
-  // and acts like a button: a plain click rolls a new seed, and dragging does nothing.
-  class DiceSlider : public SynthSlider {
-    public:
-      explicit DiceSlider(String name) : SynthSlider(name) { }
-
-      void setClickCallback(std::function<void()> callback) { click_callback_ = callback; }
-
-      void mouseDown(const MouseEvent& e) override {
-        if (e.mods.isPopupMenu() || e.mods.isAltDown())
-          SynthSlider::mouseDown(e);
-      }
-      void drawShadow(Graphics&) override { }   // no dark disc behind the die
-      void mouseDrag(const MouseEvent&) override { }
-      void mouseDoubleClick(const MouseEvent&) override { }
-      void mouseWheelMove(const MouseEvent&, const MouseWheelDetails&) override { }
-      void mouseUp(const MouseEvent& e) override {
-        if (e.mods.isPopupMenu() || e.mods.isAltDown())
-          return;
-        if (e.mouseWasClicked() && click_callback_)
-          click_callback_();
-      }
-
-    private:
-      std::function<void()> click_callback_;
-  };
-
   // A die: a rounded square with five holes.
   Path dicePath() {
     Path path;
