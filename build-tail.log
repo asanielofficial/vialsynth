@@ -1,0 +1,91 @@
+make: Entering directory '/home/runner/work/vialsynth/vialsynth/standalone/builds/linux'
+Compiling common.cpp
+Compiling interface_editor_components.cpp
+Compiling interface_editor_sections.cpp
+Compiling interface_editor_sections2.cpp
+In file included from ../../../src/unity_build/common.cpp:25:
+../../../src/common/synth_gui_interface.cpp: In member function ‘void SynthGuiInterface::setGuiSize(float)’:
+../../../src/common/synth_gui_interface.cpp:214:94: warning: ‘const juce::Displays::Display& juce::Displays::findDisplayForPoint(juce::Point<int>, bool) const’ is deprecated [-Wdeprecated-declarations]
+  214 |   const Displays::Display& display = Desktop::getInstance().getDisplays().findDisplayForPoint(position);
+      |                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~
+In file included from ../../../third_party/JUCE/modules/juce_core/system/juce_StandardHeader.h:69,
+                 from ../../../third_party/JUCE/modules/juce_core/juce_core.h:203,
+                 from ../../../third_party/JUCE/modules/juce_audio_basics/juce_audio_basics.h:53,
+                 from ../../JuceLibraryCode/JuceHeader.h:17,
+                 from ../../../src/common/border_bounds_constrainer.h:19,
+                 from ../../../src/common/border_bounds_constrainer.cpp:17,
+                 from ../../../src/unity_build/common.cpp:18:
+../../../third_party/JUCE/modules/juce_gui_basics/desktop/juce_Displays.h:139:37: note: declared here
+  139 |     JUCE_DEPRECATED (const Display& findDisplayForPoint (Point<int>, bool isPhysical = false) const noexcept);
+      |                                     ^~~~~~~~~~~~~~~~~~~
+../../../third_party/JUCE/modules/juce_core/system/juce_PlatformDefs.h:294:57: note: in definition of macro ‘JUCE_DEPRECATED’
+  294 |  #define JUCE_DEPRECATED(functionDef)                   functionDef JUCE_DEPRECATED_ATTRIBUTE
+      |                                                         ^~~~~~~~~~~
+In file included from ../../../src/unity_build/interface_editor_components.cpp:23:
+../../../src/interface/editor_components/synth_preset_selector.cpp: In member function ‘void SynthPresetSelector::openSkinDesigner()’:
+../../../src/interface/editor_components/synth_preset_selector.cpp:441:78: warning: ‘const juce::Displays::Display& juce::Displays::getMainDisplay() const’ is deprecated [-Wdeprecated-declarations]
+  441 |   Rectangle<int> bounds = Desktop::getInstance().getDisplays().getMainDisplay().userArea.reduced(20);
+      |                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+In file included from ../../../third_party/JUCE/modules/juce_core/system/juce_StandardHeader.h:69,
+                 from ../../../third_party/JUCE/modules/juce_core/juce_core.h:203,
+                 from ../../../third_party/JUCE/modules/juce_audio_basics/juce_audio_basics.h:53,
+                 from ../../JuceLibraryCode/JuceHeader.h:17,
+                 from ../../../src/interface/editor_components/lfo_editor.h:19,
+                 from ../../../src/interface/editor_components/lfo_editor.cpp:17,
+                 from ../../../src/unity_build/interface_editor_components.cpp:17:
+../../../third_party/JUCE/modules/juce_gui_basics/desktop/juce_Displays.h:140:37: note: declared here
+  140 |     JUCE_DEPRECATED (const Display& getMainDisplay() const noexcept);
+      |                                     ^~~~~~~~~~~~~~
+../../../third_party/JUCE/modules/juce_core/system/juce_PlatformDefs.h:294:57: note: in definition of macro ‘JUCE_DEPRECATED’
+  294 |  #define JUCE_DEPRECATED(functionDef)                   functionDef JUCE_DEPRECATED_ATTRIBUTE
+      |                                                         ^~~~~~~~~~~
+In file included from ../../../src/unity_build/interface_editor_components.cpp:29:
+../../../src/interface/editor_components/open_gl_image_component.cpp: In member function ‘virtual void OpenGlImageComponent::redrawImage(bool)’:
+../../../src/interface/editor_components/open_gl_image_component.cpp:38:77: warning: ‘const juce::Displays::Display& juce::Displays::findDisplayForPoint(juce::Point<int>, bool) const’ is deprecated [-Wdeprecated-declarations]
+   38 |   int pixel_scale = Desktop::getInstance().getDisplays().findDisplayForPoint(getScreenPosition()).scale;
+      |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+In file included from ../../../third_party/JUCE/modules/juce_core/system/juce_StandardHeader.h:69,
+                 from ../../../third_party/JUCE/modules/juce_core/juce_core.h:203,
+                 from ../../../third_party/JUCE/modules/juce_audio_basics/juce_audio_basics.h:53,
+                 from ../../JuceLibraryCode/JuceHeader.h:17,
+                 from ../../../src/interface/editor_components/lfo_editor.h:19,
+                 from ../../../src/interface/editor_components/lfo_editor.cpp:17,
+                 from ../../../src/unity_build/interface_editor_components.cpp:17:
+../../../third_party/JUCE/modules/juce_gui_basics/desktop/juce_Displays.h:139:37: note: declared here
+  139 |     JUCE_DEPRECATED (const Display& findDisplayForPoint (Point<int>, bool isPhysical = false) const noexcept);
+      |                                     ^~~~~~~~~~~~~~~~~~~
+../../../third_party/JUCE/modules/juce_core/system/juce_PlatformDefs.h:294:57: note: in definition of macro ‘JUCE_DEPRECATED’
+  294 |  #define JUCE_DEPRECATED(functionDef)                   functionDef JUCE_DEPRECATED_ATTRIBUTE
+      |                                                         ^~~~~~~~~~~
+Compiling interface_look_and_feel.cpp
+Compiling interface_wavetable.cpp
+Compiling standalone.cpp
+Compiling synthesis.cpp
+Compiling BinaryData.cpp
+Compiling include_juce_audio_basics.cpp
+Compiling include_juce_audio_devices.cpp
+Compiling include_juce_audio_formats.cpp
+In file included from ../../../src/unity_build/synthesis.cpp:87:
+../../../src/synthesis/effects/pitch_shifter.cpp:465:23: warning: ‘vital::PitchShifter::Channel’ has a field ‘vital::PitchShifter::Channel::grain’ whose type uses the anonymous namespace [-Wsubobject-linkage]
+  465 |   class PitchShifter::Channel {
+      |                       ^~~~~~~
+../../../src/synthesis/effects/pitch_shifter.cpp:465:23: warning: ‘vital::PitchShifter::Channel’ has a field ‘vital::PitchShifter::Channel::spectral’ whose type uses the anonymous namespace [-Wsubobject-linkage]
+../../../src/synthesis/effects/pitch_shifter.cpp:465:23: warning: ‘vital::PitchShifter::Channel’ has a field ‘vital::PitchShifter::Channel::formant’ whose type uses the anonymous namespace [-Wsubobject-linkage]
+../../../src/synthesis/effects/pitch_shifter.cpp:465:23: warning: ‘vital::PitchShifter::Channel’ has a field ‘vital::PitchShifter::Channel::ref’ whose type uses the anonymous namespace [-Wsubobject-linkage]
+../../../src/synthesis/effects/pitch_shifter.cpp:465:23: warning: ‘vital::PitchShifter::Channel’ has a field ‘vital::PitchShifter::Channel::dry’ whose type uses the anonymous namespace [-Wsubobject-linkage]
+../../../src/synthesis/effects/pitch_shifter.cpp:465:23: warning: ‘vital::PitchShifter::Channel’ has a field ‘vital::PitchShifter::Channel::lo1’ whose type uses the anonymous namespace [-Wsubobject-linkage]
+../../../src/synthesis/effects/pitch_shifter.cpp:465:23: warning: ‘vital::PitchShifter::Channel’ has a field ‘vital::PitchShifter::Channel::hi1’ whose type uses the anonymous namespace [-Wsubobject-linkage]
+../../../src/synthesis/effects/pitch_shifter.cpp:465:23: warning: ‘vital::PitchShifter::Channel’ has a field ‘vital::PitchShifter::Channel::lo2’ whose type uses the anonymous namespace [-Wsubobject-linkage]
+../../../src/synthesis/effects/pitch_shifter.cpp:465:23: warning: ‘vital::PitchShifter::Channel’ has a field ‘vital::PitchShifter::Channel::hi2’ whose type uses the anonymous namespace [-Wsubobject-linkage]
+Compiling include_juce_audio_processors.cpp
+Compiling include_juce_audio_utils.cpp
+Compiling include_juce_core.cpp
+Compiling include_juce_data_structures.cpp
+Compiling include_juce_dsp.cpp
+Compiling include_juce_events.cpp
+Compiling include_juce_graphics.cpp
+Compiling include_juce_gui_basics.cpp
+Compiling include_juce_gui_extra.cpp
+Compiling include_juce_opengl.cpp
+Linking Vial - App
+make: Leaving directory '/home/runner/work/vialsynth/vialsynth/standalone/builds/linux'
