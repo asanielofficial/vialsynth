@@ -35,5 +35,6 @@
 #include "freq_shifter_section.cpp"
 #include "pitch_shifter_section.cpp"
 #include "tremolo_section.cpp"
+#include "resonator_section.cpp"
 #include "utility_section.cpp"
 #include "vibrato_section.cpp"

@@ -171,8 +171,9 @@ jobs:
         run: |
           choco install innosetup -y --no-progress
           New-Item -ItemType Directory installers | Out-Null
+          $ver = (Select-String -Path src/interface/editor_sections/about_section.cpp -Pattern 'kVialFxVersion = "([^"]+)"').Matches[0].Groups[1].Value
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          & $iscc "/DSourceFile=$PWD\dist\VialSynth.vst3" "/DAppVersion=1.0" "/O$PWD\installers" installer\windows\VialSynth.iss
+          & $iscc "/DSourceFile=$PWD\dist\VialSynth.vst3" "/DAppVersion=$ver" "/O$PWD\installers" installer\windows\VialSynth.iss
           if ($LASTEXITCODE -ne 0) { Write-Host "::error::Inno Setup failed"; exit 1 }
           Get-ChildItem installers | Format-Table Name, Length
 
@@ -281,11 +282,12 @@ jobs:
 
       - name: Build the macOS installer (.pkg)
         run: |
+          VER=$(sed -n 's/.*kVialFxVersion = "\([^"]*\)".*/\1/p' src/interface/editor_sections/about_section.cpp | head -1)
           mkdir -p pkgroot-vst3 pkgs installers
           cp -R dist/VialSynth.vst3 pkgroot-vst3/VialSynth.vst3
-          pkgbuild --root pkgroot-vst3 --identifier com.vialsynth.vst3 --version 1.0 \
+          pkgbuild --root pkgroot-vst3 --identifier com.vialsynth.vst3 --version "$VER" \
             --install-location /Library/Audio/Plug-Ins/VST3 pkgs/vst3.pkg
-          productbuild --distribution installer/macos/distribution.xml --package-path pkgs installers/VialSynth-1.0-macOS.pkg
+          productbuild --distribution installer/macos/distribution.xml --package-path pkgs "installers/VialSynth-$VER-macOS.pkg"
           ls -l installers
 
       - uses: actions/upload-artifact@v4

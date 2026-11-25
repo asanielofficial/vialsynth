@@ -172,9 +172,28 @@ void SynthPlugin::prepareToPlay(double sample_rate, int buffer_size) {
   engine_->setSampleRate(sample_rate);
   engine_->updateAllModulationSwitches();
   midi_manager_->setSampleRate(sample_rate);
+  vital::control_map& controls = getControls();
+  auto find = [&](const std::string& name) -> const vital::Value* {
+    auto it = controls.find(name);
+    return it == controls.end() ? nullptr : it->second;
+  };
+  mpe_switch_ = find("mpe_enabled");
+  for (int instance = 0; instance < vital::kMaxEffectInstances; ++instance)
+    resonator_mpe_[instance] = find(std::string("resonator") + (instance == 0 ? "" : "_" + std::to_string(instance + 1)) + "_mpe");
   int latency = SynthBase::getEngineLatencySamples();
   reported_latency_ = latency;
   setLatencySamples(latency);
+}
+
+void SynthPlugin::updateMpeFromResonators() {
+  bool enabled = mpe_switch_ != nullptr && mpe_switch_->value() > 0.5f;
+  for (const vital::Value* value : resonator_mpe_) {
+    if (value != nullptr && value->value() > 0.5f) {
+      enabled = true;
+      break;
+    }
+  }
+  midi_manager_->setMpeEnabled(enabled);
 }
 
 // The Morph effects delay by one FFT size while a spectral mode is chosen (none: no latency). The host must know
@@ -215,6 +234,7 @@ void SynthPlugin::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midi_messa
   }
 
   processModulationChanges();
+  updateMpeFromResonators();
   if (total_samples)
     processKeyboardEvents(midi_messages, total_samples);
 

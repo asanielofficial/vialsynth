@@ -77,6 +77,11 @@ class SynthPlugin : public SynthBase, public AudioProcessor, public ValueBridge:
   private:
     void handleAsyncUpdate() override { setLatencySamples(reported_latency_.load()); }
     void checkLatency();
+
+    // A Resonator copy with MPE on needs the MIDI manager's MPE zones, whether or not the global MPE ENABLED switch is on.
+    void updateMpeFromResonators();
+    const vital::Value* mpe_switch_ = nullptr;
+    const vital::Value* resonator_mpe_[vital::kMaxEffectInstances] = {};
     std::atomic<int> reported_latency_ { -1 };
 
     ValueBridge* bypass_parameter_;

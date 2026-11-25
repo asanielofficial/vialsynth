@@ -80,6 +80,7 @@ namespace {
     { "freq_shifter_", "Freq Shifter" },
     { "pitch_shifter_", "Pitch Shifter" },
     { "tremolo_", "Tremolo" },
+    { "resonator_", "Resonator" },
     { "vibrato_", "Vibrato" },
     { "utility_", "Utility" },
     { "morph_", "Morph" },
