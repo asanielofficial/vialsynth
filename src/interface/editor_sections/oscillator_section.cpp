@@ -449,6 +449,7 @@ OscillatorSection::OscillatorSection(Authentication* auth,
   dice_slider_->getQuadComponent()->setVisible(false);
   dice_slider_->getImageComponent()->setVisible(false);
   static_cast<DiceSlider*>(dice_slider_.get())->setClickCallback([this]() { rollDice(); });
+  static_cast<DiceSlider*>(dice_slider_.get())->linkDisplay(dice_button_.get());
   dice_slider_->setVisible(false);
 
   spectral_morph_type_selector_ = std::make_unique<ShapeButton>("Spectral Morph", Colour(0xff666666),

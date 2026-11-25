@@ -20,6 +20,7 @@
 #include "synth_module.h"
 #include "note_handler.h"
 #include "keytrack_voices.h"
+#include "resonator_midi.h"
 #include "line_generator.h"
 
 #include <memory>
@@ -157,6 +158,8 @@ namespace vital {
     
       SynthVoiceHandler* voice_handler_;
       FxEffectChain* effect_chain_;
+      // The notes and MPE expression the Resonator effects ring at (fed from the MIDI handlers).
+      ResonatorMidi resonator_midi_;
       KeytrackNotes keytrack_notes_;
       Value* fft_size_ = nullptr;
       // The last played note, for the effects that follow it.

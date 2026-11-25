@@ -53,6 +53,7 @@ namespace {
     "Freq Shifter",
     "Vibrato",
     "Tremolo",
+    "Resonator",
     "Modulation Drag Drop",
     "Modulation Matrix",
     "Preset Browser",
