@@ -360,7 +360,6 @@ namespace vital {
       ValueDetails::kIndexed, false, "", "Resonator Tuning", strings::kResonatorTuningNames },
     { "resonator_mpe", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
       ValueDetails::kIndexed, false, "", "Resonator MPE", strings::kResonatorMpeNames },
-                                          "utility", "freq_shifter", "vibrato", "tremolo", "resonator" };
     { "utility_on", 0x000000, 0.0, 1.0, 0.0, 0.0, 1.0,
       ValueDetails::kIndexed, false, "", "Utility Switch", strings::kOffOnNames },
     { "utility_gain", 0x000000, -30.0, 30.0, 0.0, 0.0, 1.0,
