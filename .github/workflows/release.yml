@@ -45,6 +45,9 @@ jobs:
           for os in linux macos windows; do
             (cd "art/VialSynth-$os-clap" && zip -qr "../../out/VialSynth-$VERSION-$os-clap.zip" .)
           done
+          for os in linux macos windows; do
+            (cd "art/VialSynth-$os-standalone" && zip -qr "../../out/VialSynth-$VERSION-$os-standalone.zip" .)
+          done
           (cd art/VialSynth-linux-lv2 && zip -qr "../../out/VialSynth-$VERSION-linux-lv2.zip" .)
           (cd art/VialSynth-macos-au && zip -qr "../../out/VialSynth-$VERSION-macos-au.zip" .)
           cp art/VialSynth-windows-installer/*.exe out/

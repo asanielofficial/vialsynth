@@ -42,6 +42,9 @@ jobs:
           for os in linux macos windows; do
             (cd "art/VialSynth-$os-clap" && zip -qr "../../out/VialSynth-nightly-$(date -u +%Y%m%d)-$short-$os-clap.zip" .)
           done
+          for os in linux macos windows; do
+            (cd "art/VialSynth-$os-standalone" && zip -qr "../../out/VialSynth-nightly-$(date -u +%Y%m%d)-$short-$os-standalone.zip" .)
+          done
           (cd art/VialSynth-linux-lv2 && zip -qr "../../out/VialSynth-nightly-$(date -u +%Y%m%d)-$short-linux-lv2.zip" .)
           (cd art/VialSynth-macos-au && zip -qr "../../out/VialSynth-nightly-$(date -u +%Y%m%d)-$short-macos-au.zip" .)
           ls -l out

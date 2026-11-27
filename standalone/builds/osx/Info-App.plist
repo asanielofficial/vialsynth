@@ -23,11 +23,11 @@
     <key>CFBundleIconFile</key>
     <string></string>
     <key>CFBundleIdentifier</key>
-    <string>audio.vital.standalone</string>
+    <string>com.vialsynth.standalone</string>
     <key>CFBundleName</key>
-    <string>Vial</string>
+    <string>VialSynth</string>
     <key>CFBundleDisplayName</key>
-    <string>Vial</string>
+    <string>VialSynth</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleSignature</key>
@@ -37,7 +37,7 @@
     <key>CFBundleVersion</key>
     <string>1.0.6</string>
     <key>NSHumanReadableCopyright</key>
-    <string>Matt Tytel</string>
+    <string>Vial Audio</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>CFBundleDocumentTypes</key>
@@ -45,12 +45,14 @@
       <dict>
         <key>CFBundleTypeExtensions</key>
         <array>
+          <string>vialsynth</string>
+          <string>vialfx</string>
           <string>vital</string>
           <string>vitalbank</string>
           <string>vitaltable</string>
         </array>
         <key>CFBundleTypeName</key>
-        <string>vital</string>
+        <string>VialSynth preset</string>
         <key>CFBundleTypeRole</key>
         <string>Editor</string>
         <key>CFBundleTypeIconFile</key>
