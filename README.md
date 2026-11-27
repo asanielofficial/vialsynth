@@ -4,8 +4,12 @@ VialSynth is a wavetable synthesizer plugin. It is built from GPLv3 synthesizer 
 [VialFX](https://github.com/asanielofficial/vialfx), the effect plugin made from the same code (see
 [NOTICE.md](NOTICE.md) for the origin of the code).
 
-> **Formats.** VST3 and CLAP for Windows, macOS and Linux, plus an Audio Unit (AU) for macOS and LV2 for Linux.
-> See the [release notes](.github/release-notes/1.2.md) for what is in the latest version.
+> **Install with [VialLauncher](https://github.com/asanielofficial/VialLauncher).** It installs VialSynth and keeps it
+> up to date. There are no installers; the [releases](https://github.com/asanielofficial/vialsynth/releases) also have
+> plain zips if you prefer to copy the files yourself.
+>
+> **Formats.** VST3 and CLAP for Windows, macOS and Linux, plus an Audio Unit (AU) for macOS, LV2 for Linux and a
+> standalone app for all three. See the [release notes](.github/release-notes/1.3.md) for what is in the latest version.
 
 ## What this is
 
