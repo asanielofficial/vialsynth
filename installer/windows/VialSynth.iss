@@ -1,7 +1,10 @@
-; Inno Setup script for the VialSynth installer (VST3), built by .github/workflows/build.yml.
-; Build: ISCC /DSourceFile=C:\path\to\VialSynth.vst3 /DAppVersion=1.1 installer\windows\VialSynth.iss
+; Inno Setup script for the VialSynth installer (VST3 and CLAP as separate components), built by .github/workflows/build.yml.
+; Build: ISCC /DSourceFile=C:\path\to\VialSynth.vst3 /DClapFile=C:\path\to\VialSynth.clap /DAppVersion=1.2 installer\windows\VialSynth.iss
 #ifndef AppVersion
-  #define AppVersion "1.1"
+  #define AppVersion "1.2"
+#endif
+#ifndef ClapFile
+  #define ClapFile "..\..\dist-clap\VialSynth.clap"
 #endif
 #ifndef SourceFile
   #define SourceFile "..\..\dist\VialSynth.vst3"
@@ -24,8 +27,17 @@ SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayName=VialSynth
 
+[Types]
+Name: "full"; Description: "Full installation (VST3 and CLAP)"
+Name: "custom"; Description: "Custom installation"; Flags: iscustom
+
+[Components]
+Name: "vst3"; Description: "VST3 plugin (C:\Program Files\Common Files\VST3)"; Types: full custom
+Name: "clap"; Description: "CLAP plugin (C:\Program Files\Common Files\CLAP)"; Types: full custom
+
 [Files]
-Source: "{#SourceFile}"; DestDir: "{commoncf64}\VST3"; Flags: ignoreversion
+Source: "{#SourceFile}"; DestDir: "{commoncf64}\VST3"; Flags: ignoreversion; Components: vst3
+Source: "{#ClapFile}"; DestDir: "{commoncf64}\CLAP"; Flags: ignoreversion; Components: clap
 
 [Messages]
-FinishedLabel=VialSynth was installed to C:\Program Files\Common Files\VST3. Rescan plugins in your DAW.
+FinishedLabel=VialSynth was installed to the plugin folders you selected. Rescan plugins in your DAW.

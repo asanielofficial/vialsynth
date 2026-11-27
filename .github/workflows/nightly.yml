@@ -39,6 +39,11 @@ jobs:
           for os in linux macos windows; do
             (cd "art/VialSynth-$os-vst3" && zip -qr "../../out/VialSynth-nightly-$(date -u +%Y%m%d)-$short-$os-vst3.zip" .)
           done
+          for os in linux macos windows; do
+            (cd "art/VialSynth-$os-clap" && zip -qr "../../out/VialSynth-nightly-$(date -u +%Y%m%d)-$short-$os-clap.zip" .)
+          done
+          (cd art/VialSynth-linux-lv2 && zip -qr "../../out/VialSynth-nightly-$(date -u +%Y%m%d)-$short-linux-lv2.zip" .)
+          (cd art/VialSynth-macos-au && zip -qr "../../out/VialSynth-nightly-$(date -u +%Y%m%d)-$short-macos-au.zip" .)
           ls -l out
 
       - name: Publish the nightly pre-release
@@ -47,4 +52,4 @@ jobs:
           gh release delete nightly --repo "$REPO" --cleanup-tag --yes || true
           gh release create nightly out/* --repo "$REPO" --prerelease --target "$sha" \
             --title "Nightly $(date -u +%Y-%m-%d) ($short)" \
-            --notes "Automatic build of main at $short for Linux, macOS and Windows (VST3). Unsigned builds for testing."
+            --notes "Automatic build of main at $short for Linux, macOS and Windows (VST3 and CLAP), a macOS AU and a Linux LV2, with installers for Windows and macOS. Unsigned builds for testing."

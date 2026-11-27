@@ -10,9 +10,13 @@ on:
   workflow_dispatch:
   workflow_call:
 
+env:
+  # clap-juce-extensions (MIT), the wrapper that turns the JUCE plugin into a CLAP. Pinned to a commit.
+  CLAP_EXT_SHA: 6bde108329ff9fc24404b79b8b397261a75cf6a8
+
 jobs:
   linux:
-    name: Linux (VST3)
+    name: Linux (VST3, CLAP, LV2)
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     steps:
@@ -74,6 +78,54 @@ jobs:
           name: VialSynth-linux-vst3
           path: dist
 
+      - name: Build the CLAP
+        run: |
+          set -e
+          VER=$(sed -n 's/.*kVialFxVersion = "\([^"]*\)".*/\1/p' src/interface/editor_sections/about_section.cpp | head -1)
+          git init -q clap-ext
+          git -C clap-ext remote add origin https://github.com/free-audio/clap-juce-extensions
+          git -C clap-ext fetch -q --depth 1 origin "$CLAP_EXT_SHA"
+          git -C clap-ext checkout -q FETCH_HEAD
+          git -C clap-ext submodule update -q --init --depth 1 --recursive
+          cmake -S plugin/clap -B clap-build -DCMAKE_BUILD_TYPE=Release \
+            -DPATH_TO_CLAP_EXTENSIONS="$PWD/clap-ext" \
+            -DVIALSYNTH_SHARED_LIB="$PWD/plugin/builds/linux_vst/build/VialSynth.a" -DVIALSYNTH_VERSION="$VER" 2>&1 | tail -30
+          cmake --build clap-build --target VialSynth_CLAP -j"$(nproc)" 2>&1 | tail -60
+          mkdir -p dist-clap
+          cp clap-build/VialSynth_artefacts/Release/VialSynth.clap dist-clap/
+          if strings -a dist-clap/VialSynth.clap | grep -i -E "vital\.audio|account\.vital|store\.vital|forum\.vital|vital audio|tytel"; then echo "::error::[binary] Vital branding found in the CLAP"; exit 1; fi
+          ls -l dist-clap
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VialSynth-linux-clap
+          path: dist-clap
+
+      - name: Build the LV2
+        run: |
+          set +e
+          sudo apt-get install -y --no-install-recommends xvfb > /dev/null
+          # Reuses the objects and shared code library of the VST3 build; adds the LV2 wrapper bundled with JUCE.
+          # The .ttl generator loads the plugin to read its ports, so it runs under a virtual display.
+          xvfb-run -a make -C plugin/builds/linux_vst -f lv2.mk lv2 CONFIG=Release AR=gcc-ar \
+            SIMDFLAGS="-msse2" GLFLAGS="" BUILD_DATE="$(date +'%Y %m %d %H %M')" > lv2.log 2>&1
+          status=$?
+          if [ $status -ne 0 ]; then
+            grep -n -m 40 -E "error|undefined reference|No such file|\*\*\*" lv2.log \
+              | cut -c1-450 | while IFS= read -r line; do echo "::error::${line}"; done
+            echo "::error::last lines: $(tail -n 8 lv2.log | tr '\n' '|' | cut -c1-700)"
+            exit $status
+          fi
+          mkdir -p dist-lv2
+          cp -r plugin/builds/linux_vst/build/VialSynth.lv2 dist-lv2/
+          ls -l dist-lv2/VialSynth.lv2
+          if strings -a dist-lv2/VialSynth.lv2/VialSynth.so | grep -i -E "vital\.audio|account\.vital|store\.vital|forum\.vital|vital audio|tytel"; then echo "::error::[binary] Vital branding found in the LV2"; exit 1; fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VialSynth-linux-lv2
+          path: dist-lv2
+
       - name: Validate with pluginval
         run: |
           set +e
@@ -114,7 +166,7 @@ jobs:
           exit $final
 
   windows:
-    name: Windows (VST3 + installer)
+    name: Windows (VST3, CLAP + installer)
     runs-on: windows-2022
     timeout-minutes: 90
     env:
@@ -166,6 +218,36 @@ jobs:
           name: VialSynth-windows-vst3
           path: dist
 
+      - name: Build the CLAP
+        shell: pwsh
+        run: |
+          $ver = (Select-String -Path src/interface/editor_sections/about_section.cpp -Pattern 'kVialFxVersion = "([^"]+)"').Matches[0].Groups[1].Value
+          git init -q clap-ext
+          git -C clap-ext remote add origin https://github.com/free-audio/clap-juce-extensions
+          git -C clap-ext fetch -q --depth 1 origin "$env:CLAP_EXT_SHA"
+          git -C clap-ext checkout -q FETCH_HEAD
+          git -C clap-ext submodule update -q --init --depth 1 --recursive
+          cmake -S plugin\clap -B clap-build -G "Visual Studio 17 2022" -A x64 `
+            "-DPATH_TO_CLAP_EXTENSIONS=$PWD\clap-ext" "-DVIALSYNTH_SHARED_LIB=$PWD\plugin\builds\vs17\x64\Release\Shared Code\VialSynth.lib" "-DVIALSYNTH_VERSION=$ver"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build clap-build --config Release --target VialSynth_CLAP -- /m /nologo "/flp:logfile=clap.log;verbosity=minimal"
+          $code = $LASTEXITCODE
+          if ($code -ne 0) {
+            Select-String -Path clap.log -Pattern ' error ' | Select-Object -Unique -First 40 |
+              ForEach-Object { $t = $_.Line.Trim(); if ($t.Length -gt 450) { $t = $t.Substring(0,450) }; Write-Host "::error::$t" }
+            exit $code
+          }
+          New-Item -ItemType Directory dist-clap | Out-Null
+          Copy-Item clap-build\VialSynth_artefacts\Release\VialSynth.clap dist-clap\
+          python -c "import re,sys,glob; d=open(glob.glob('dist-clap/*.clap')[0],'rb').read(); m=re.findall(rb'(?i)vital\.audio|account\.vital|store\.vital|forum\.vital|vital audio|tytel', d); print(m[:10]); sys.exit(1 if m else 0)"
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error::[binary] Vital branding or service domain found in the CLAP"; exit 1 }
+          Get-ChildItem dist-clap | Format-Table Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VialSynth-windows-clap
+          path: dist-clap
+
       - name: Build the Windows installer
         shell: pwsh
         run: |
@@ -173,7 +255,7 @@ jobs:
           New-Item -ItemType Directory installers | Out-Null
           $ver = (Select-String -Path src/interface/editor_sections/about_section.cpp -Pattern 'kVialFxVersion = "([^"]+)"').Matches[0].Groups[1].Value
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          & $iscc "/DSourceFile=$PWD\dist\VialSynth.vst3" "/DAppVersion=$ver" "/O$PWD\installers" installer\windows\VialSynth.iss
+          & $iscc "/DSourceFile=$PWD\dist\VialSynth.vst3" "/DClapFile=$PWD\dist-clap\VialSynth.clap" "/DAppVersion=$ver" "/O$PWD\installers" installer\windows\VialSynth.iss
           if ($LASTEXITCODE -ne 0) { Write-Host "::error::Inno Setup failed"; exit 1 }
           Get-ChildItem installers | Format-Table Name, Length
 
@@ -201,7 +283,7 @@ jobs:
           }
 
   macos:
-    name: macOS (VST3 + installer)
+    name: macOS (VST3, CLAP, AU + installer)
     # The last Intel runner: the prebuilt Projucer of the JUCE version this project uses is an Intel binary. The plugin
     # itself is built universal (arm64 + x86_64).
     runs-on: macos-15-intel
@@ -280,13 +362,81 @@ jobs:
           name: VialSynth-macos-vst3
           path: dist
 
+      - name: Build VialSynth AU (universal, Release)
+        run: |
+          set +e
+          xcodebuild -project plugin/builds/osx/Vial.xcodeproj -scheme "Vial - AU" -configuration Release \
+            ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO MACOSX_DEPLOYMENT_TARGET=10.13 \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
+            GCC_TREAT_WARNINGS_AS_ERRORS=NO > au.log 2>&1
+          status=$?
+          if [ $status -ne 0 ]; then
+            grep -n -m 40 -E "error:|fatal error|undefined symbol|\*\*\* " au.log \
+              | cut -c1-450 | while IFS= read -r line; do echo "::error::${line}"; done
+            echo "::error::last lines: $(tail -n 8 au.log | tr '\n' '|' | cut -c1-700)"
+            exit $status
+          fi
+          mkdir -p dist-au
+          AU=$(find plugin/builds/osx/build -name "VialSynth.component" -maxdepth 4 | head -1)
+          if [ -z "$AU" ]; then echo "::error::no AU produced"; exit 1; fi
+          ditto "$AU" dist-au/VialSynth.component
+          lipo -archs dist-au/VialSynth.component/Contents/MacOS/VialSynth
+          if strings -a dist-au/VialSynth.component/Contents/MacOS/VialSynth | grep -i -E "vital\.audio|account\.vital|store\.vital|forum\.vital|vital audio|tytel"; then echo "::error::[binary] Vital branding found in the AU"; exit 1; fi
+          ls -R dist-au | head -20
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VialSynth-macos-au
+          path: dist-au
+
+      - name: Build the CLAP
+        run: |
+          set -e
+          VER=$(sed -n 's/.*kVialFxVersion = "\([^"]*\)".*/\1/p' src/interface/editor_sections/about_section.cpp | head -1)
+          git init -q clap-ext
+          git -C clap-ext remote add origin https://github.com/free-audio/clap-juce-extensions
+          git -C clap-ext fetch -q --depth 1 origin "$CLAP_EXT_SHA"
+          git -C clap-ext checkout -q FETCH_HEAD
+          git -C clap-ext submodule update -q --init --depth 1 --recursive
+          LIB=$(find plugin/builds/osx/build -name "libVialSynth.a" | head -1)
+          echo "shared code library: $LIB"
+          cmake -S plugin/clap -B clap-build -G Xcode -DCMAKE_BUILD_TYPE=Release \
+            -DPATH_TO_CLAP_EXTENSIONS="$PWD/clap-ext" -DVIALSYNTH_SHARED_LIB="$PWD/$LIB" -DVIALSYNTH_VERSION="$VER" \
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED=NO 2>&1 | tail -30
+          set +e
+          cmake --build clap-build --config Release --target VialSynth_CLAP > clap.log 2>&1
+          status=$?
+          if [ $status -ne 0 ]; then
+            grep -n -m 40 -E "error:|fatal error|undefined symbol|\*\*\* " clap.log | cut -c1-450 | while IFS= read -r line; do echo "::error::${line}"; done
+            echo "::error::last lines: $(tail -n 8 clap.log | tr '\n' '|' | cut -c1-700)"
+            exit $status
+          fi
+          mkdir -p dist-clap
+          CLAP=$(find clap-build -name "VialSynth.clap" -maxdepth 4 | head -1)
+          ditto "$CLAP" dist-clap/VialSynth.clap
+          lipo -archs dist-clap/VialSynth.clap/Contents/MacOS/VialSynth
+          if strings -a dist-clap/VialSynth.clap/Contents/MacOS/VialSynth | grep -i -E "vital\.audio|account\.vital|store\.vital|forum\.vital|vital audio|tytel"; then echo "::error::[binary] Vital branding found in the CLAP"; exit 1; fi
+          ls -R dist-clap | head -20
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VialSynth-macos-clap
+          path: dist-clap
+
       - name: Build the macOS installer (.pkg)
         run: |
           VER=$(sed -n 's/.*kVialFxVersion = "\([^"]*\)".*/\1/p' src/interface/editor_sections/about_section.cpp | head -1)
-          mkdir -p pkgroot-vst3 pkgs installers
+          # One installer, choices the user can switch on and off: VST3, CLAP and AU.
+          mkdir -p pkgroot-vst3 pkgroot-clap pkgroot-au pkgs installers
           cp -R dist/VialSynth.vst3 pkgroot-vst3/VialSynth.vst3
+          cp -R dist-clap/VialSynth.clap pkgroot-clap/VialSynth.clap
+          cp -R dist-au/VialSynth.component pkgroot-au/VialSynth.component
           pkgbuild --root pkgroot-vst3 --identifier com.vialsynth.vst3 --version "$VER" \
             --install-location /Library/Audio/Plug-Ins/VST3 pkgs/vst3.pkg
+          pkgbuild --root pkgroot-clap --identifier com.vialsynth.clap --version "$VER" \
+            --install-location /Library/Audio/Plug-Ins/CLAP pkgs/clap.pkg
+          pkgbuild --root pkgroot-au --identifier com.vialsynth.au --version "$VER" \
+            --install-location /Library/Audio/Plug-Ins/Components pkgs/au.pkg
           productbuild --distribution installer/macos/distribution.xml --package-path pkgs "installers/VialSynth-$VER-macOS.pkg"
           ls -l installers
 
