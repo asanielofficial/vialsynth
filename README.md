@@ -4,8 +4,8 @@ VialSynth is a wavetable synthesizer plugin. It is built from GPLv3 synthesizer 
 [VialFX](https://github.com/asanielofficial/vialfx), the effect plugin made from the same code (see
 [NOTICE.md](NOTICE.md) for the origin of the code).
 
-> **Version 1.0.** The first release: VST3 builds for Windows, macOS and Linux. See the
-> [release notes](.github/release-notes/1.0.md) for what is in it.
+> **Formats.** VST3 and CLAP for Windows, macOS and Linux, plus an Audio Unit (AU) for macOS and LV2 for Linux.
+> See the [release notes](.github/release-notes/1.2.md) for what is in the latest version.
 
 ## What this is
 
@@ -52,9 +52,12 @@ VialSynth has no such sections.
 
 ## Known gaps
 
-- **CI.** The workflows under `.github/workflows/` build the synth plugin (`plugin/`) as a VST3 on Linux, Windows and
-  macOS. They are manual (Actions tab) and publish VST3 zips only: the CLAP wrapper and installers are not part of
-  this project yet. Releases use the notes in `.github/release-notes/<version>.md`.
+- **CI.** The workflows under `.github/workflows/` build the synth plugin (`plugin/`) on Linux, Windows and macOS:
+  VST3 and CLAP everywhere, an AU on macOS and an LV2 on Linux, with a Windows installer (`.exe`) and a macOS installer
+  (`.pkg`) that let you pick VST3, CLAP (and AU on macOS). The CLAP is made with
+  [clap-juce-extensions](https://github.com/free-audio/clap-juce-extensions) (`plugin/clap`), the LV2 with the wrapper
+  bundled in JUCE (`plugin/builds/linux_vst/lv2.mk`). They are manual (Actions tab). Releases use the notes in
+  `.github/release-notes/<version>.md`.
 - **No VST2 yet.** Only the VST3 is built. The VST2 target needs Steinberg's VST2 SDK, which is not public, and
   `JUCE_VST3_CAN_REPLACE_VST2` is switched off for the same reason. [vst2sdk](https://github.com/Xaymar/vst2sdk)
   (BSD-3-Clause, header-only) is a possible replacement, but it uses its own names, not Steinberg's, so JUCE's
