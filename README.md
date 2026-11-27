@@ -78,7 +78,7 @@ VialSynth has no such sections.
 ### Linux (VST3)
 
 ```
-sudo apt-get install build-essential pkg-config libasound2-dev libfreetype6-dev libgl1-mesa-dev \
+sudo apt-get install build-essential pkg-config libasound2-dev libjack-jackd2-dev libfreetype6-dev libgl1-mesa-dev \
   libcurl4-openssl-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev
 make vst3 CONFIG=Release
 ```

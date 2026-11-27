@@ -30,7 +30,7 @@ jobs:
             build-essential pkg-config \
             libasound2-dev libfreetype6-dev libgl1-mesa-dev libcurl4-openssl-dev \
             libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev \
-            libsecret-1-dev libglib2.0-dev
+            libsecret-1-dev libjack-jackd2-dev libglib2.0-dev
 
       - name: Build VialSynth VST3
         run: |
