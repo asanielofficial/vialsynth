@@ -17,7 +17,7 @@
   <choice id="au" title="Audio Unit plugin" description="Installs VialSynth.component to /Library/Audio/Plug-Ins/Components." start_selected="true">
     <pkg-ref id="com.vialsynth.au"/>
   </choice>
-  <pkg-ref id="com.vialsynth.vst3" version="1.2" onConclusion="none">vst3.pkg</pkg-ref>
-  <pkg-ref id="com.vialsynth.clap" version="1.2" onConclusion="none">clap.pkg</pkg-ref>
-  <pkg-ref id="com.vialsynth.au" version="1.2" onConclusion="none">au.pkg</pkg-ref>
+  <pkg-ref id="com.vialsynth.vst3" version="1.3" onConclusion="none">vst3.pkg</pkg-ref>
+  <pkg-ref id="com.vialsynth.clap" version="1.3" onConclusion="none">clap.pkg</pkg-ref>
+  <pkg-ref id="com.vialsynth.au" version="1.3" onConclusion="none">au.pkg</pkg-ref>
 </installer-gui-script>

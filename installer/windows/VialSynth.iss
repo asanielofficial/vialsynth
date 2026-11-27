@@ -1,7 +1,7 @@
 ; Inno Setup script for the VialSynth installer (VST3 and CLAP as separate components), built by .github/workflows/build.yml.
-; Build: ISCC /DSourceFile=C:\path\to\VialSynth.vst3 /DClapFile=C:\path\to\VialSynth.clap /DAppVersion=1.2 installer\windows\VialSynth.iss
+; Build: ISCC /DSourceFile=C:\path\to\VialSynth.vst3 /DClapFile=C:\path\to\VialSynth.clap /DAppVersion=1.3 installer\windows\VialSynth.iss
 #ifndef AppVersion
-  #define AppVersion "1.2"
+  #define AppVersion "1.3"
 #endif
 #ifndef ClapFile
   #define ClapFile "..\..\dist-clap\VialSynth.clap"
