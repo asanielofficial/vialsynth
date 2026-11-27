@@ -3,7 +3,6 @@ name: Build VialSynth
 # One workflow for every platform: the Linux, Windows and macOS VST3 builds of the synth. Run it from the Actions tab;
 # the Nightly and Stable release workflows reuse it and publish its artifacts.
 #
-# The Windows (.exe) and macOS (.pkg) installers are built here too.
 on:
   # Whole builds run only when asked for: from the Actions tab, from the Nightly release workflow, or from the Stable
   # release workflow. Pushes do not start them; use "Test build" for a quick portable build of a change.
@@ -188,7 +187,7 @@ jobs:
           exit $final
 
   windows:
-    name: Windows (VST3, CLAP, standalone + installer)
+    name: Windows (VST3, CLAP, standalone)
     runs-on: windows-2022
     timeout-minutes: 90
     env:
@@ -293,22 +292,6 @@ jobs:
           name: VialSynth-windows-standalone
           path: dist-app
 
-      - name: Build the Windows installer
-        shell: pwsh
-        run: |
-          choco install innosetup -y --no-progress
-          New-Item -ItemType Directory installers | Out-Null
-          $ver = (Select-String -Path src/interface/editor_sections/about_section.cpp -Pattern 'kVialFxVersion = "([^"]+)"').Matches[0].Groups[1].Value
-          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          & $iscc "/DSourceFile=$PWD\dist\VialSynth.vst3" "/DClapFile=$PWD\dist-clap\VialSynth.clap" "/DAppVersion=$ver" "/O$PWD\installers" installer\windows\VialSynth.iss
-          if ($LASTEXITCODE -ne 0) { Write-Host "::error::Inno Setup failed"; exit 1 }
-          Get-ChildItem installers | Format-Table Name, Length
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: VialSynth-windows-installer
-          path: installers
-
       - name: Validate with pluginval (non-blocking)
         continue-on-error: true
         shell: pwsh
@@ -328,7 +311,7 @@ jobs:
           }
 
   macos:
-    name: macOS (VST3, CLAP, AU, standalone + installer)
+    name: macOS (VST3, CLAP, AU, standalone)
     # The last Intel runner: the prebuilt Projucer of the JUCE version this project uses is an Intel binary. The plugin
     # itself is built universal (arm64 + x86_64).
     runs-on: macos-15-intel
@@ -494,25 +477,3 @@ jobs:
         with:
           name: VialSynth-macos-standalone
           path: dist-app
-
-      - name: Build the macOS installer (.pkg)
-        run: |
-          VER=$(sed -n 's/.*kVialFxVersion = "\([^"]*\)".*/\1/p' src/interface/editor_sections/about_section.cpp | head -1)
-          # One installer, choices the user can switch on and off: VST3, CLAP and AU.
-          mkdir -p pkgroot-vst3 pkgroot-clap pkgroot-au pkgs installers
-          cp -R dist/VialSynth.vst3 pkgroot-vst3/VialSynth.vst3
-          cp -R dist-clap/VialSynth.clap pkgroot-clap/VialSynth.clap
-          cp -R dist-au/VialSynth.component pkgroot-au/VialSynth.component
-          pkgbuild --root pkgroot-vst3 --identifier com.vialsynth.vst3 --version "$VER" \
-            --install-location /Library/Audio/Plug-Ins/VST3 pkgs/vst3.pkg
-          pkgbuild --root pkgroot-clap --identifier com.vialsynth.clap --version "$VER" \
-            --install-location /Library/Audio/Plug-Ins/CLAP pkgs/clap.pkg
-          pkgbuild --root pkgroot-au --identifier com.vialsynth.au --version "$VER" \
-            --install-location /Library/Audio/Plug-Ins/Components pkgs/au.pkg
-          productbuild --distribution installer/macos/distribution.xml --package-path pkgs "installers/VialSynth-$VER-macOS.pkg"
-          ls -l installers
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: VialSynth-macos-installer
-          path: installers

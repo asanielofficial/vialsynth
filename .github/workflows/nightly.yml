@@ -55,4 +55,4 @@ jobs:
           gh release delete nightly --repo "$REPO" --cleanup-tag --yes || true
           gh release create nightly out/* --repo "$REPO" --prerelease --target "$sha" \
             --title "Nightly $(date -u +%Y-%m-%d) ($short)" \
-            --notes "Automatic build of main at $short for Linux, macOS and Windows (VST3 and CLAP), a macOS AU and a Linux LV2, with installers for Windows and macOS. Unsigned builds for testing."
+            --notes "Automatic build of main at $short for Linux, macOS and Windows (VST3 and CLAP), a macOS AU and a Linux LV2. Unsigned builds for testing."

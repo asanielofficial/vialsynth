@@ -53,8 +53,7 @@ VialSynth has no such sections.
 ## Known gaps
 
 - **CI.** The workflows under `.github/workflows/` build the synth plugin (`plugin/`) on Linux, Windows and macOS:
-  VST3 and CLAP everywhere, an AU on macOS and an LV2 on Linux, with a Windows installer (`.exe`) and a macOS installer
-  (`.pkg`) that let you pick VST3, CLAP (and AU on macOS). The CLAP is made with
+  VST3 and CLAP everywhere, an AU on macOS and an LV2 on Linux as zips. Installation is handled by VialLauncher; there are no installers. The CLAP is made with
   [clap-juce-extensions](https://github.com/free-audio/clap-juce-extensions) (`plugin/clap`), the LV2 with the wrapper
   bundled in JUCE (`plugin/builds/linux_vst/lv2.mk`). They are manual (Actions tab). Releases use the notes in
   `.github/release-notes/<version>.md`.
@@ -66,7 +65,7 @@ VialSynth has no such sections.
   `pluginName` and `targetName` in `plugin/vital.jucer`, and mirrored in the checked-in Linux, Windows, macOS and
   iOS build files). The project files keep the name `Vial` (`Vial.sln`, `Vial.xcodeproj`, the "Vial - VST3"
   targets), because renaming the Projucer project itself would rename all of them. The plugin's four-character
-  code (`Vial`) is unchanged. The Debian packaging, installer folder, standalone, headless and test projects still
+  code (`Vial`) is unchanged. The Debian packaging, standalone, headless and test projects still
   carry the older names (and the original author's name in their project files). The CI branding check covers
   `src/`, `plugin/`, the `Makefile` and this README, and the built VST3 binaries.
 - **FX-only code remains as dead code.** Branches guarded by `VITAL_FX` (the effect rack, table modes, spectral
