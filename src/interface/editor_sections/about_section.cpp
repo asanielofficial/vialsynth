@@ -33,7 +33,7 @@ namespace {
 }
 
 namespace {
-  const char* const kVialFxVersion = "1.3";   // display version; ProjectInfo::versionString stays at the base version (compatibility checks)
+  const char* const kVialFxVersion = "1.3.1";   // display version; ProjectInfo::versionString stays at the base version (compatibility checks)
   const char* const kVialFxUrl = "https://github.com/asanielofficial/vialsynth";
 }
 

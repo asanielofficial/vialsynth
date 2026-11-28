@@ -9,7 +9,7 @@ VialSynth is a wavetable synthesizer plugin. It is built from GPLv3 synthesizer 
 > plain zips if you prefer to copy the files yourself.
 >
 > **Formats.** VST3 and CLAP for Windows, macOS and Linux, plus an Audio Unit (AU) for macOS, LV2 for Linux and a
-> standalone app for all three. See the [release notes](.github/release-notes/1.3.md) for what is in the latest version.
+> standalone app for all three. See the [release notes](.github/release-notes/1.3.1.md) for what is in the latest version.
 
 ## What this is
 
